@@ -2,6 +2,8 @@
 
 from pathlib import Path
 from copy import deepcopy
+import hashlib
+import json
 
 from .adapters import StubAmr, StubHumanoidMover, StubLift, StubPerception, StubVla
 from .config import fingerprint, validate_config
@@ -19,8 +21,13 @@ class Harness:
         "jolt": "pick_reset", "pick_reset": "pick", "navigate_idle": "done",
     }
 
-    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None):
+    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None, assigned: bool = False, cancel_requested=None, phase_callback=None):
         validate_config(config)
+        if assigned and (len(config["tasks"]) != 1 or config["tasks"][0]["rack"] != "B"):
+            raise ValueError("Assigned mode requires exactly one Rack B task")
+        self.assigned = assigned
+        self.cancel_requested = cancel_requested
+        self.phase_callback = phase_callback
         if resume and not state_dir.is_dir():
             raise StateError("--resume requires an existing harness state directory")
         if not resume:
@@ -50,16 +57,25 @@ class Harness:
         else:
             if any(path.name != ".harness.lock" for path in state_dir.iterdir()):
                 raise StateError("State directory is not empty; use --resume for a prior run")
-            self.state = {"schema": 1, "config": config, "config_fingerprint": fingerprint(config), "phase": "select",
-                          "index": 0, "active_task_id": None, "intent": None, "hold_reason": None, "event_sequence": 0,
+            task_id = config["tasks"][0]["task_id"] if self.assigned else None
+            self.state = {"schema": 1, "config": config, "config_fingerprint": fingerprint(config), "phase": "navigate_pick" if self.assigned else "select",
+                          "index": 0, "active_task_id": task_id, "intent": None, "hold_reason": None, "event_sequence": 0,
                           "units": {task["task_id"]: {"status": "pending", "cycle": 0, "navigation_attempts": {}, "pick_attempt": 0} for task in config["tasks"]}}
+            if self.assigned:
+                self.state["units"][task_id]["status"] = "active"
+                identity = {key: config["tasks"][0][key] for key in ("order_id", "session_id", "task_id", "counter")}
+                digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode("ascii")).hexdigest()[:20]
+                self.state["assignment"] = identity
+                self.state["unit_namespace"] = f"unit-{digest}"
+                self.state["physical_proof"] = None
             write_json(self.controller_path, self.state)
             write_json(self.device_path, StubDevice.initial(config))
-            write_json(self.platform_path, StubPlatform.initial())
+            if not self.assigned:
+                write_json(self.platform_path, StubPlatform.initial())
             self.events_path.touch()
         self.config = config
         self.device = StubDevice(self.device_path, config)
-        self.platform = platform if platform is not None else StubPlatform(self.platform_path, config)
+        self.platform = None if self.assigned else platform if platform is not None else StubPlatform(self.platform_path, config)
         self.amr = amr if amr is not None else StubAmr(self.device)
         self.mover = mover if mover is not None else StubHumanoidMover(self.device)
         self.lift = lift if lift is not None else StubLift(self.device)
@@ -70,6 +86,8 @@ class Harness:
 
     def _validate_resume(self) -> None:
         state = self.state
+        if self.assigned and state.get("assignment") != {key: self.config["tasks"][0][key] for key in ("order_id", "session_id", "task_id", "counter")}:
+            raise StateError("Saved assigned physical identity differs")
         task_map = {task["task_id"]: task for task in self.config["tasks"]}
         if set(state["units"]) != set(task_map):
             raise StateError("Controller task set differs from config")
@@ -104,7 +122,7 @@ class Harness:
                 raise StateError(f"Invalid unit status for {task_id}")
             if not isinstance(unit.get("cycle"), int) or unit["cycle"] < 0 or not isinstance(unit.get("pick_attempt"), int) or unit["pick_attempt"] < 0 or not isinstance(unit.get("navigation_attempts"), dict):
                 raise StateError(f"Invalid unit retry counters for {task_id}")
-            if unit["status"] == "complete":
+            if unit["status"] == "complete" and not self.assigned:
                 task = task_map[task_id]
                 reports = self.platform.get_report(task_id)
                 if reports.is_err or reports.data is None:
@@ -114,6 +132,8 @@ class Harness:
                     raise StateError(f"Completed {task_id} report identity mismatch")
                 if not self._placement_verified(task):
                     raise StateError(f"Completed {task_id} lacks verified physical placement")
+            if unit["status"] == "complete" and self.assigned and not self._assigned_proof_valid():
+                raise StateError(f"Completed {task_id} lacks valid physical proof")
         if state["phase"] == "done" and any(state["units"][task["task_id"]]["status"] not in ("complete", "failed") for task in self.config["tasks"] if task["rack"] == "B"):
             raise StateError("Done checkpoint still has unfinished Rack B unit")
 
@@ -143,6 +163,8 @@ class Harness:
         self.state["intent"] = None
         self._save()
         self._emit("phase", next_phase=phase)
+        if self.phase_callback is not None:
+            self.phase_callback(phase)
 
     def _hold(self, reason: str) -> None:
         self.state["phase"] = "hold"
@@ -156,6 +178,10 @@ class Harness:
         task_id = self.state["active_task_id"]
         self._unit()["status"] = "failed"
         self._emit("unit_failed", reason=reason)
+        if self.assigned:
+            self.state["failure_reason"] = reason
+            self._set_phase("done")
+            return
         self.state["index"] = next(i for i, task in enumerate(self.config["tasks"]) if task["task_id"] == task_id) + 1
         self.state["active_task_id"] = None
         self._set_phase("select")
@@ -197,7 +223,8 @@ class Harness:
             else:
                 attempt = 1
         generation = cycle * 100 + attempt
-        execution = Execution(f"{task_id}/c{cycle}/{kind}/a{attempt}", task_id, kind, self._target(kind), generation, "INTENDED")
+        namespace = self.state.get("unit_namespace", task_id)
+        execution = Execution(f"{namespace}/c{cycle}/{kind}/a{attempt}", task_id, kind, self._target(kind), generation, "INTENDED")
         self.state["intent"] = {"execution_id": execution.execution_id, "task_id": execution.task_id,
                                 "kind": execution.kind, "target": execution.target, "generation": execution.generation,
                                 "status": execution.status, "reason": execution.reason, "dispatch_started": False}
@@ -324,6 +351,17 @@ class Harness:
             self._hold("possession unknown or world inconsistent at pre-place check")
 
     def _report(self) -> None:
+        if self.assigned:
+            proof = self._make_assigned_proof()
+            if proof is None:
+                self._hold("cannot finish without matching placement and fresh empty-hand evidence")
+                return
+            self.state["physical_proof"] = proof
+            self._unit()["status"] = "complete"
+            self._save()
+            self._emit("physical_complete", proof=proof)
+            self._set_phase("done")
+            return
         task = self._task()
         task_id = task["task_id"]
         if not self._placement_verified(task):
@@ -362,7 +400,7 @@ class Harness:
     def _placement_verified(self, task: dict) -> bool:
         task_id = task["task_id"]
         cycle = self.state["units"][task_id]["cycle"]
-        execution_id = f"{task_id}/c{cycle}/place/a1"
+        execution_id = f"{self.state.get('unit_namespace', task_id)}/c{cycle}/place/a1"
         result = self.mover.get_execution(execution_id)
         if result.is_err or result.data is None:
             return False
@@ -371,6 +409,36 @@ class Harness:
             return False
         observed = self.perception.verify_placement(task_id, task["counter"])
         return observed.is_ok and observed.data is True
+
+    def _make_assigned_proof(self) -> dict | None:
+        task = self._task()
+        task_id = task["task_id"]
+        cycle = self._unit()["cycle"]
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/place/a1"
+        result = self.mover.get_execution(execution_id)
+        expected = Execution(execution_id, task_id, "place", self.config["placement_targets"][str(task["counter"])], cycle * 100 + 1, "INTENDED")
+        if result.is_err or result.data is None or not self._check_identity(expected, result.data) or result.data.status != "COMPLETED":
+            return None
+        observed = self.perception.observe(task_id, "placement_check", cycle)
+        placed = self.perception.verify_placement(task_id, task["counter"])
+        world = self.device.state["world"]
+        counter = str(task["counter"])
+        bun_id = f"{task_id}/bun-c{cycle}"
+        if observed.is_err or observed.data is None or observed.data.held_task_id is not None or placed.is_err or placed.data is not True:
+            return None
+        if world["held_task_id"] is not None or world["held_bun_id"] is not None or world["counters"][counter].count(task_id) != 1 or world["counter_bun_ids"][counter].count(bun_id) != 1:
+            return None
+        return {"schema": 1, "assignment": dict(self.state["assignment"]), "place_execution_id": execution_id,
+                "place_status": "COMPLETED", "target_counter": task["counter"], "target": expected.target,
+                "source": {"item_id": task.get("item_id"), "rack_id": task.get("rack_id"), "level": task["level"], "slot": task["slot"]},
+                "bun_id": bun_id, "cycle": cycle, "placement_verified": True, "empty_hand_verified": True,
+                "observation": {"task_id": observed.data.task_id, "held_task_id": observed.data.held_task_id,
+                                "location": observed.data.location, "posture": observed.data.posture},
+                "provenance": "humanoid_harness.StubDevice/1", "config_fingerprint": self.state["config_fingerprint"]}
+
+    def _assigned_proof_valid(self) -> bool:
+        proof = self.state.get("physical_proof")
+        return isinstance(proof, dict) and proof == self._make_assigned_proof()
 
     def step(self) -> None:
         phase = self.state["phase"]
@@ -435,6 +503,9 @@ class Harness:
         for _ in range(1000):
             if self.state["phase"] in ("done", "hold"):
                 break
+            if self.cancel_requested is not None and self.cancel_requested() and self.state["phase"] != "report":
+                self._hold("cancellation requested; physical state held for reconciliation")
+                break
             self.step()
         else:
             self._hold("controller step bound exceeded")
@@ -458,5 +529,5 @@ class Harness:
                 order["pending_outside_scope"] += 1
         return {"scenario": self.config["scenario"], "phase": self.state["phase"], "hold_reason": self.state["hold_reason"],
                 "units": {key: value["status"] for key, value in units.items()}, "orders": orders,
-                "world": self.device.state["world"], "report_count": sum(1 for value in units.values() if value["status"] == "complete"),
+                "world": self.device.state["world"], "report_count": 0 if self.assigned else sum(1 for value in units.values() if value["status"] == "complete"),
                 "execution_count": len(self.device.state["executions"]), "config_fingerprint": self.state["config_fingerprint"]}

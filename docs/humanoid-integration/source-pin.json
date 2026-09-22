@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "stage": "reviewed-local-handoff",
+  "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
+  "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
+  "client_documentation_head": "e6766e8319c9a6a832e8f058135a9d52b869a7c2",
+  "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
+  "production_files_sha256": {
+    "humanoid_harness/controller.py": "60d05ba4cf4e01a2d841dd848b83eb34fa30956fe21ffbd0f6cd822c4320cd8e",
+    "humanoid_harness/integration/__init__.py": "5371fb7b2805de228b65d0e51d163de5137bf9e7de1b22083428dbea35f3d3ae",
+    "humanoid_harness/integration/executor.py": "2e4387d428a0b5476b3776a7af5e7d90c61535746f29cd0d351349ba479ceaa9",
+    "humanoid_harness/integration/__main__.py": "eca6e7fa528973ec3672da912c680f783688b3fbd7ee9170ff2b004ce85ee902"
+  },
+  "local_checks": {"integration": 16, "standalone": 21},
+  "actual_platform_acceptance": "pending-at-local-handoff"
+}
