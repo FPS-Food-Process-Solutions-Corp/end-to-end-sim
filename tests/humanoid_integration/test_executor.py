@@ -28,10 +28,11 @@ from humanoid_harness.integration import HumanoidPickExecutor
 from humanoid_harness.integration import __main__ as launcher_module
 from humanoid_harness.integration.__main__ import ensure_startup_ready, simulation_locations
 from humanoid_harness.integration import executor as executor_module
-from humanoid_harness.integration.executor import assignment_identity, unit_digest
+from humanoid_harness.integration.executor import assignment_identity, default_config, unit_digest
 from humanoid_harness.storage import StateError
 
 from tests.humanoid_integration.fixtures import faulty_config, task_context
+from tests.humanoid_integration.failure_crash_driver import config_factory as failure_crash_config
 
 
 class PublicCompletionClient:
@@ -51,6 +52,241 @@ def unit_state(root, ctx):
 
 
 class HumanoidExecutorTests(unittest.TestCase):
+    def test_current_release_pointer_posture_or_source_tamper_blocks_restart(self):
+        for changed in (
+            {"proof_action_id": "unrelated/retract"},
+            {"posture": "SIM_POSE_PRE_PICK"},
+            {"source": {"item_id": "different", "rack_id": "B", "level": 1, "slot": 1}},
+        ):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                ctx = task_context()
+
+                async def first_run():
+                    executor = HumanoidPickExecutor(root)
+
+                    async def progress(_subtask, _percent):
+                        return None
+
+                    result = await executor.run(ctx, progress)
+                    await executor.drain()
+                    return result
+
+                with redirect_stdout(io.StringIO()):
+                    completed = asyncio.run(first_run())
+                self.assertEqual(completed.status, PickExecutionStatus.COMPLETED)
+                release_path = root / "device-readiness.json"
+                release = json.loads(release_path.read_text(encoding="ascii"))
+                self.assertEqual(release["status"], "ready")
+                release.update(changed)
+                release_path.write_text(json.dumps(release), encoding="ascii")
+                with self.assertRaises(StateError):
+                    HumanoidPickExecutor(root)
+                _, state = unit_state(root, ctx)
+                self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+
+    def test_active_place_effect_crash_reconciles_all_post_place_phases_before_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child = subprocess.run([sys.executable, "-m", "tests.humanoid_integration.place_effect_crash_driver", str(root)], capture_output=True, text=True, timeout=30, check=False)
+            self.assertEqual(child.returncode, 79, child.stderr)
+            ctx = task_context()
+            _, before = unit_state(root, ctx)
+            self.assertEqual(before["controller"]["phase"], "place")
+            self.assertIsNone(before["controller"]["physical_proof"])
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+
+            async def recover():
+                executor = HumanoidPickExecutor(root)
+                client = PublicCompletionClient()
+                try:
+                    completed = await executor.recover_completed(client)
+                    ensure_startup_ready(executor)
+
+                    async def progress(_subtask, _percent):
+                        return None
+
+                    replay = await executor.run(task_context(retry_count=1), progress)
+                    return completed, client.calls, replay
+                finally:
+                    await executor.drain()
+
+            with redirect_stdout(io.StringIO()):
+                completed, calls, replay = asyncio.run(recover())
+            self.assertEqual(len(completed), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(replay.status, PickExecutionStatus.COMPLETED)
+            self.assertTrue(replay.ready_for_next)
+            self.assertEqual(calls[0][1], replay.terminal_evidence)
+            _, after = unit_state(root, ctx)
+            self.assertEqual(after["controller"]["phase"], "done")
+            self.assertIsInstance(after["controller"]["physical_proof"], dict)
+            self.assertIsInstance(after["controller"]["post_place_readiness_proof"], dict)
+            records = list(after["device"]["executions"].values())
+            self.assertEqual(sum(record["kind"] == "pick" for record in records), 1)
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in records), 1)
+            self.assertEqual(sum(record["kind"] == "post_place_retract" and record["effect_applied"] for record in records), 1)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "idle")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "ready")
+
+    def test_local_three_unit_sequence_advances_after_verified_safe_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first_ctx = task_context(task_id="pastry-a")
+            failed_ctx = task_context(task_id="pastry-b")
+            third_ctx = task_context(task_id="pastry-c")
+
+            def config_factory(ctx):
+                if ctx.task_id == failed_ctx.task_id:
+                    return faulty_config(ctx, "pick", "fail", (1, 2, 3))
+                return default_config(ctx)
+
+            async def scenario():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                first = await executor.run(first_ctx, progress)
+                failed = await executor.run(failed_ctx, progress)
+                third = await executor.run(third_ctx, progress)
+                release_before_retry = json.loads((root / "device-readiness.json").read_text(encoding="ascii"))
+                retried = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
+                release_after_retry = json.loads((root / "device-readiness.json").read_text(encoding="ascii"))
+                await executor.drain()
+                return first, failed, third, retried, release_before_retry, release_after_retry
+
+            with redirect_stdout(io.StringIO()):
+                first, failed, third, retried, release_before_retry, release_after_retry = asyncio.run(scenario())
+            self.assertEqual(first.status, PickExecutionStatus.COMPLETED)
+            self.assertEqual(failed.status, PickExecutionStatus.FAILED)
+            self.assertTrue(failed.ready_for_next)
+            self.assertEqual(third.status, PickExecutionStatus.COMPLETED)
+            self.assertEqual(retried.status, PickExecutionStatus.FAILED)
+            self.assertTrue(retried.ready_for_next)
+            self.assertEqual(release_before_retry, release_after_retry)
+            self.assertEqual(release_after_retry["status"], "ready")
+            self.assertEqual(release_after_retry["identity"], assignment_identity(third_ctx))
+            self.assertEqual(release_after_retry["proof_kind"], "post_place_retract")
+            for ctx in (first_ctx, third_ctx):
+                _, state = unit_state(root, ctx)
+                self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+            _, failed_state = unit_state(root, failed_ctx)
+            failed_records = list(failed_state["device"]["executions"].values())
+            self.assertEqual(sum(record["kind"] == "pick" for record in failed_records), 3)
+            self.assertEqual(sum(record["kind"] == "failure_retract" for record in failed_records), 1)
+            self.assertFalse(any(record["kind"] == "place" for record in failed_records))
+            self.assertIsInstance(failed_state["controller"]["failure_readiness_proof"], dict)
+            third_dir, _ = unit_state(root, third_ctx)
+            first_event = json.loads((third_dir / "events.jsonl").read_text(encoding="ascii").splitlines()[0])
+            self.assertEqual(first_event["world"]["posture"], "SIM_POSE_TRAVEL")
+            self.assertIsNone(first_event["world"]["held_task_id"])
+            self.assertEqual(first_event["world"]["location"], failed_state["controller"]["failure_readiness_proof"]["readiness_observation"]["location"])
+            registry = json.loads((root / "task-identities.json").read_text(encoding="ascii"))
+            self.assertEqual(registry["tasks"][failed_ctx.task_id]["retry_counts"], [0, 1])
+
+    def test_other_units_unsafe_post_place_hold_blocks_saved_failure_retry(self):
+        for outcome in ("unknown", "collision", "cancel_unknown", "fail"):
+            with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                failed_ctx = task_context(task_id="pastry-b")
+                later_ctx = task_context(task_id="pastry-c")
+
+                def config_factory(ctx):
+                    if ctx.task_id == failed_ctx.task_id:
+                        return faulty_config(ctx, "pick", "fail", (1, 2, 3))
+                    return faulty_config(ctx, "post_place_retract", outcome, (1, 2) if outcome == "fail" else (1,))
+
+                async def scenario():
+                    executor = HumanoidPickExecutor(root, config_factory=config_factory)
+
+                    async def progress(_subtask, _percent):
+                        return None
+
+                    failed = await executor.run(failed_ctx, progress)
+                    later = await executor.run(later_ctx, progress)
+                    retried = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
+                    same_held = await executor.run(task_context(task_id="pastry-c", retry_count=1), progress)
+                    await executor.drain()
+                    return failed, later, retried, same_held
+
+                with redirect_stdout(io.StringIO()):
+                    failed, later, retried, same_held = asyncio.run(scenario())
+                self.assertEqual(failed.status, PickExecutionStatus.FAILED)
+                self.assertTrue(failed.ready_for_next)
+                self.assertEqual(later.status, PickExecutionStatus.COMPLETED)
+                self.assertFalse(later.ready_for_next)
+                self.assertEqual(retried.status, PickExecutionStatus.UNRESOLVED)
+                self.assertEqual(same_held.status, PickExecutionStatus.UNRESOLVED)
+                self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+                self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+                _, failed_state = unit_state(root, failed_ctx)
+                self.assertEqual(sum(record["kind"] == "pick" for record in failed_state["device"]["executions"].values()), 3)
+                _, later_state = unit_state(root, later_ctx)
+                self.assertIsInstance(later_state["controller"]["physical_proof"], dict)
+                self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in later_state["device"]["executions"].values()), 1)
+
+    def test_active_post_place_crash_blocks_prior_failed_retry_until_exact_recovery(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            failed_ctx = task_context(task_id="pastry-b")
+            later_ctx = task_context(task_id="pastry-c")
+
+            def config_factory(ctx):
+                if ctx.task_id == failed_ctx.task_id:
+                    return faulty_config(ctx, "pick", "fail", (1, 2, 3))
+                return default_config(ctx)
+
+            async def fail_first():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                result = await executor.run(failed_ctx, progress)
+                await executor.drain()
+                return result
+
+            with redirect_stdout(io.StringIO()):
+                failed = asyncio.run(fail_first())
+            self.assertEqual(failed.status, PickExecutionStatus.FAILED)
+            self.assertTrue(failed.ready_for_next)
+            child = subprocess.run([sys.executable, "-m", "tests.humanoid_integration.postplace_crash_driver", str(root)], capture_output=True, text=True, timeout=30, check=False)
+            self.assertEqual(child.returncode, 78, child.stderr)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+            _, before = unit_state(root, later_ctx)
+            self.assertIsInstance(before["controller"]["physical_proof"], dict)
+            self.assertIsNone(before["controller"]["post_place_readiness_proof"])
+
+            async def recover():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                client = PublicCompletionClient()
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                blocked = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
+                recovered = await executor.recover_completed(client)
+                released = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
+                await executor.drain()
+                return blocked, recovered, client.calls, released
+
+            with redirect_stdout(io.StringIO()):
+                blocked, recovered, calls, released = asyncio.run(recover())
+            self.assertEqual(blocked.status, PickExecutionStatus.UNRESOLVED)
+            self.assertEqual(len(recovered), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0].task_id, later_ctx.task_id)
+            self.assertEqual(released.status, PickExecutionStatus.FAILED)
+            self.assertTrue(released.ready_for_next)
+            _, after = unit_state(root, later_ctx)
+            records = list(after["device"]["executions"].values())
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in records), 1)
+            self.assertEqual(sum(record["kind"] == "post_place_retract" and record["effect_applied"] for record in records), 1)
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "ready")
+
     def test_launcher_stops_idle_client_without_network_and_records_pinned_sources(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -258,8 +494,32 @@ class HumanoidExecutorTests(unittest.TestCase):
                 return result
 
             result = asyncio.run(scenario())
-            self.assertEqual(result.status, PickExecutionStatus.FAILED)
+            self.assertEqual(result.status, PickExecutionStatus.UNRESOLVED)
             self.assertEqual(list((root / "units").iterdir()), [])
+
+    def test_invalid_preflight_cannot_bypass_existing_device_hold(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            held_ctx = task_context()
+            other = task_context(task_id="pastry-other")
+            invalid = replace(other, counter_location=CounterLocation(1, other.counter_location.amr, ()))
+
+            async def scenario():
+                executor = HumanoidPickExecutor(root, config_factory=lambda task: faulty_config(task, "pick", "unknown") if task.task_id == held_ctx.task_id else default_config(task))
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                held = await executor.run(held_ctx, progress)
+                rejected = await executor.run(invalid, progress)
+                await executor.drain()
+                return held, rejected
+
+            with redirect_stdout(io.StringIO()):
+                held, rejected = asyncio.run(scenario())
+            self.assertEqual(held.status, PickExecutionStatus.UNRESOLVED)
+            self.assertEqual(rejected.status, PickExecutionStatus.UNRESOLVED)
+            self.assertFalse((root / "units" / unit_digest(assignment_identity(other))).exists())
 
     def test_cancel_timeout_retains_worker_lock_and_late_placement_hold(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -315,7 +575,7 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
             self.assertFalse(any(record["kind"] == "navigate_idle" for record in state["device"]["executions"].values()))
 
-    def test_safe_no_effect_failure_uses_failed_outcome_and_unknown_uses_unresolved(self):
+    def test_safe_navigation_failure_releases_only_after_retract_proof_and_reuses_retry(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             ctx = task_context()
@@ -334,10 +594,13 @@ class HumanoidExecutorTests(unittest.TestCase):
             with redirect_stdout(io.StringIO()):
                 failed, retry = asyncio.run(scenario(lambda task: faulty_config(task, "navigate_pick", "fail", (1, 2))))
             self.assertEqual(failed.status, PickExecutionStatus.FAILED)
-            self.assertFalse(failed.ready_for_next)
+            self.assertTrue(failed.ready_for_next)
             self.assertEqual(retry.status, PickExecutionStatus.FAILED)
+            self.assertTrue(retry.ready_for_next)
             _, state = unit_state(root, ctx)
             self.assertEqual(sum(record["kind"] == "navigate_pick" for record in state["device"]["executions"].values()), 2)
+            self.assertEqual(sum(record["kind"] == "failure_retract" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+            self.assertIsInstance(state["controller"]["failure_readiness_proof"], dict)
             self.assertFalse(any(record["kind"] == "pick" for record in state["device"]["executions"].values()))
             self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "idle")
 
@@ -348,8 +611,9 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(child.returncode, 76, child.stderr)
             ctx = task_context()
             _, state = unit_state(root, ctx)
-            self.assertEqual(state["controller"]["phase"], "report")
-            self.assertIsNone(state["controller"]["physical_proof"])
+            self.assertEqual(state["controller"]["phase"], "post_place_ready_check")
+            self.assertIsInstance(state["controller"]["physical_proof"], dict)
+            self.assertIsNone(state["controller"]["post_place_readiness_proof"])
             self.assertEqual(state["device"]["world"]["counters"]["4"], ["pastry-004"])
             self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
 
@@ -383,7 +647,130 @@ class HumanoidExecutorTests(unittest.TestCase):
             records = list(state["device"]["executions"].values())
             self.assertEqual(sum(record["kind"] == "pick" for record in records), 1)
             self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in records), 1)
+            self.assertEqual(sum(record["kind"] == "post_place_retract" and record["effect_applied"] for record in records), 1)
             self.assertEqual(state["device"]["world"]["counter_bun_ids"]["4"], ["pastry-004/bun-c0"])
+
+    def test_crash_after_failure_retract_effect_recovers_one_action_before_failed_retry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child = subprocess.run([sys.executable, "-m", "tests.humanoid_integration.failure_crash_driver", str(root)], capture_output=True, text=True, timeout=30, check=False)
+            self.assertEqual(child.returncode, 77, child.stderr)
+            ctx = task_context()
+            _, before = unit_state(root, ctx)
+            self.assertIsNone(before["controller"]["failure_readiness_proof"])
+            recovery_before = [record for record in before["device"]["executions"].values() if record["kind"] == "failure_retract"]
+            self.assertEqual(len(recovery_before), 1)
+            self.assertTrue(recovery_before[0]["effect_applied"])
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
+
+            async def scenario():
+                executor = HumanoidPickExecutor(root, config_factory=failure_crash_config)
+                client = PublicCompletionClient()
+                recovered = await executor.recover_completed(client)
+                ensure_startup_ready(executor)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                retry = await executor.run(task_context(retry_count=1), progress)
+                await executor.drain()
+                return recovered, client.calls, retry
+
+            with redirect_stdout(io.StringIO()):
+                recovered, calls, retry = asyncio.run(scenario())
+            self.assertEqual(recovered, [])
+            self.assertEqual(calls, [])
+            self.assertEqual(retry.status, PickExecutionStatus.FAILED)
+            self.assertTrue(retry.ready_for_next)
+            _, after = unit_state(root, ctx)
+            proof = after["controller"]["failure_readiness_proof"]
+            self.assertIsInstance(proof, dict)
+            recovery_after = [record for record in after["device"]["executions"].values() if record["kind"] == "failure_retract"]
+            self.assertEqual(len(recovery_after), 1)
+            self.assertEqual(recovery_after[0]["execution_id"], recovery_before[0]["execution_id"])
+            self.assertEqual(sum(record["effect_applied"] for record in recovery_after), 1)
+            self.assertEqual(sum(record["kind"] == "pick" for record in after["device"]["executions"].values()), 3)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "idle")
+
+    def test_explicit_failure_retract_hold_does_not_auto_clear_on_restart(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ctx = task_context()
+
+            def config_factory(task):
+                config = failure_crash_config(task)
+                config["faults"].append({"task_id": task.task_id, "kind": "failure_retract", "occurrence": 1, "outcome": "crash_after_effect"})
+                return config
+
+            async def first_run():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                result = await executor.run(ctx, progress)
+                await executor.drain()
+                return result
+
+            with redirect_stdout(io.StringIO()):
+                first = asyncio.run(first_run())
+            self.assertEqual(first.status, PickExecutionStatus.UNRESOLVED)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+
+            async def after_restart():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                client = PublicCompletionClient()
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                try:
+                    recovered = await executor.recover_completed(client)
+                    with self.assertRaises(ValueError):
+                        ensure_startup_ready(executor)
+                    repeat = await executor.run(task_context(retry_count=1), progress)
+                    return recovered, client.calls, repeat
+                finally:
+                    await executor.drain()
+
+            with redirect_stdout(io.StringIO()):
+                recovered, calls, repeat = asyncio.run(after_restart())
+            self.assertEqual(recovered, [])
+            self.assertEqual(calls, [])
+            self.assertEqual(repeat.status, PickExecutionStatus.UNRESOLVED)
+            _, state = unit_state(root, ctx)
+            self.assertEqual(sum(record["kind"] == "failure_retract" for record in state["device"]["executions"].values()), 1)
+
+    def test_corrupt_saved_failure_readiness_never_releases_a_retry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ctx = task_context()
+
+            def config_factory(task):
+                return faulty_config(task, "pick", "fail", (1, 2, 3))
+
+            async def first_run():
+                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                result = await executor.run(ctx, progress)
+                await executor.drain()
+                return result
+
+            with redirect_stdout(io.StringIO()):
+                first = asyncio.run(first_run())
+            self.assertEqual(first.status, PickExecutionStatus.FAILED)
+            self.assertTrue(first.ready_for_next)
+            directory, saved = unit_state(root, ctx)
+            saved["controller"]["failure_readiness_proof"]["readiness_observation"]["observation_version"] = 0
+            (directory / "controller.json").write_text(json.dumps(saved["controller"]), encoding="ascii")
+
+            with self.assertRaises(StateError):
+                HumanoidPickExecutor(root, config_factory=config_factory)
+            _, after = unit_state(root, ctx)
+            self.assertEqual(len(after["device"]["executions"]), len(saved["device"]["executions"]))
 
     def test_corrupt_proof_is_never_queued_for_public_recovery(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -406,17 +793,8 @@ class HumanoidExecutorTests(unittest.TestCase):
             state["controller"]["physical_proof"]["assignment"]["task_id"] = "different"
             (directory / "controller.json").write_text(json.dumps(state["controller"]), encoding="ascii")
 
-            async def recover():
-                executor = HumanoidPickExecutor(root)
-                client = PublicCompletionClient()
-                try:
-                    with self.assertRaises(StateError):
-                        await executor.recover_completed(client)
-                    return client.calls
-                finally:
-                    await executor.drain()
-
-            self.assertEqual(asyncio.run(recover()), [])
+            with self.assertRaises(StateError):
+                HumanoidPickExecutor(root)
 
     def test_public_real_client_queue_persists_recovered_identity_and_proof(self):
         with tempfile.TemporaryDirectory() as temporary:

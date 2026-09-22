@@ -3,7 +3,7 @@
 from dataclasses import asdict
 from pathlib import Path
 
-from .models import CompletionReport, Execution, Observation, Result
+from .models import CompletionReport, Execution, FailureReadiness, Observation, ReleaseReadiness, Result
 from .storage import read_json, write_json
 
 
@@ -29,6 +29,12 @@ class StubDevice:
             raise ValueError("Invalid device ledger schema")
         if not isinstance(self.state.get("observations"), dict) or not isinstance(self.state.get("confirmed_losses"), dict):
             raise ValueError("Invalid device observation ledger")
+        self.state.setdefault("failure_readiness_observations", {})
+        self.state.setdefault("failure_source_observations", {})
+        self.state.setdefault("release_readiness_observations", {})
+        self.state.setdefault("placement_observations", {})
+        if not isinstance(self.state["failure_readiness_observations"], dict) or not isinstance(self.state["failure_source_observations"], dict) or not isinstance(self.state["release_readiness_observations"], dict) or not isinstance(self.state["placement_observations"], dict):
+            raise ValueError("Invalid failure readiness observation ledger")
         world = self.state["world"]
         required_world = {"location", "posture", "held_task_id", "held_bun_id", "rack_buns", "rack_bun_ids", "replacement_stock", "counters", "counter_bun_ids", "lost", "lift_pose_ok"}
         if not required_world <= set(world) or any(not isinstance(world[key], dict) for key in ("rack_buns", "rack_bun_ids", "replacement_stock", "counters", "counter_bun_ids")) or not isinstance(world["lost"], list):
@@ -40,7 +46,7 @@ class StubDevice:
 
     @staticmethod
     def initial(config: dict) -> dict:
-        return {"schema": 1, "executions": {}, "observations": {}, "confirmed_losses": {}, "world": {
+        return {"schema": 1, "executions": {}, "observations": {}, "confirmed_losses": {}, "failure_readiness_observations": {}, "failure_source_observations": {}, "release_readiness_observations": {}, "placement_observations": {}, "world": {
             "location": "SIM_TAG_FRONT_COUNTER", "posture": "SIM_POSE_IDLE", "held_task_id": None,
             "rack_buns": {task["task_id"]: True for task in config["tasks"] if task["rack"] == "B"},
             "rack_bun_ids": {task["task_id"]: f"{task['task_id']}/bun-c0" for task in config["tasks"] if task["rack"] == "B"},
@@ -69,7 +75,7 @@ class StubDevice:
         elif kind in ("lift_pick", "lift_place"):
             world["posture"] = record["target"]
             world["lift_pose_ok"] = True
-        elif kind in ("pre_pick", "retract", "pre_place", "jolt", "pick_reset"):
+        elif kind in ("pre_pick", "retract", "failure_retract", "post_place_retract", "pre_place", "jolt", "pick_reset"):
             world["posture"] = record["target"]
         elif kind == "pick" and record["outcome"] != "no_bun":
             if world["held_task_id"] is not None or world["rack_buns"].get(task_id) is not True:
@@ -199,9 +205,103 @@ class StubDevice:
             return Result.err_msg("perception uncertain")
         elif fault["outcome"] != "success":
             return Result.err_msg(f"unsupported perception outcome {fault['outcome']}")
+        observation = Observation(task_id, world["held_task_id"], world["rack_buns"].get(task_id, False),
+                                  world["lift_pose_ok"], world["location"], world["posture"], loss_confirmed, occurrence)
+        if phase == "failure_source_check":
+            self.state["failure_source_observations"][f"{task_id}:{occurrence}"] = asdict(observation)
+        if phase == "placement_check":
+            self.state["placement_observations"][f"{task_id}:{occurrence}"] = asdict(observation)
         self._save()
-        return Result.ok(Observation(task_id, world["held_task_id"], world["rack_buns"].get(task_id, False),
-                                     world["lift_pose_ok"], world["location"], world["posture"], loss_confirmed))
+        return Result.ok(observation)
+
+    def read_placement_observation(self, task_id: str, observation_version: int) -> Result[Observation]:
+        raw = self.state["placement_observations"].get(f"{task_id}:{observation_version}")
+        if not isinstance(raw, dict) or raw.get("task_id") != task_id or raw.get("version") != observation_version:
+            return Result.err_msg("saved placement observation absent or mismatched")
+        return Result.ok(Observation(**raw))
+
+    def read_failure_source_observation(self, task_id: str, observation_version: int) -> Result[Observation]:
+        raw = self.state["failure_source_observations"].get(f"{task_id}:{observation_version}")
+        if not isinstance(raw, dict) or raw.get("task_id") != task_id or raw.get("version") != observation_version:
+            return Result.err_msg("saved failure source observation absent or mismatched")
+        return Result.ok(Observation(**raw))
+
+    def verify_failure_readiness(self, task_id: str, cycle: int, recovery_execution_id: str, expected_posture: str) -> Result[FailureReadiness]:
+        record = self.state["executions"].get(recovery_execution_id)
+        if record is None or (record["task_id"], record["kind"], record["target"], record["status"], record["effect_applied"]) != (task_id, "failure_retract", expected_posture, "COMPLETED", True):
+            return Result.err_msg("matching terminal failure retract is absent")
+        key = f"{task_id}:failure_ready_check"
+        version = self.state["observations"].get(key, 0) + 1
+        fault = selected_fault(self.config, task_id, "failure_ready_check", version)["outcome"]
+        if fault == "unknown":
+            return Result.err_msg("failure readiness perception uncertain")
+        self.state["observations"][key] = version
+        world = self.state["world"]
+        quiescent = all(item["status"] not in ("RUNNING", "UNKNOWN") for item in self.state["executions"].values())
+        navigation_safe = quiescent and world["location"] in self.config["tags"].values()
+        evidence = FailureReadiness(task_id, cycle, recovery_execution_id if fault != "stale" else recovery_execution_id + "/stale", version,
+                                    world["held_task_id"] if fault != "possession" else task_id,
+                                    world["rack_buns"].get(task_id, False), world["posture"] if fault != "posture" else "SIM_POSE_UNVERIFIED",
+                                    world["location"], quiescent and fault != "motion_busy", navigation_safe and fault != "collision",
+                                    "humanoid_harness.StubDevice/1")
+        self.state["failure_readiness_observations"][f"{task_id}:{version}"] = asdict(evidence)
+        self._save()
+        return Result.ok(evidence)
+
+    def read_failure_readiness(self, task_id: str, cycle: int, recovery_execution_id: str, expected_posture: str, observation_version: int) -> Result[FailureReadiness]:
+        raw = self.state["failure_readiness_observations"].get(f"{task_id}:{observation_version}")
+        record = self.state["executions"].get(recovery_execution_id)
+        world = self.state["world"]
+        if not isinstance(raw, dict) or record is None:
+            return Result.err_msg("saved readiness observation absent")
+        if (record["task_id"], record["kind"], record["target"], record["status"], record["effect_applied"]) != (task_id, "failure_retract", expected_posture, "COMPLETED", True):
+            return Result.err_msg("retract no longer matches readiness observation")
+        if (raw.get("task_id"), raw.get("cycle"), raw.get("recovery_execution_id"), raw.get("observation_version")) != (task_id, cycle, recovery_execution_id, observation_version):
+            return Result.err_msg("saved readiness correlation mismatch")
+        if world["held_task_id"] is not None or world["held_bun_id"] is not None or world["posture"] != expected_posture or not world["rack_buns"].get(task_id, False):
+            return Result.err_msg("current world no longer matches readiness observation")
+        if world["location"] not in self.config["tags"].values() or any(item["status"] in ("RUNNING", "UNKNOWN") for item in self.state["executions"].values()):
+            return Result.err_msg("current motion is not navigation safe")
+        return Result.ok(FailureReadiness(**raw))
+
+    def verify_release_readiness(self, task_id: str, cycle: int, counter: int, recovery_execution_id: str, expected_posture: str) -> Result[ReleaseReadiness]:
+        record = self.state["executions"].get(recovery_execution_id)
+        if record is None or (record["task_id"], record["kind"], record["target"], record["status"], record["effect_applied"]) != (task_id, "post_place_retract", expected_posture, "COMPLETED", True):
+            return Result.err_msg("matching terminal post-place retract is absent")
+        key = f"{task_id}:post_place_ready_check"
+        version = self.state["observations"].get(key, 0) + 1
+        fault = selected_fault(self.config, task_id, "post_place_ready_check", version)["outcome"]
+        if fault == "unknown":
+            return Result.err_msg("post-place readiness perception uncertain")
+        self.state["observations"][key] = version
+        world = self.state["world"]
+        quiescent = all(item["status"] not in ("RUNNING", "UNKNOWN") for item in self.state["executions"].values())
+        navigation_safe = quiescent and world["location"] in self.config["tags"].values()
+        placed = world["counters"][str(counter)].count(task_id) == 1 and world["held_task_id"] != task_id
+        evidence = ReleaseReadiness(task_id, cycle, counter, recovery_execution_id if fault != "stale" else recovery_execution_id + "/stale",
+                                    version, world["held_task_id"] if fault != "possession" else task_id,
+                                    world["posture"] if fault != "posture" else "SIM_POSE_UNVERIFIED", world["location"],
+                                    quiescent and fault != "motion_busy", navigation_safe and fault != "collision",
+                                    placed and fault != "placement", "humanoid_harness.StubDevice/1")
+        self.state["release_readiness_observations"][f"{task_id}:{version}"] = asdict(evidence)
+        self._save()
+        return Result.ok(evidence)
+
+    def read_release_readiness(self, task_id: str, cycle: int, counter: int, recovery_execution_id: str, expected_posture: str, observation_version: int) -> Result[ReleaseReadiness]:
+        raw = self.state["release_readiness_observations"].get(f"{task_id}:{observation_version}")
+        record = self.state["executions"].get(recovery_execution_id)
+        world = self.state["world"]
+        if not isinstance(raw, dict) or record is None:
+            return Result.err_msg("saved post-place observation absent")
+        if (record["task_id"], record["kind"], record["target"], record["status"], record["effect_applied"]) != (task_id, "post_place_retract", expected_posture, "COMPLETED", True):
+            return Result.err_msg("post-place action no longer matches readiness observation")
+        if (raw.get("task_id"), raw.get("cycle"), raw.get("counter"), raw.get("recovery_execution_id"), raw.get("observation_version")) != (task_id, cycle, counter, recovery_execution_id, observation_version):
+            return Result.err_msg("saved post-place observation correlation mismatch")
+        if world["held_task_id"] is not None or world["held_bun_id"] is not None or world["posture"] != expected_posture or world["counters"][str(counter)].count(task_id) != 1:
+            return Result.err_msg("post-place world no longer matches release observation")
+        if world["location"] not in self.config["tags"].values() or any(item["status"] in ("RUNNING", "UNKNOWN") for item in self.state["executions"].values()):
+            return Result.err_msg("post-place motion is not navigation safe")
+        return Result.ok(ReleaseReadiness(**raw))
 
     def verify_placement(self, task_id: str, counter: int) -> Result[bool]:
         world = self.state["world"]

@@ -26,6 +26,10 @@ The integration launcher constructs the unchanged client and retains its registe
 
 These branches are in `hr_client/client.py:1528`. The current failed-result factory does not carry execution identity/evidence; preserve those details in the integration's own physical journal rather than inventing a client field.
 
+At this baseline, a failed outcome with `ready_for_next=False` enters an execution hold with no public clear operation. A verified safe failure must therefore establish physical readiness and use readiness true if later tasks should proceed. The platform allocates unassigned work before failed work, creates tasks with `retryCount=0` and `maxRetries=1`, and retries an eligible failed task once. Exhausted failed tasks can end the pick session, but the unchanged order-preparation logic refuses READY while any task remains FAILED. This is a platform partial-settlement limitation, not evidence that a failed pastry was completed.
+
+The reviewed baseline has no durable failure-report queue. `_fail_task` defers its immediate next-task request when a report is unacknowledged, but reconnect scheduling has no completion-like failure journal/readback reconciliation. A retry after the platform committed FAILED can return `PICK_TASK_NOT_IN_PROGRESS` and stop retries early; transport failures can exhaust the retry budget. The client owner is characterizing and correcting this boundary in a separate worktree. Physical failure proof prevents duplicate motion but does not by itself prove report acceptance.
+
 `client.stop()` stops heartbeat/disconnects Socket.IO (`hr_client/client.py:1265`). It does not cancel or stop an injected physical worker. The integration launcher must coordinate worker shutdown before releasing the device or ending the process normally.
 
 ## Restart boundary

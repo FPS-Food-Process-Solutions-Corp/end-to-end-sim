@@ -26,6 +26,12 @@ An immutable physical-unit key contains order, session, task and assigned counte
 
 Persist an assignment manifest and intent before dispatch. A terminal proof must include exact assignment identity, place execution ID/status, target counter, bun identity, current possession/placement evidence and simulation provenance. Returning `completed` requires that proof. Unknown outcome, stale/mismatched status, cancellation uncertainty or collision returns `unresolved` and preserves a hold. A completed effect during cancellation is retained, but no dependent motion starts.
 
+Known no-effect physical failure is not automatically permission for another assignment: empty hands can still leave the arm in a picking or placing posture. A distinct durable `failure_retract` action must reach the configured symbolic travel posture. Exact terminal action identity and fresh versioned perception must establish empty hands, reached posture and quiescent motion before saving a failure-readiness proof and returning FAILED with readiness true. A retry of that platform task preserves the physical unit and proof and does not repeat its actions. Unsafe or uncertain recovery remains unresolved.
+
+Maintain a separate device-level readiness/version and latest release linked to its unit, action and proof. Invalidate readiness before new work and on a hold or uncertain outcome; publish a new ready release only after fresh verification of the current unit. Seed the next unit's robot location, posture and possession from that release while retaining per-unit inventory and action ledgers. A report-only retry of an older failure uses its immutable failure evidence and the current device release; it must not take ownership or publish the old unit as the latest physical state.
+
+After a successful place, verify a distinct retract to the travel posture before releasing the device as ready. Placement and readiness are independent facts: a failed or interrupted post-place recovery must preserve the completed placement and its report/recovery evidence, with readiness false and a physical hold where appropriate. It must never authorize another pick or fabricate task failure for an already placed pastry. Explicit holds do not clear automatically on same-identity delivery; active-owner crash recovery may reconcile exact saved actions.
+
 ## Async execution and exclusion
 
 Keep the synchronous physical engine serialized in one worker so Socket.IO and client recovery remain responsive. Forward progress to the client's event loop through an explicit awaited bridge. Cancellation signals the worker cooperatively and waits for bounded cleanup/reconciliation; cancelling a coroutine must not abandon a still-moving worker and free the robot for another assignment.
@@ -45,6 +51,10 @@ The verified public `queue_recovered_completion(identity, terminal_evidence)` me
 3. Meaningful isolated faults: safe retries, missing completion acknowledgment, process restart after placement, cancellation/unknown holds and partial success/failure. Expose the real platform's partial-order settlement and cancellation-accounting defects as external limitations; do not alter business logic or force settlement.
 4. Mixed routing: after isolated cases pass, run one real Rack A/Nova plus Rack B/humanoid order if the fixtures support it. Verify exact device routing, distinct execution starts, completion settlement and per-rack stock effects.
 5. Final review: code review, source hashes, commands, fresh fixture locations, failed attempts and cleanup evidence. Separate simulated physical assurance from real hardware assurance.
+
+The client owner also owns focused characterization and a generic client correction for lost failure reports or acknowledgments. Those cases must distinguish a dropped outbound report from a committed FAILED task whose responses were lost, record actual attempts, and preserve baseline evidence. The humanoid executor must not create a second reporter or manufacture failure acknowledgment. Client changes and physical-executor changes receive separate pins before combined acceptance.
+
+Final acceptance also requires a reviewed public report-only startup path for a known placement with a persisted physical hold. The client owner supplies that seam and its regression tests with the generic recovery correction. The bridge then adopts the agreed API and new source pin. Reporting must settle the proven placement while keeping the client PAUSED, with no FREE status, next-task request or physical motion. The frozen baseline remains fail-closed until that public interface exists; private client hold manipulation is not permitted.
 
 ## Ownership and runtime constraints
 

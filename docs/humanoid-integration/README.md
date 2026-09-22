@@ -24,9 +24,17 @@ The `/path/to/fresh/` values are explicit placeholders, not existing fixtures. D
 
 The launcher calls recovery before `client.run()`. A recovered exact placement is handed to the public `client.queue_recovered_completion(...)` method. Unknown physical ownership prevents new work. Shutdown drains or preserves a held worker before closing the client/device ownership; cancelling the coroutine alone does not release a running worker.
 
+The baseline public completion-recovery method has no readiness flag. After a restart with verified placement and an explicit unsafe physical hold, the bridge may preserve that exact completion in the durable client queue, but must keep the hold and refuse client startup. This differs from a live `completed(..., ready_for_next=False)` result, which the client can report while holding. An active-owner crash during post-place recovery may reconcile the exact saved action and start the client only after verified safe release. Queueing evidence alone never clears a physical hold.
+
 The assigned mode stops at physical completion and does not create or report through a `StubPlatform`, select another task, or command front-counter idle. Its task-ID registry rejects a changed session/order/counter or item/rack/level/slot for an existing task. Retry count is recorded as metadata and cannot authorize another pick of an already completed unit.
 
-Known safe physical failure is reported through the real client with `ready_for_next=False`; the client remains PAUSED instead of repeatedly requesting and failing the same exhausted task. Unknown effects, collision and unresolved cancellation use the unresolved outcome. This version has no operator procedure to clear such physical holds.
+The safe-failure revision requires a durable recovery to the configured symbolic travel posture before allowing another task. A distinct recovery action must have a matching terminal result, and fresh correlated perception must confirm empty hands, that posture and quiescent motion. Only verified readiness permits `failed(..., ready_for_next=True)`. Unknown effects, collision, unresolved cancellation or unverified recovery use the unresolved outcome. Physical holds have no operator resolver.
+
+Supported recovery sources are exhausted no-effect VLA picking or initial navigation, and positively known no-effect pick-side lift/posture/reset actions. They also require exact source-action readback and a versioned observation of empty hands with the pastry still at its assigned rack. Confirmed bun loss after its retry budget, post-pick failure without that source evidence, mismatched evidence and ambiguous recovery remain unresolved holds.
+
+The unchanged platform schedules unassigned items before retrying failed items, and permits one platform retry for a new task. Redelivery of an exhausted physical unit reuses its saved failure without another pick. That historical evidence establishes readiness when the failed unit released ownership; current readiness must come separately from the latest verified device release. A report-only retry must not overwrite that current release with the older unit's state. A failed report's network acknowledgment remains the real client's responsibility; physical readiness alone does not establish that the platform accepted the report.
+
+Successful placement also requires a distinct post-place retract and fresh travel-readiness verification before another motion can begin. If placement is proven but this recovery fails, preserve and report the completed placement with readiness false, and retain the physical hold. Never turn that pastry into FAILED or pick it again. An explicit safety hold remains held even if the same task is delivered again.
 
 ## Counter mapping
 
@@ -38,12 +46,17 @@ The supplied real-client location file is preserved. In fresh copied settings, s
 | --- | --- |
 | `integration-manifest.json` | Loaded client module paths/hashes, source pin, endpoints, location overlay and recovered identities. |
 | `task-identities.json` | Immutable task/session/order/counter and item/rack/level/slot registry, plus observed retry counts. |
-| `device-owner.json` | Device-wide idle/active/hold ownership across task directories and restarts. |
+| `device-owner.json` | Device-wide idle/active/hold ownership and matching `readiness_version`. Availability alone is not physical readiness. |
+| `device-readiness.json` | Current ready/unknown state and increasing version; exact assignment/source/configuration, action/proof hash and observation version; verified symbolic posture/location and empty-hand state. |
 | `assignments/<unit-digest>.json` | Saved assignment context and terminal physical proof. |
 | `units/<unit-digest>/controller.json` | Per-unit durable controller intent, stage and result. |
 | `units/<unit-digest>/device.json` | Independently persisted simulated action effects and world. |
 | `units/<unit-digest>/events.jsonl`, `summary.json`, `world.html` | Per-unit progress, terminal physical result and world replay. |
 | `pending-completions.json` | The real client's durable completion queue; do not edit it to force settlement. |
+
+The initial device readiness is an explicit fresh-simulation assumption: front location, idle posture, empty hands and no active motion. It may be created only for an empty state root. Missing or incompatible ownership/readiness records beside existing unit journals must fail closed; they must not reset the robot to the initial state.
+
+The owner and readiness records must agree, and a ready record must validate against the exact referenced unit proof and readback before startup or another action. Interrupted writes or corrupted pointers fail closed. Each newly assigned unit inherits the latest released robot location, posture and possession; inventory and action ledgers remain per unit. A report-only retry leaves the current release unchanged.
 
 A normal or timed launcher stop returns 0; this means the process stopped normally, not that the order reached READY. Invalid configuration/source returns 2. The explicit integrated placement crash exits 76. Always verify actual platform order/task/session/stock state and exact simulator place counts alongside process status.
 
@@ -51,7 +64,7 @@ A normal or timed launcher stop returns 0; this means the process stopped normal
 
 `--faults-json FILE` accepts a JSON mapping from exact platform task ID to the standalone simulator's fault-rule list. Create the order and obtain its actual task identities before writing the fixture; do not guess them. The real client still owns all task reports. See the [standalone fault table](../humanoid-harness/README.md) for stage/outcome definitions.
 
-`--crash-after-place-once` exits after placement is durable but before executor proof/return and client completion queueing. Restart the same launcher with the same state root and unchanged assignment configuration. Startup must verify the saved place execution, queue its exact proof through the real client and avoid another physical action. The crash marker is durable and does not fire again for that fixture.
+`--crash-after-place-once` exits with code 76 at `post_place_ready_check`: placement and post-place retract effects are durable, but release-readiness proof, executor return and client completion queueing have not finished. Restart the same launcher with the same state root and unchanged assignment configuration. Startup must reconcile the saved actions, verify readiness, queue the exact placement proof through the real client and avoid duplicate effects. The crash marker is durable and does not fire again for that fixture. A separate local child-process regression covers a hard stop immediately after the place effect, before placement proof, and verifies the remaining bounded recovery.
 
 For acknowledgment loss, the sole runtime owner controls the existing Socket.IO fault proxy. Keep completion readback pointed directly at the API. Do not replace the real client's acknowledgment/reconnect/readback behavior with a local success flag.
 

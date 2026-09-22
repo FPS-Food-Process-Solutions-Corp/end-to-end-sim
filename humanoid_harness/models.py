@@ -46,6 +46,38 @@ class Observation:
     location: str
     posture: str
     loss_confirmed: bool = False
+    version: int = 0
+
+
+@dataclass(frozen=True)
+class FailureReadiness:
+    task_id: str
+    cycle: int
+    recovery_execution_id: str
+    observation_version: int
+    held_task_id: str | None
+    rack_has_bun: bool
+    posture: str
+    location: str
+    motion_quiescent: bool
+    navigation_safe: bool
+    provenance: str
+
+
+@dataclass(frozen=True)
+class ReleaseReadiness:
+    task_id: str
+    cycle: int
+    counter: int
+    recovery_execution_id: str
+    observation_version: int
+    held_task_id: str | None
+    posture: str
+    location: str
+    motion_quiescent: bool
+    navigation_safe: bool
+    placement_verified: bool
+    provenance: str
 
 
 @dataclass(frozen=True)
@@ -83,7 +115,13 @@ class VlaPickAdapter(Protocol):
 
 class PerceptionAdapter(Protocol):
     def observe(self, task_id: str, phase: str, cycle: int) -> Result[Observation]: ...
+    def read_placement_observation(self, task_id: str, observation_version: int) -> Result[Observation]: ...
+    def read_failure_source_observation(self, task_id: str, observation_version: int) -> Result[Observation]: ...
     def verify_placement(self, task_id: str, counter: int) -> Result[bool]: ...
+    def verify_failure_readiness(self, task_id: str, cycle: int, recovery_execution_id: str, expected_posture: str) -> Result[FailureReadiness]: ...
+    def read_failure_readiness(self, task_id: str, cycle: int, recovery_execution_id: str, expected_posture: str, observation_version: int) -> Result[FailureReadiness]: ...
+    def verify_release_readiness(self, task_id: str, cycle: int, counter: int, recovery_execution_id: str, expected_posture: str) -> Result[ReleaseReadiness]: ...
+    def read_release_readiness(self, task_id: str, cycle: int, counter: int, recovery_execution_id: str, expected_posture: str, observation_version: int) -> Result[ReleaseReadiness]: ...
 
 
 class PlatformAdapter(Protocol):

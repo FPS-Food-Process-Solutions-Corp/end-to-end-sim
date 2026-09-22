@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from copy import deepcopy
+from dataclasses import asdict
 import hashlib
 import json
 
@@ -14,20 +15,21 @@ from .visual import write_visual
 
 
 class Harness:
-    ACTIONS = {"navigate_pick", "lift_pick", "pre_pick", "pick", "jolt", "pick_reset", "retract", "navigate_place", "lift_place", "pre_place", "place", "navigate_idle"}
+    ACTIONS = {"navigate_pick", "lift_pick", "pre_pick", "pick", "jolt", "pick_reset", "retract", "failure_retract", "navigate_place", "lift_place", "pre_place", "place", "post_place_retract", "navigate_idle"}
     NEXT = {
         "navigate_pick": "lift_pick", "lift_pick": "pre_pick", "pre_pick": "pick",
         "retract": "navigate_place", "navigate_place": "lift_place", "lift_place": "pre_place",
         "jolt": "pick_reset", "pick_reset": "pick", "navigate_idle": "done",
     }
 
-    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None, assigned: bool = False, cancel_requested=None, phase_callback=None):
+    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None, assigned: bool = False, cancel_requested=None, phase_callback=None, initial_world: dict | None = None):
         validate_config(config)
         if assigned and (len(config["tasks"]) != 1 or config["tasks"][0]["rack"] != "B"):
             raise ValueError("Assigned mode requires exactly one Rack B task")
         self.assigned = assigned
         self.cancel_requested = cancel_requested
         self.phase_callback = phase_callback
+        self.initial_world = initial_world
         if resume and not state_dir.is_dir():
             raise StateError("--resume requires an existing harness state directory")
         if not resume:
@@ -60,7 +62,7 @@ class Harness:
             task_id = config["tasks"][0]["task_id"] if self.assigned else None
             self.state = {"schema": 1, "config": config, "config_fingerprint": fingerprint(config), "phase": "navigate_pick" if self.assigned else "select",
                           "index": 0, "active_task_id": task_id, "intent": None, "hold_reason": None, "event_sequence": 0,
-                          "units": {task["task_id"]: {"status": "pending", "cycle": 0, "navigation_attempts": {}, "pick_attempt": 0} for task in config["tasks"]}}
+                          "units": {task["task_id"]: {"status": "pending", "cycle": 0, "navigation_attempts": {}, "pick_attempt": 0, "failure_retract_attempts": 0, "post_place_retract_attempts": 0} for task in config["tasks"]}}
             if self.assigned:
                 self.state["units"][task_id]["status"] = "active"
                 identity = {key: config["tasks"][0][key] for key in ("order_id", "session_id", "task_id", "counter")}
@@ -68,8 +70,17 @@ class Harness:
                 self.state["assignment"] = identity
                 self.state["unit_namespace"] = f"unit-{digest}"
                 self.state["physical_proof"] = None
+                self.state["failure_source"] = None
+                self.state["failure_readiness_proof"] = None
+                self.state["post_place_readiness_proof"] = None
             write_json(self.controller_path, self.state)
-            write_json(self.device_path, StubDevice.initial(config))
+            device_state = StubDevice.initial(config)
+            if self.assigned and self.initial_world is not None:
+                if self.initial_world.get("held_task_id") is not None or self.initial_world.get("held_bun_id") is not None:
+                    raise StateError("Cannot seed assigned unit from occupied device")
+                for key in ("location", "posture", "held_task_id", "held_bun_id"):
+                    device_state["world"][key] = self.initial_world[key]
+            write_json(self.device_path, device_state)
             if not self.assigned:
                 write_json(self.platform_path, StubPlatform.initial())
             self.events_path.touch()
@@ -91,7 +102,7 @@ class Harness:
         task_map = {task["task_id"]: task for task in self.config["tasks"]}
         if set(state["units"]) != set(task_map):
             raise StateError("Controller task set differs from config")
-        if state.get("phase") not in self.ACTIONS | {"select", "pick_check", "pre_place_check", "report", "done", "hold"}:
+        if state.get("phase") not in self.ACTIONS | {"select", "pick_check", "pre_place_check", "failure_ready_check", "post_place_ready_check", "report", "done", "hold"}:
             raise StateError("Controller phase is invalid")
         if not isinstance(state.get("index"), int) or not 0 <= state["index"] <= len(self.config["tasks"]):
             raise StateError("Controller index is invalid")
@@ -134,6 +145,10 @@ class Harness:
                     raise StateError(f"Completed {task_id} lacks verified physical placement")
             if unit["status"] == "complete" and self.assigned and not self._assigned_proof_valid():
                 raise StateError(f"Completed {task_id} lacks valid physical proof")
+            if unit["status"] == "complete" and self.assigned and state.get("post_place_readiness_proof") is not None and not self._post_place_proof_valid():
+                raise StateError(f"Completed {task_id} has stale post-place readiness proof")
+            if unit["status"] == "failed" and self.assigned and state.get("failure_readiness_proof") is not None and not self._failure_proof_valid():
+                raise StateError(f"Failed {task_id} has stale recovery readiness proof")
         if state["phase"] == "done" and any(state["units"][task["task_id"]]["status"] not in ("complete", "failed") for task in self.config["tasks"] if task["rack"] == "B"):
             raise StateError("Done checkpoint still has unfinished Rack B unit")
 
@@ -176,15 +191,56 @@ class Harness:
 
     def _fail_unit(self, reason: str) -> None:
         task_id = self.state["active_task_id"]
+        if self.assigned:
+            self._begin_assigned_failure_recovery(reason)
+            return
         self._unit()["status"] = "failed"
         self._emit("unit_failed", reason=reason)
-        if self.assigned:
-            self.state["failure_reason"] = reason
-            self._set_phase("done")
-            return
         self.state["index"] = next(i for i, task in enumerate(self.config["tasks"]) if task["task_id"] == task_id) + 1
         self.state["active_task_id"] = None
         self._set_phase("select")
+
+    def _begin_assigned_failure_recovery(self, reason: str) -> None:
+        task = self._task()
+        task_id = task["task_id"]
+        cycle = self._unit()["cycle"]
+        saved_intent = self.state.get("intent")
+        if isinstance(saved_intent, dict) and saved_intent.get("kind") in {"navigate_pick", "lift_pick", "pre_pick", "pick", "jolt", "pick_reset"}:
+            expected = Execution(**{key: saved_intent[key] for key in ("execution_id", "task_id", "kind", "target", "generation", "status", "reason")})
+        elif reason.startswith("VLA attempts exhausted:") and self._unit()["pick_attempt"] > 0:
+            attempt = self._unit()["pick_attempt"]
+            expected = Execution(f"{self.state['unit_namespace']}/c{cycle}/pick/a{attempt}", task_id, "pick", self.config["policies"]["pick"], cycle * 100 + attempt, "INTENDED")
+        else:
+            self._hold(f"cannot establish a safe no-effect failure source: {reason}")
+            return
+        adapter = self.amr if expected.kind.startswith("navigate") else self.lift if expected.kind.startswith("lift") else self.vla if expected.kind == "pick" else self.mover
+        result = adapter.get_execution(expected.execution_id)
+        if result.is_err or result.data is None or not self._check_identity(expected, result.data):
+            self._hold(f"failure source readback missing or mismatched: {reason}")
+            return
+        actual = result.data
+        known_no_effect = actual.status == "FAILED" and actual.safe_to_retry
+        observed_no_bun = actual.status == "COMPLETED" and expected.kind == "pick" and reason == "VLA attempts exhausted: policy completed without bun"
+        record = self.device.state["executions"].get(expected.execution_id)
+        if not isinstance(record, dict) or not ((known_no_effect and record["effect_applied"] is False) or (observed_no_bun and record["outcome"] == "no_bun")):
+            self._hold(f"failure source effect ledger does not prove no item was moved: {reason}")
+            return
+        if not (known_no_effect or observed_no_bun):
+            self._hold(f"failure source lacks safe no-effect status: {reason}")
+            return
+        observed = self.perception.observe(task_id, "failure_source_check", cycle)
+        if observed.is_err or observed.data is None or observed.data.task_id != task_id or observed.data.version < 1 or observed.data.held_task_id is not None or not observed.data.rack_has_bun:
+            self._hold(f"failure source lacks fresh empty-hand and stocked-rack proof: {reason}")
+            return
+        self.state["failure_source"] = {"execution_id": expected.execution_id, "task_id": task_id, "kind": expected.kind,
+                                        "target": expected.target, "generation": expected.generation, "status": actual.status,
+                                        "safe_to_retry": actual.safe_to_retry, "reason": reason,
+                                        "source_observation_version": observed.data.version,
+                                        "source_observation": asdict(observed.data), "held_task_id": None, "rack_has_bun": True}
+        self.state["failure_reason"] = reason
+        self._save()
+        self._emit("failure_source_verified", source=self.state["failure_source"])
+        self._set_phase("failure_retract")
 
     def _target(self, kind: str) -> str:
         task = self._task() if self.state["active_task_id"] else None
@@ -198,7 +254,7 @@ class Harness:
             return self.config["placement_targets"][str(task["counter"])]
         if kind == "pick":
             return self.config["policies"]["pick"]
-        if kind == "retract":
+        if kind in ("retract", "failure_retract", "post_place_retract"):
             return self.config["poses"]["travel"]
         return self.config["poses"][kind]
 
@@ -220,6 +276,12 @@ class Harness:
             elif kind == "pick":
                 unit["pick_attempt"] += 1
                 attempt = unit["pick_attempt"]
+            elif kind == "failure_retract":
+                unit["failure_retract_attempts"] = unit.get("failure_retract_attempts", 0) + 1
+                attempt = unit["failure_retract_attempts"]
+            elif kind == "post_place_retract":
+                unit["post_place_retract_attempts"] = unit.get("post_place_retract_attempts", 0) + 1
+                attempt = unit["post_place_retract_attempts"]
             else:
                 attempt = 1
         generation = cycle * 100 + attempt
@@ -350,6 +412,160 @@ class Harness:
         else:
             self._hold("possession unknown or world inconsistent at pre-place check")
 
+    def _failure_ready_check(self) -> None:
+        task = self._task()
+        task_id = task["task_id"]
+        source = self.state.get("failure_source")
+        if not isinstance(source, dict) or not self._failure_source_valid(source):
+            self._hold("failure readiness has no known no-effect source")
+            return
+        cycle = self._unit()["cycle"]
+        attempt = self._unit().get("failure_retract_attempts", 0)
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/failure_retract/a{attempt}"
+        expected = Execution(execution_id, task_id, "failure_retract", self.config["poses"]["travel"], cycle * 100 + attempt, "INTENDED")
+        terminal = self.mover.get_execution(execution_id)
+        if terminal.is_err or terminal.data is None or not self._check_identity(expected, terminal.data) or terminal.data.status != "COMPLETED":
+            self._hold("failure retract terminal execution missing or mismatched")
+            return
+        observed = self.perception.verify_failure_readiness(task_id, cycle, execution_id, expected.target)
+        if observed.is_err or observed.data is None or not self._readiness_matches(observed.data, task_id, cycle, execution_id, expected.target):
+            self._hold("fresh failure readiness observation missing or unsafe")
+            return
+        proof = {"schema": 1, "assignment": dict(self.state["assignment"]),
+                 "source": {"item_id": task.get("item_id"), "rack_id": task.get("rack_id"), "level": task["level"], "slot": task["slot"]},
+                 "failure_reason": self.state["failure_reason"], "failure_source": deepcopy(source),
+                 "recovery_execution_id": execution_id, "recovery_status": "COMPLETED", "recovery_target": expected.target,
+                 "recovery_generation": expected.generation, "readiness_observation": asdict(observed.data),
+                 "readiness_scope": "at_unit_release", "provenance": "humanoid_harness.StubDevice/1",
+                 "config_fingerprint": self.state["config_fingerprint"]}
+        self.state["failure_readiness_proof"] = proof
+        self._unit()["status"] = "failed"
+        self._save()
+        self._emit("failure_readiness_verified", proof=proof)
+        self._emit("unit_failed", reason=self.state["failure_reason"])
+        self._set_phase("done")
+
+    def _readiness_matches(self, evidence, task_id: str, cycle: int, execution_id: str, travel_pose: str) -> bool:
+        return (evidence.task_id == task_id and evidence.cycle == cycle and evidence.recovery_execution_id == execution_id
+                and isinstance(evidence.observation_version, int) and evidence.observation_version > 0
+                and evidence.held_task_id is None and evidence.rack_has_bun is True and evidence.posture == travel_pose
+                and evidence.motion_quiescent is True and evidence.navigation_safe is True
+                and evidence.location in self.config["tags"].values()
+                and evidence.provenance == "humanoid_harness.StubDevice/1")
+
+    def _failure_source_valid(self, source: dict) -> bool:
+        task_id = self._task()["task_id"]
+        kind = source.get("kind")
+        if kind not in {"navigate_pick", "lift_pick", "pre_pick", "pick", "jolt", "pick_reset"}:
+            return False
+        if source.get("task_id") != task_id or source.get("held_task_id") is not None or source.get("rack_has_bun") is not True:
+            return False
+        if not isinstance(source.get("source_observation_version"), int) or source["source_observation_version"] < 1:
+            return False
+        source_observation = self.perception.read_failure_source_observation(task_id, source["source_observation_version"])
+        if (source_observation.is_err or source_observation.data is None or source_observation.data.held_task_id is not None
+                or source_observation.data.rack_has_bun is not True or asdict(source_observation.data) != source.get("source_observation")):
+            return False
+        expected = Execution(source["execution_id"], task_id, kind, source["target"], source["generation"], "INTENDED")
+        adapter = self.amr if kind.startswith("navigate") else self.lift if kind.startswith("lift") else self.vla if kind == "pick" else self.mover
+        result = adapter.get_execution(expected.execution_id)
+        if result.is_err or result.data is None or not self._check_identity(expected, result.data):
+            return False
+        actual = result.data
+        if (actual.status, actual.safe_to_retry) != (source.get("status"), source.get("safe_to_retry")):
+            return False
+        record = self.device.state["executions"].get(expected.execution_id)
+        if not isinstance(record, dict):
+            return False
+        return ((actual.status == "FAILED" and actual.safe_to_retry and record["effect_applied"] is False)
+                or (actual.status == "COMPLETED" and kind == "pick" and source.get("reason") == "VLA attempts exhausted: policy completed without bun" and record["outcome"] == "no_bun"))
+
+    def _failure_proof_valid(self) -> bool:
+        proof = self.state.get("failure_readiness_proof")
+        source = self.state.get("failure_source")
+        if not isinstance(proof, dict) or not isinstance(source, dict) or not self._failure_source_valid(source):
+            return False
+        task = self._task()
+        if proof.get("assignment") != self.state.get("assignment") or proof.get("failure_source") != source or proof.get("failure_reason") != self.state.get("failure_reason"):
+            return False
+        if proof.get("source") != {"item_id": task.get("item_id"), "rack_id": task.get("rack_id"), "level": task["level"], "slot": task["slot"]}:
+            return False
+        if proof.get("config_fingerprint") != self.state["config_fingerprint"] or proof.get("readiness_scope") != "at_unit_release" or proof.get("provenance") != "humanoid_harness.StubDevice/1":
+            return False
+        cycle = self._unit()["cycle"]
+        attempt = self._unit().get("failure_retract_attempts", 0)
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/failure_retract/a{attempt}"
+        expected = Execution(execution_id, task["task_id"], "failure_retract", self.config["poses"]["travel"], cycle * 100 + attempt, "INTENDED")
+        action = self.mover.get_execution(execution_id)
+        if action.is_err or action.data is None or not self._check_identity(expected, action.data) or action.data.status != "COMPLETED":
+            return False
+        if (proof.get("recovery_execution_id"), proof.get("recovery_status"), proof.get("recovery_target"), proof.get("recovery_generation")) != (execution_id, "COMPLETED", expected.target, expected.generation):
+            return False
+        raw = proof.get("readiness_observation")
+        if not isinstance(raw, dict) or not isinstance(raw.get("observation_version"), int):
+            return False
+        readback = self.perception.read_failure_readiness(task["task_id"], cycle, execution_id, expected.target, raw["observation_version"])
+        return readback.is_ok and readback.data is not None and self._readiness_matches(readback.data, task["task_id"], cycle, execution_id, expected.target) and asdict(readback.data) == raw
+
+    def _post_place_ready_check(self) -> None:
+        if not self._assigned_proof_valid():
+            self._hold("post-place readiness lacks verified placement proof")
+            return
+        task = self._task()
+        cycle = self._unit()["cycle"]
+        attempt = self._unit().get("post_place_retract_attempts", 0)
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/post_place_retract/a{attempt}"
+        expected = Execution(execution_id, task["task_id"], "post_place_retract", self.config["poses"]["travel"], cycle * 100 + attempt, "INTENDED")
+        terminal = self.mover.get_execution(execution_id)
+        if terminal.is_err or terminal.data is None or not self._check_identity(expected, terminal.data) or terminal.data.status != "COMPLETED":
+            self._hold("post-place travel action missing or mismatched")
+            return
+        observed = self.perception.verify_release_readiness(task["task_id"], cycle, task["counter"], execution_id, expected.target)
+        if observed.is_err or observed.data is None or not self._release_matches(observed.data, task, cycle, execution_id, expected.target):
+            self._hold("fresh post-place readiness observation missing or unsafe")
+            return
+        proof = {"schema": 1, "assignment": dict(self.state["assignment"]), "physical_place_execution_id": self.state["physical_proof"]["place_execution_id"],
+                 "recovery_execution_id": execution_id, "recovery_status": "COMPLETED", "recovery_target": expected.target,
+                 "recovery_generation": expected.generation, "readiness_observation": asdict(observed.data),
+                 "readiness_scope": "at_unit_release", "provenance": "humanoid_harness.StubDevice/1",
+                 "config_fingerprint": self.state["config_fingerprint"]}
+        self.state["post_place_readiness_proof"] = proof
+        self._unit()["status"] = "complete"
+        self._save()
+        self._emit("post_place_readiness_verified", proof=proof)
+        self._set_phase("done")
+
+    def _release_matches(self, evidence, task: dict, cycle: int, execution_id: str, travel_pose: str) -> bool:
+        return (evidence.task_id == task["task_id"] and evidence.cycle == cycle and evidence.counter == task["counter"]
+                and evidence.recovery_execution_id == execution_id and isinstance(evidence.observation_version, int) and evidence.observation_version > 0
+                and evidence.held_task_id is None and evidence.posture == travel_pose and evidence.motion_quiescent is True
+                and evidence.navigation_safe is True and evidence.placement_verified is True and evidence.location in self.config["tags"].values()
+                and evidence.provenance == "humanoid_harness.StubDevice/1")
+
+    def _post_place_proof_valid(self) -> bool:
+        proof = self.state.get("post_place_readiness_proof")
+        if not isinstance(proof, dict) or not self._assigned_proof_valid():
+            return False
+        task = self._task()
+        cycle = self._unit()["cycle"]
+        attempt = self._unit().get("post_place_retract_attempts", 0)
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/post_place_retract/a{attempt}"
+        expected = Execution(execution_id, task["task_id"], "post_place_retract", self.config["poses"]["travel"], cycle * 100 + attempt, "INTENDED")
+        terminal = self.mover.get_execution(execution_id)
+        if terminal.is_err or terminal.data is None or not self._check_identity(expected, terminal.data) or terminal.data.status != "COMPLETED":
+            return False
+        if proof.get("assignment") != self.state["assignment"] or proof.get("physical_place_execution_id") != self.state["physical_proof"]["place_execution_id"]:
+            return False
+        if (proof.get("recovery_execution_id"), proof.get("recovery_status"), proof.get("recovery_target"), proof.get("recovery_generation")) != (execution_id, "COMPLETED", expected.target, expected.generation):
+            return False
+        if proof.get("readiness_scope") != "at_unit_release" or proof.get("provenance") != "humanoid_harness.StubDevice/1" or proof.get("config_fingerprint") != self.state["config_fingerprint"]:
+            return False
+        raw = proof.get("readiness_observation")
+        if not isinstance(raw, dict) or not isinstance(raw.get("observation_version"), int):
+            return False
+        readback = self.perception.read_release_readiness(task["task_id"], cycle, task["counter"], execution_id, expected.target, raw["observation_version"])
+        return readback.is_ok and readback.data is not None and self._release_matches(readback.data, task, cycle, execution_id, expected.target) and asdict(readback.data) == raw
+
     def _report(self) -> None:
         if self.assigned:
             proof = self._make_assigned_proof()
@@ -357,10 +573,9 @@ class Harness:
                 self._hold("cannot finish without matching placement and fresh empty-hand evidence")
                 return
             self.state["physical_proof"] = proof
-            self._unit()["status"] = "complete"
             self._save()
             self._emit("physical_complete", proof=proof)
-            self._set_phase("done")
+            self._set_phase("post_place_retract")
             return
         task = self._task()
         task_id = task["task_id"]
@@ -433,12 +648,42 @@ class Harness:
                 "source": {"item_id": task.get("item_id"), "rack_id": task.get("rack_id"), "level": task["level"], "slot": task["slot"]},
                 "bun_id": bun_id, "cycle": cycle, "placement_verified": True, "empty_hand_verified": True,
                 "observation": {"task_id": observed.data.task_id, "held_task_id": observed.data.held_task_id,
-                                "location": observed.data.location, "posture": observed.data.posture},
+                                "location": observed.data.location, "posture": observed.data.posture,
+                                "version": observed.data.version},
                 "provenance": "humanoid_harness.StubDevice/1", "config_fingerprint": self.state["config_fingerprint"]}
 
     def _assigned_proof_valid(self) -> bool:
         proof = self.state.get("physical_proof")
-        return isinstance(proof, dict) and proof == self._make_assigned_proof()
+        if not isinstance(proof, dict):
+            return False
+        task = self._task()
+        cycle = self._unit()["cycle"]
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/place/a1"
+        expected = Execution(execution_id, task["task_id"], "place", self.config["placement_targets"][str(task["counter"])], cycle * 100 + 1, "INTENDED")
+        terminal = self.mover.get_execution(execution_id)
+        if terminal.is_err or terminal.data is None or not self._check_identity(expected, terminal.data) or terminal.data.status != "COMPLETED":
+            return False
+        if proof.get("assignment") != self.state.get("assignment") or proof.get("config_fingerprint") != self.state.get("config_fingerprint"):
+            return False
+        if proof.get("source") != {"item_id": task.get("item_id"), "rack_id": task.get("rack_id"), "level": task["level"], "slot": task["slot"]}:
+            return False
+        if proof.get("place_status") != "COMPLETED" or proof.get("place_execution_id") != execution_id or proof.get("target") != expected.target or proof.get("cycle") != cycle or proof.get("target_counter") != task["counter"] or proof.get("placement_verified") is not True or proof.get("empty_hand_verified") is not True:
+            return False
+        bun_id = f"{task['task_id']}/bun-c{cycle}"
+        if proof.get("provenance") != "humanoid_harness.StubDevice/1" or proof.get("bun_id") != bun_id:
+            return False
+        raw = proof.get("observation")
+        if not isinstance(raw, dict) or not isinstance(raw.get("version"), int) or raw["version"] < 1:
+            return False
+        observed = self.perception.read_placement_observation(task["task_id"], raw["version"])
+        if observed.is_err or observed.data is None or observed.data.held_task_id is not None:
+            return False
+        if {key: getattr(observed.data, key) for key in ("task_id", "held_task_id", "location", "posture", "version")} != raw:
+            return False
+        world = self.device.state["world"]
+        counter = str(task["counter"])
+        return (world["counters"][counter].count(task["task_id"]) == 1 and world["counter_bun_ids"][counter].count(bun_id) == 1
+                and world["held_task_id"] is None and world["held_bun_id"] is None and self._placement_verified(task))
 
     def step(self) -> None:
         phase = self.state["phase"]
@@ -448,12 +693,20 @@ class Harness:
             self._pick_check()
         elif phase == "pre_place_check":
             self._place_check()
+        elif phase == "failure_ready_check":
+            self._failure_ready_check()
+        elif phase == "post_place_ready_check":
+            self._post_place_ready_check()
         elif phase == "report":
             self._report()
         elif phase in self.ACTIONS:
             status, reason, safe_to_retry = self._action_status(phase)
             if status == "COMPLETED":
-                if phase == "pick":
+                if phase == "failure_retract":
+                    self._set_phase("failure_ready_check")
+                elif phase == "post_place_retract":
+                    self._set_phase("post_place_ready_check")
+                elif phase == "pick":
                     self._set_phase("pick_check")
                 elif phase == "pre_place":
                     self._set_phase("pre_place_check")
@@ -463,6 +716,24 @@ class Harness:
                     self._set_phase(self.NEXT.get(phase, "hold"))
             elif status == "UNKNOWN":
                 self._hold(f"{phase} outcome uncertain: {reason}")
+            elif status == "CANCELED" and self.assigned:
+                self._hold(f"{phase} cancellation requires operator reconciliation: {reason}")
+            elif phase == "failure_retract":
+                attempts = self._unit()["failure_retract_attempts"]
+                if status == "FAILED" and safe_to_retry and attempts <= 1:
+                    self.state["intent"] = None
+                    self._save()
+                    self._emit("failure_retract_retry", attempt=attempts + 1, reason=reason)
+                else:
+                    self._hold(f"failure retract lacks verified terminal travel pose: {reason}")
+            elif phase == "post_place_retract":
+                attempts = self._unit()["post_place_retract_attempts"]
+                if status == "FAILED" and safe_to_retry and attempts <= 1:
+                    self.state["intent"] = None
+                    self._save()
+                    self._emit("post_place_retract_retry", attempt=attempts + 1, reason=reason)
+                else:
+                    self._hold(f"post-place retract lacks verified terminal travel pose: {reason}")
             elif not safe_to_retry:
                 self._hold(f"{phase} terminal outcome lacks safe no-effect evidence: {reason}")
             elif phase.startswith("navigate") and phase != "navigate_idle":

@@ -1,16 +1,35 @@
 {
   "schema": 1,
-  "stage": "reviewed-local-handoff",
+  "stage": "reviewed-device-readiness-handoff",
   "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
   "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
   "client_documentation_head": "e6766e8319c9a6a832e8f058135a9d52b869a7c2",
   "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
   "production_files_sha256": {
-    "humanoid_harness/controller.py": "60d05ba4cf4e01a2d841dd848b83eb34fa30956fe21ffbd0f6cd822c4320cd8e",
+    "humanoid_harness/__init__.py": "e6c799401cc27b3793ec11ad9f6a2c80b0a72bf9452759b6af0a6a46f03c90ab",
+    "humanoid_harness/__main__.py": "e234ab53c8e14d70a8bb84bd39ebee1b2161b9d501c926e4e9741e0ff0d709e7",
+    "humanoid_harness/adapters/__init__.py": "b13febbb56fa72cf13a6774f081c830982eee35c0b21f70f4cb8002097c57da1",
+    "humanoid_harness/adapters/amr.py": "f4f7ae706dc73c5702f3a276ee70fd420640b826ab52cf4cce8455df26453b82",
+    "humanoid_harness/adapters/humanoid_mover.py": "54f52211c4d278aa8b68a5b46cf62dca2508ebd19c373017582e9de06864dd6d",
+    "humanoid_harness/adapters/lift.py": "a85f38743ef731ce367c4907c5f531758f9228e41f1de239d3cdc8da9e58a174",
+    "humanoid_harness/adapters/perception.py": "87345bfa8d6bf171915fb6b2441f0042394032a23483d2b6857d953b6056e469",
+    "humanoid_harness/adapters/platform.py": "89089e6e21a234577675def1bd132335dea29621c4c55362afd56de391ae20bc",
+    "humanoid_harness/adapters/vla.py": "654931e2fd429979cfabf0a821fd67477cfce5d1fa053ec5f3d0686505e64c2f",
+    "humanoid_harness/config.py": "0a57500403263ae3b8b033e37c5142e8f7d19d0f23abd36ff1a63d6694e01d07",
+    "humanoid_harness/controller.py": "f67415dd5002c32ea6e3126f65b2502194cf85e7bc5dacd80d7607be755ba230",
     "humanoid_harness/integration/__init__.py": "5371fb7b2805de228b65d0e51d163de5137bf9e7de1b22083428dbea35f3d3ae",
-    "humanoid_harness/integration/executor.py": "2e4387d428a0b5476b3776a7af5e7d90c61535746f29cd0d351349ba479ceaa9",
-    "humanoid_harness/integration/__main__.py": "eca6e7fa528973ec3672da912c680f783688b3fbd7ee9170ff2b004ce85ee902"
+    "humanoid_harness/integration/__main__.py": "eca6e7fa528973ec3672da912c680f783688b3fbd7ee9170ff2b004ce85ee902",
+    "humanoid_harness/integration/executor.py": "095ada4673f17e23e721b7cccb621d0da141b678139af7611a2250d4864adcf1",
+    "humanoid_harness/models.py": "389833028250d0f19c7a1b57bce8457ac7175e9b71a164ce98b2481969400853",
+    "humanoid_harness/storage.py": "6a3f1ef2dce7f9cdb3b9d263fbb2ce4b8ba1958b015ed1f0a13a4252a14b9d52",
+    "humanoid_harness/stubs.py": "cc956ecf719459eb020726593b6c6f25a4c21e3fa719232d8131810ccd447279",
+    "humanoid_harness/visual.py": "2486ba22fb48695fba4e7fddf7a28f17d010f9962598d913703c33c17bcbbd7e"
   },
-  "local_checks": {"integration": 16, "standalone": 21},
-  "actual_platform_acceptance": "pending-at-local-handoff"
+  "local_checks": {
+    "integration": 29,
+    "standalone": 21
+  },
+  "actual_platform_acceptance": "pending-at-local-handoff",
+  "initial_integration_commit": "da0f09fd8564e0e5472f2c7144b076759bd1a96f",
+  "independent_review": "GPT-6 Sol: 29 integration and 21 standalone tests passed; no remaining blocker"
 }
