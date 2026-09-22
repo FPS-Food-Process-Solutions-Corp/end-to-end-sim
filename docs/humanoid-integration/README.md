@@ -75,3 +75,5 @@ The client task's Sol `/root/sol_combined_harness` is the sole shared runtime op
 The seed contains historical business records; it must not be forcibly cleared to make a scenario pass. Known platform partial-order settlement, cancellation accounting and completion replay limits remain external constraints. The integration must expose their observed behavior rather than modify platform logic or manufacture READY.
 
 Read [PLAN.md](PLAN.md) for stages/ownership and [CONTRACTS.md](CONTRACTS.md) for reviewed public interfaces and source provenance. Software simulation does not establish calibrated reachability, physical stopping, sensor reliability or hardware exactly-once execution.
+
+[BASELINE-RUNS.md](BASELINE-RUNS.md) records the accepted real Rack B order and two baseline failure-report characterizations, including exact identities, retained unsuccessful attempts, source hashes and cleanup. Fixed-client and remaining fault/mixed acceptance are tracked in [VALIDATION.md](VALIDATION.md).

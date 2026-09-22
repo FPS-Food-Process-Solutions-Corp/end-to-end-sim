@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "stage": "reviewed-device-readiness-handoff",
+  "stage": "baseline-runtime-evidence-recorded",
   "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
   "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
   "client_documentation_head": "e6766e8319c9a6a832e8f058135a9d52b869a7c2",
@@ -29,7 +29,9 @@
     "integration": 29,
     "standalone": 21
   },
-  "actual_platform_acceptance": "pending-at-local-handoff",
+  "actual_platform_acceptance": "happy-03 accepted; failure-drop-02 and failure-commit-01 baseline characterizations accepted; fixed-client and remaining fault/mixed runs pending",
   "initial_integration_commit": "da0f09fd8564e0e5472f2c7144b076759bd1a96f",
-  "independent_review": "GPT-6 Sol: 29 integration and 21 standalone tests passed; no remaining blocker"
+  "independent_review": "GPT-6 Sol: 29 integration and 21 standalone tests passed; no remaining blocker",
+  "runtime_production_commit": "597ec2c21da1540e11ebd999d3552f84f9859a3c",
+  "runtime_manifest_sha256": "b7e9245fa00aab4ff8fb192c86f63b4c43917575dc173e39ba9fa47cb37a9553"
 }

@@ -30,6 +30,8 @@ At this baseline, a failed outcome with `ready_for_next=False` enters an executi
 
 The reviewed baseline has no durable failure-report queue. `_fail_task` defers its immediate next-task request when a report is unacknowledged, but reconnect scheduling has no completion-like failure journal/readback reconciliation. A retry after the platform committed FAILED can return `PICK_TASK_NOT_IN_PROGRESS` and stop retries early; transport failures can exhaust the retry budget. The client owner is characterizing and correcting this boundary in a separate worktree. Physical failure proof prevents duplicate motion but does not by itself prove report acceptance.
 
+The failure wire payload contains only session, task and message. Retry generation and physical execution identity are local audit fields, not conditional-write guards accepted by the backend. Exact-generation readback and serialized client scheduling can reconcile these controlled single-owner runs, but cannot make a read-then-report operation atomic against another actor advancing the task. Conflicting or ambiguous evidence must retain a reporting hold. No platform generation guard, multi-client exactly-once guarantee or acknowledgment of physical proof is claimed.
+
 `client.stop()` stops heartbeat/disconnects Socket.IO (`hr_client/client.py:1265`). It does not cancel or stop an injected physical worker. The integration launcher must coordinate worker shutdown before releasing the device or ending the process normally.
 
 ## Restart boundary
