@@ -1,10 +1,9 @@
 {
   "schema": 1,
-  "stage": "durable-recovery-adoption-locally-verified",
+  "stage": "client-lifecycle-pin-locally-verified",
   "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
-  "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
-  "client_documentation_head": "5969a0167aedbc7c7cbe5b03f5cafe90ec9de4ee",
-  "client_py_sha256": "70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4",
+  "client_production_commit": "9be6207a6c286d5f2f441f37b97b663a6256291a",
+  "client_py_sha256": "481163dc187fff8e62fdd9d2af6c919f3ed9f1ccae43d4f463acd900111a3f9d",
   "client_pending_failure_sha256": "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a",
   "client_settings_sha256": "01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584",
   "production_files_sha256": {
@@ -20,7 +19,7 @@
     "humanoid_harness/config.py": "0a57500403263ae3b8b033e37c5142e8f7d19d0f23abd36ff1a63d6694e01d07",
     "humanoid_harness/controller.py": "f67415dd5002c32ea6e3126f65b2502194cf85e7bc5dacd80d7607be755ba230",
     "humanoid_harness/integration/__init__.py": "5371fb7b2805de228b65d0e51d163de5137bf9e7de1b22083428dbea35f3d3ae",
-    "humanoid_harness/integration/__main__.py": "5c52cad1e8a9cee6fbb414fc42ada9625f3eec0ed84fe81b967d7787bf67aefd",
+    "humanoid_harness/integration/__main__.py": "fc0553497955077048e8bf3d62ecf1a18514d269d44568fc9d89af2ff51264fb",
     "humanoid_harness/integration/executor.py": "abc47907ab5f7edbbc76db390db0d70b6f6677e834be11aa3a7b8824ed039a92",
     "humanoid_harness/integration/failure_attempts.py": "b4af6c6f53939fe06814ed7898e526cc58f1ce259e6bb4d441722eb98a60d7bc",
     "humanoid_harness/models.py": "389833028250d0f19c7a1b57bce8457ac7175e9b71a164ce98b2481969400853",
@@ -30,16 +29,46 @@
   },
   "local_checks": {
     "integration": 43,
-    "standalone": 21
+    "integration_seconds": 23.462,
+    "integration_exit_code": 0,
+    "checked_in_settings_launcher_smoke": "Passed within the 43-test suite; actual pinned client construction with network loops stubbed.",
+    "standalone": 21,
+    "standalone_scope": "Inherited prior standalone pass; no standalone production files changed in this pin-only adoption.",
+    "evidence_root": ".humanoid-runs/local-verification/client-lifecycle-pin-01",
+    "verification_summary": "verification-summary.json",
+    "imported_provenance": "imported-provenance.json",
+    "capture_note": "First capture wrapper recorded blank exit despite 43 OK; retained definitive rerun records 43 OK and exit 0."
   },
-  "actual_platform_acceptance": "happy-03 accepted; failure-drop-02 and failure-commit-01 baseline characterizations accepted; fixed-client and remaining fault/mixed runs pending",
+  "actual_platform_acceptance": "Historical baseline and eight corrected-client isolated cases accepted on their recorded pins. mixed-positive-01 remains excluded for client lifecycle reconciliation failure. Mixed order, Nova callback boundary and humanoid held-placement restart reruns on the current client pin are pending.",
   "initial_integration_commit": "da0f09fd8564e0e5472f2c7144b076759bd1a96f",
-  "independent_review": "GPT-6 Sol cleared adoption source; independent test owner passed 43 integration and 21 standalone tests; real-client checked-in-settings launcher smoke passed without network",
+  "independent_review": "CLEAR: independent GPT-6 Sol read-only review verified the exact one-line launcher change, all 19 production hashes, actual client commit/four hashes, retained 43-pass/exit-0 evidence and included checked-settings no-network launcher smoke. Prior 21 standalone passes are inherited; old runtime attribution remains unchanged. Reviewer ran no services, network calls or additional tests.",
   "hook_commit": "57f856a8e4cc1336d35b7b316f2ae4494422dbf1",
   "baseline_runtime": {
     "production_commit": "597ec2c21da1540e11ebd999d3552f84f9859a3c",
     "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
     "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
     "manifest_sha256": "b7e9245fa00aab4ff8fb192c86f63b4c43917575dc173e39ba9fa47cb37a9553"
+  },
+  "client_checkout_head": "9be6207a6c286d5f2f441f37b97b663a6256291a",
+  "client_pending_completion_sha256": "3f2d33d94dd838af21b5e49c64cab1cf5c0a5bd34bb759fa63062e50af5bf228",
+  "corrected_client_runtime": {
+    "production_commit": "6d0111a951dd9506472b7149cb8ab426844a9b93",
+    "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
+    "client_documentation_head": "5969a0167aedbc7c7cbe5b03f5cafe90ec9de4ee",
+    "client_py_sha256": "70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4",
+    "launcher_sha256": "5c52cad1e8a9cee6fbb414fc42ada9625f3eec0ed84fe81b967d7787bf67aefd",
+    "manifest_sha256": "01492605fd47ea3a0435ffce73f62bc881075391a21c1114711a3265642bfaa7",
+    "accepted_isolated_cases": [
+      "failure-drop-fixed-02",
+      "failure-commit-fixed-01",
+      "held-placement-restart-01",
+      "safe-retry-loss-01",
+      "unknown-pick-hold-01",
+      "cancel-unknown-hold-01",
+      "exit76-completion-loss-02",
+      "partial-abc-02"
+    ],
+    "excluded_mixed_case": "mixed-positive-01",
+    "attribution": "Original source and captured manifest remain immutable; current pin adoption does not retroactively retest these cases."
   }
 }
