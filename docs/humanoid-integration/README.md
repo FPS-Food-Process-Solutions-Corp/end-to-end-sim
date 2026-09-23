@@ -20,7 +20,7 @@ The `/path/to/fresh/` values are explicit placeholders, not existing fixtures. D
 
 ## Public executor seam
 
-`HumanoidPickExecutor` is exported by `humanoid_harness.integration`. Its constructor accepts a state root, an optional `config_factory(TaskContext)` and the explicit one-shot crash test option. Public methods are async `run(context, progress_cb)`, `recover_completed(client)` and `drain()`.
+`HumanoidPickExecutor` is exported by `humanoid_harness.integration`. Its constructor accepts a state root, an optional `config_factory(TaskContext)` and explicit one-shot crash test options. Public methods are async `run(context, progress_cb)`, `recover_completed(client)` and `drain()`.
 
 The launcher calls recovery before `client.run()`. A recovered exact placement is handed to the public `client.queue_recovered_completion(...)` method. Unknown physical ownership prevents new work. Shutdown drains or preserves a held worker before closing the client/device ownership; cancelling the coroutine alone does not release a running worker.
 
@@ -58,13 +58,15 @@ The initial device readiness is an explicit fresh-simulation assumption: front l
 
 The owner and readiness records must agree, and a ready record must validate against the exact referenced unit proof and readback before startup or another action. Interrupted writes or corrupted pointers fail closed. Each newly assigned unit inherits the latest released robot location, posture and possession; inventory and action ledgers remain per unit. A report-only retry leaves the current release unchanged.
 
-A normal or timed launcher stop returns 0; this means the process stopped normally, not that the order reached READY. Invalid configuration/source returns 2. The explicit integrated placement crash exits 76. Always verify actual platform order/task/session/stock state and exact simulator place counts alongside process status.
+A normal or timed launcher stop returns 0; this means the process stopped normally, not that the order reached READY. Invalid configuration/source returns 2. The explicit integrated placement crash exits 76; the held-placement crash exits 78. Always verify actual platform order/task/session/stock state and exact simulator place counts alongside process status.
 
 ## Deterministic faults and restart
 
 `--faults-json FILE` accepts a JSON mapping from exact platform task ID to the standalone simulator's fault-rule list. Create the order and obtain its actual task identities before writing the fixture; do not guess them. The real client still owns all task reports. See the [standalone fault table](../humanoid-harness/README.md) for stage/outcome definitions.
 
 `--crash-after-place-once` exits with code 76 at `post_place_ready_check`: placement and post-place retract effects are durable, but release-readiness proof, executor return and client completion queueing have not finished. Restart the same launcher with the same state root and unchanged assignment configuration. Startup must reconcile the saved actions, verify readiness, queue the exact placement proof through the real client and avoid duplicate effects. The crash marker is durable and does not fire again for that fixture. A separate local child-process regression covers a hard stop immediately after the place effect, before placement proof, and verifies the remaining bounded recovery.
+
+`--crash-after-held-placement-once` tests a different boundary. After an exact verified placement, an unsafe post-place result first persists owner HOLD and unknown device readiness. The hook checks those saved records, atomically writes `crash-after-held-placement.used.json` and exits 78 before returning the completed executor outcome or queueing a client completion. The marker permits only one such exit per state root. A suitable simulator fault is an unknown `post_place_retract` result; unknown placement without verified proof cannot trigger this hook. The baseline client can recover the exact report into its queue but cannot start while this hold remains. Actual reporting while held awaits the reviewed public client recovery-hold seam and a fresh acceptance run.
 
 For acknowledgment loss, the sole runtime owner controls the existing Socket.IO fault proxy. Keep completion readback pointed directly at the API. Do not replace the real client's acknowledgment/reconnect/readback behavior with a local success flag.
 

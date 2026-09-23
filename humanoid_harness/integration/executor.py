@@ -82,7 +82,7 @@ def default_config(ctx: TaskContext) -> dict:
 class HumanoidPickExecutor:
     """Async public PickExecutor backed by one serialized synchronous worker."""
 
-    def __init__(self, state_root: Path, *, config_factory: Callable[[TaskContext], dict] | None = None, crash_after_place_once: bool = False):
+    def __init__(self, state_root: Path, *, config_factory: Callable[[TaskContext], dict] | None = None, crash_after_place_once: bool = False, crash_after_held_placement_once: bool = False):
         self.root = Path(state_root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.units_root = self.root / "units"
@@ -97,6 +97,7 @@ class HumanoidPickExecutor:
         self.lock.acquire()
         self.config_factory = config_factory or default_config
         self.crash_after_place_once = crash_after_place_once
+        self.crash_after_held_placement_once = crash_after_held_placement_once
         self._serial = asyncio.Lock()
         self._cancel = threading.Event()
         self._worker: asyncio.Future | None = None
@@ -166,6 +167,19 @@ class HumanoidPickExecutor:
 
     def _unit_dir(self, identity: dict) -> Path:
         return self.units_root / unit_digest(identity)
+
+    def _crash_after_held_placement(self, identity: dict, proof: dict) -> None:
+        if not self.crash_after_held_placement_once:
+            return
+        marker = self.root / "crash-after-held-placement.used.json"
+        if marker.exists():
+            return
+        if (self._owner["status"] != "hold" or self._owner["identity"] != identity
+                or self._readiness["status"] != "unknown"
+                or read_json(self.owner_path) != self._owner or read_json(self.readiness_path) != self._readiness):
+            raise StateError("Held-placement crash hook requires durable owner HOLD and invalidated readiness")
+        write_json(marker, {"schema": 1, "identity": identity, "place_execution_id": proof["place_execution_id"]})
+        os._exit(78)
 
     def _current_release_valid(self) -> bool:
         record = self._readiness
@@ -243,6 +257,7 @@ class HumanoidPickExecutor:
                 if self._cancel.is_set():
                     self._save_owner("hold", identity, "physical completion after cancellation requires public recovery queue")
                     self._invalidate_readiness("physical completion after cancellation")
+                    self._crash_after_held_placement(identity, proof)
                     return {"status": "complete", "proof": proof, "ready": False}
                 if summary["phase"] == "done" and isinstance(release, dict) and harness._post_place_proof_valid():
                     self._publish_readiness(identity, physical_source(ctx), release, "post_place_retract")
@@ -251,6 +266,7 @@ class HumanoidPickExecutor:
                 else:
                     self._save_owner("hold", identity, summary.get("hold_reason") or "placement complete but post-place readiness unverified")
                     self._invalidate_readiness("placement complete but post-place readiness unverified")
+                    self._crash_after_held_placement(identity, proof)
                     return {"status": "complete", "proof": proof, "ready": False}
             if summary["phase"] == "done" and harness.state["units"][ctx.task_id]["status"] == "failed":
                 reason = harness.state.get("failure_reason", "known safe physical failure")
@@ -275,7 +291,9 @@ class HumanoidPickExecutor:
             self._save_owner("hold", identity, f"worker interrupted: {exc!r}")
             self._invalidate_readiness(f"worker interrupted: {exc!r}")
             if "harness" in locals() and isinstance(harness.state.get("physical_proof"), dict) and harness._assigned_proof_valid():
-                return {"status": "complete", "proof": harness.state["physical_proof"], "ready": False}
+                proof = harness.state["physical_proof"]
+                self._crash_after_held_placement(identity, proof)
+                return {"status": "complete", "proof": proof, "ready": False}
             raise
 
     async def run(self, task: TaskContext, progress_cb) -> PickExecutionOutcome:

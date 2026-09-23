@@ -45,6 +45,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--faults-json", type=Path, help="JSON object mapping exact task ID to simulator fault list")
     p.add_argument("--stop-after-seconds", type=float)
     p.add_argument("--crash-after-place-once", action="store_true")
+    p.add_argument("--crash-after-held-placement-once", action="store_true")
     return p
 
 
@@ -141,7 +142,7 @@ async def run(args) -> int:
         config["faults"] = faults
         return config
 
-    executor = HumanoidPickExecutor(root, config_factory=config_factory, crash_after_place_once=args.crash_after_place_once)
+    executor = HumanoidPickExecutor(root, config_factory=config_factory, crash_after_place_once=args.crash_after_place_once, crash_after_held_placement_once=args.crash_after_held_placement_once)
     try:
         claim = RobotClaim()
         client = HumanoidRobotClient(settings, InertHardware(), claim, locations.data, pick_executor=executor)

@@ -130,6 +130,88 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "idle")
             self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "ready")
 
+    def test_held_placement_crash_queues_completion_but_preserves_device_hold(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child = subprocess.run([sys.executable, "-m", "tests.humanoid_integration.held_placement_crash_driver", str(root)], capture_output=True, text=True, timeout=30, check=False)
+            self.assertEqual(child.returncode, 78, child.stderr)
+            ctx = task_context()
+            _, before = unit_state(root, ctx)
+            proof = before["controller"]["physical_proof"]
+            self.assertIsInstance(proof, dict)
+            self.assertEqual(before["controller"]["phase"], "hold")
+            self.assertIsNone(before["controller"]["post_place_readiness_proof"])
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+            marker = json.loads((root / "crash-after-held-placement.used.json").read_text(encoding="ascii"))
+            self.assertEqual(marker["identity"], assignment_identity(ctx))
+            self.assertEqual(marker["place_execution_id"], proof["place_execution_id"])
+            self.assertFalse((root / "pending-completions.json").exists())
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in before["device"]["executions"].values()), 1)
+
+            async def recover():
+                executor = HumanoidPickExecutor(root)
+                client = PublicCompletionClient()
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                try:
+                    queued = await executor.recover_completed(client)
+                    with self.assertRaises(ValueError):
+                        ensure_startup_ready(executor)
+                    redelivered = await executor.run(task_context(retry_count=1), progress)
+                    return queued, client.calls, redelivered
+                finally:
+                    await executor.drain()
+
+            with redirect_stdout(io.StringIO()):
+                queued, calls, redelivered = asyncio.run(recover())
+            self.assertEqual(len(queued), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], queued[0])
+            self.assertEqual(calls[0][1], proof)
+            self.assertEqual(redelivered.status, PickExecutionStatus.UNRESOLVED)
+            _, after = unit_state(root, ctx)
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in after["device"]["executions"].values()), 1)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+
+    def test_preexisting_held_placement_crash_marker_skips_exit_in_fresh_process(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child = subprocess.run([sys.executable, "-m", "tests.humanoid_integration.held_placement_crash_driver", str(root), "--marker-preexisting"], capture_output=True, text=True, timeout=30, check=False)
+            self.assertEqual(child.returncode, 0, child.stderr)
+            self.assertEqual((root / "crash-after-held-placement.used.json").read_text(encoding="ascii"), '{"existing":true}')
+            self.assertFalse((root / "pending-completions.json").exists())
+            _, state = unit_state(root, task_context())
+            self.assertIsInstance(state["controller"]["physical_proof"], dict)
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+            self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+
+    def test_held_placement_crash_hook_requires_valid_place_proof_and_is_opt_in(self):
+        for hook, kind, expected_status in ((True, "pick", PickExecutionStatus.UNRESOLVED), (False, "post_place_retract", PickExecutionStatus.COMPLETED)):
+            with self.subTest(hook=hook, kind=kind), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                executor = HumanoidPickExecutor(root, config_factory=lambda ctx: faulty_config(ctx, kind, "unknown"), crash_after_held_placement_once=hook)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                async def run_once():
+                    try:
+                        return await executor.run(task_context(), progress)
+                    finally:
+                        await executor.drain()
+
+                with redirect_stdout(io.StringIO()):
+                    outcome = asyncio.run(run_once())
+                self.assertEqual(outcome.status, expected_status)
+                self.assertFalse((root / "crash-after-held-placement.used.json").exists())
+                _, state = unit_state(root, task_context())
+                self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 0 if hook else 1)
+
     def test_local_three_unit_sequence_advances_after_verified_safe_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -319,6 +401,7 @@ class HumanoidExecutorTests(unittest.TestCase):
                 faults_json=None,
                 stop_after_seconds=0.05,
                 crash_after_place_once=False,
+                crash_after_held_placement_once=False,
             )
             with patch.object(launcher_module, "HumanoidRobotClient", InertClient), redirect_stdout(io.StringIO()):
                 code = asyncio.run(launcher_module.run(args))
