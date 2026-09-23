@@ -1,8 +1,10 @@
 # Run the real-client humanoid integration
 
-This composition connects the unchanged real platform-client to the humanoid simulator through `PickExecutor`. A real platform assigns each Rack B pastry; the simulated physical executor finishes navigation, picking and verified counter placement; the real client owns progress, completion/failure reporting, acknowledgment recovery and the next task.
+This composition connects the reviewed real platform-client to the humanoid simulator through `PickExecutor`. A real platform assigns each Rack B pastry; the simulated physical executor finishes navigation, picking and verified counter placement; the real client owns progress, completion/failure reporting, acknowledgment recovery and the next task.
 
 It does not enable robot hardware. Tags, joint phases and counter targets remain symbolic. The standalone module and its 21 tests remain available through the [standalone runbook](../humanoid-harness/README.md).
+
+The integration has eight accepted isolated cases on the first corrected client, followed by accepted mixed-order and held-placement reruns on the lifecycle client and a separately reviewed Nova callback control. Historical baseline evidence retains its original source pins. [RUNTIME-ACCEPTANCE.md](RUNTIME-ACCEPTANCE.md) records exact identities, source captures, machine audits, retained failed fixtures and the mixed-runtime result. [VALIDATION.md](VALIDATION.md) separates local tests from actual platform evidence, and [runtime-acceptance.json](runtime-acceptance.json) indexes the final acceptance without rewriting the captured source pin.
 
 ## Runtime and composition
 
@@ -49,10 +51,10 @@ The supplied real-client location file is preserved. In fresh copied settings, s
 | `integration-manifest.json` | Loaded client module paths/hashes, source pin, endpoints, location overlay and recovered identities. |
 | `task-identities.json` | Immutable task/session/order/counter and item/rack/level/slot registry, plus observed retry counts. |
 | `device-owner.json` | Device-wide idle/active/hold ownership, readiness version and bound placement-recovery hold token/version. Availability alone is not physical readiness. |
-| `device-readiness.json` | Current ready/unknown state and increasing version; exact assignment/source/configuration, action/proof hash and observation version; verified symbolic posture/location and empty-hand state. |
-| `assignments/<unit-digest>.json` | Saved assignment context and terminal physical proof. |
-| `units/<unit-digest>/controller.json` | Per-unit durable controller intent, stage and result. |
-| `units/<unit-digest>/device.json` | Independently persisted simulated action effects and world. |
+| `device-readiness.json` | Current READY/UNKNOWN status and increasing version. A READY release binds exact assignment/source/configuration, action/proof hash, observation and verified robot state. UNKNOWN records retain identity/reason/provenance and do not establish a release. |
+| `assignments/<unit-digest>.json` | Saved immutable assignment and observed retry contexts. Terminal physical proofs live in the unit controller and relevant client pending records. |
+| `units/<unit-digest>/controller.json` | Per-unit durable controller intent, stage, result and verified physical/release proofs. |
+| `units/<unit-digest>/device.json` | Independently persisted simulated action effects and that unit's world; it is not necessarily the latest device-wide robot state. |
 | `units/<unit-digest>/events.jsonl`, `summary.json`, `world.html` | Per-unit progress, terminal physical result and world replay. |
 | `pending-completions.json` | The real client's durable completion queue; do not edit it to force settlement. |
 | `failure-attempts.json` | Bridge intent and callback audit per exact platform retry generation, bound to immutable physical failure proof. |
@@ -60,7 +62,9 @@ The supplied real-client location file is preserved. In fresh copied settings, s
 
 The initial device readiness is an explicit fresh-simulation assumption: front location, idle posture, empty hands and no active motion. It may be created only for an empty state root. Missing or incompatible ownership/readiness records beside existing unit journals must fail closed; they must not reset the robot to the initial state.
 
-The owner and readiness records must agree, and a ready record must validate against the exact referenced unit proof and readback before startup or another action. Interrupted writes or corrupted pointers fail closed. Each newly assigned unit inherits the latest released robot location, posture and possession; inventory and action ledgers remain per unit. A report-only retry leaves the current release unchanged.
+An IDLE owner and its READY release must agree on the readiness version, and the release must validate against the exact referenced unit proof and readback before startup or another action. A bound verified-placement recovery hold also validates its exact saved readiness context. An ordinary unresolved HOLD can retain an older owner readiness version while current readiness is UNKNOWN; it does not authorize startup. Interrupted writes or corrupted release pointers fail closed. Each newly assigned unit inherits the latest released robot location, posture and possession; inventory and action ledgers remain per unit. A report-only retry leaves the current release unchanged. For example, B's saved world may remain at its rack while the current release belongs to C at placement.
+
+The launcher wires a failure-confirmation callback but no completion callback. A confirmed completion's `callback_acknowledged: false` is therefore not applicable; platform confirmation is recorded separately. The configured failure-confirmation callback must be acknowledged before a later generation proceeds. The completion store's `attempts` field is not a count of actual wire sends; use captured transport evidence for that count.
 
 A normal or timed launcher stop returns 0; this means the process stopped normally, not that the order reached READY. Invalid configuration/source returns 2. The explicit integrated placement crash exits 76; the held-placement crash exits 78. Always verify actual platform order/task/session/stock state and exact simulator place counts alongside process status.
 
@@ -74,7 +78,11 @@ A normal or timed launcher stop returns 0; this means the process stopped normal
 
 For acknowledgment loss, the sole runtime owner controls the existing Socket.IO fault proxy. Keep completion readback pointed directly at the API. Do not replace the real client's acknowledgment/reconnect/readback behavior with a local success flag.
 
-[FAULT-CASES.md](FAULT-CASES.md) describes the remaining fresh fixtures and their required checkpoints. A transient owner-HOLD write failure must return unresolved without queueing. A fresh startup may validate the exact ACTIVE placement checkpoint, persist a new bound HOLD and install it before queueing; it cannot treat a failed in-memory write as durable state.
+[FAULT-CASES.md](FAULT-CASES.md) preserves the fixture recipes and their required checkpoints; [RUNTIME-ACCEPTANCE.md](RUNTIME-ACCEPTANCE.md) records observed results. A transient owner-HOLD write failure must return unresolved without queueing. A fresh startup may validate the exact ACTIVE placement checkpoint, persist a new bound HOLD and install it before queueing; it cannot treat a failed in-memory write as durable state.
+
+## Trace-based fixture checks
+
+`CELL_TRACE_VERBOSE` alone does not initialize the integration launcher's INFO logger. The accepted partial-case fixture uses a separately captured logging-only wrapper that calls the existing public `platform_common.diagnostics.configure_logging()` before invoking the frozen integration entry point. Its real INFO smoke, source hash and fixture tests are retained with the case. A fixture that requires INFO chronology must verify actual emission before running; absent trace output is not evidence of absent execution. The original `partial-abc-01` remains excluded, with its later read-only API observation recorded separately.
 
 ## Ownership and limitations
 
@@ -84,4 +92,4 @@ The seed contains historical business records; it must not be forcibly cleared t
 
 Read [PLAN.md](PLAN.md) for stages/ownership and [CONTRACTS.md](CONTRACTS.md) for reviewed public interfaces and source provenance. Software simulation does not establish calibrated reachability, physical stopping, sensor reliability or hardware exactly-once execution.
 
-[BASELINE-RUNS.md](BASELINE-RUNS.md) records the accepted real Rack B order and two baseline failure-report characterizations, including exact identities, retained unsuccessful attempts, source hashes and cleanup. Fixed-client and remaining fault/mixed acceptance are tracked in [VALIDATION.md](VALIDATION.md).
+[BASELINE-RUNS.md](BASELINE-RUNS.md) records the accepted real Rack B order and two baseline failure-report characterizations, including exact identities, retained unsuccessful attempts, source hashes and cleanup. Corrected-client fault/restart, partial-order and mixed-runtime evidence is recorded in [RUNTIME-ACCEPTANCE.md](RUNTIME-ACCEPTANCE.md).

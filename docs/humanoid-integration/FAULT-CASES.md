@@ -1,6 +1,6 @@
-# Remaining fresh runtime fixtures
+# Runtime fault fixtures
 
-These are proposed fixtures for the sole shared runtime owner, not run results. Use only fresh databases/state roots after the new client and bridge pins are reviewed. Replace `<T1>`, `<TA>`, `<TB>` and `<TC>` with task IDs read from the actual created order; every rule's `task_id` must equal its map key. Baseline captures remain immutable.
+These fixture recipes preserve the required boundaries for the sole shared runtime owner. The eight accepted earlier isolated cases and the accepted lifecycle-client mixed, held-placement and Nova callback reruns are recorded separately in [RUNTIME-ACCEPTANCE.md](RUNTIME-ACCEPTANCE.md); this file is not a substitute for those captures. Use only fresh databases/state roots after the client and bridge pins are reviewed. Replace `<T1>`, `<TA>`, `<TB>` and `<TC>` with task IDs read from the actual created order; every rule's `task_id` must equal its map key. Baseline captures remain immutable.
 
 ## Independent physical retry budgets
 
@@ -43,6 +43,8 @@ Create a single three-pastry Rack B order. A and C have no faults; bind all thre
 ```
 
 Require A placement, B's three known no-effect attempts and one verified failure retract, then C placement before B's platform retry. Retry one reuses B's immutable physical proof with zero new B actions and preserves C's latest device release. The new client must retain exact report attempts and confirmation audits for both B generations. Preserve the platform's failed task, PREPARING order and unconsumed failed reservation if observed; do not manufacture READY. This case also covers exhausted VLA attempts, so a duplicate ordinary VLA-exhaustion case adds little.
+
+The accepted `partial-abc-02` fixture initializes the existing public diagnostics logger in a separate logging-only wrapper and verifies real INFO emission before capture. Setting `CELL_TRACE_VERBOSE` alone did not emit the required chronology in `partial-abc-01`; that attempt remains excluded. Four scheduled/executor entries establish A/B0/C/B1, while eight assignment-received traces include duplicate request acknowledgments. The runtime report preserves these distinctions.
 
 ## Additional boundaries
 

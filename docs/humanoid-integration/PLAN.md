@@ -2,7 +2,7 @@
 
 Branch: `codex/humanoid-platform-integration`, based on standalone harness commit `02fabbec015d9444ece79ec38c089e69ec1faeaa`. Astra owns coordination, decisions and documentation; Luna reads sources without edits; Sol implements, tests, reviews and owns agreed simulation runtime operations.
 
-Current checkpoint: the new public failure-report and recovery-hold APIs are adopted against client production `b4b055765e801b7edd93d0abf4e87d226d6b9bee`, with 43 integration tests, 21 standalone tests and independent review passing. The real-client launcher smoke loads checked-in settings without an optional-field workaround. Exact hashes and historical baseline attribution are in [source-pin.json](source-pin.json); fresh actual acceptance remains pending. The verified baseline details below retain the original implementation context.
+Current checkpoint: public failure-report and recovery-hold adoption passed eight isolated runtime cases at simulator `6d0111a951dd9506472b7149cb8ab426844a9b93` and client `b4b055765e801b7edd93d0abf4e87d226d6b9bee`. The excluded first mixed case exposed a client lifecycle issue, corrected in client `9be6207a6c286d5f2f441f37b97b663a6256291a` and adopted through a launcher hash change at simulator `1fb043c4f056223e1e7d27b6fa5fabb7fdf5c75d`. The latest pin passes 43 integration checks, including the checked-settings no-network launcher smoke; the prior 21 standalone passes are inherited with unchanged standalone production code. Independent pin review is clear. All three selected lifecycle-client controls are accepted: the strict mixed order, humanoid held-placement restart and independently reviewed Nova callback boundary. [RUNTIME-ACCEPTANCE.md](RUNTIME-ACCEPTANCE.md) records exact evidence and limits, and the separate [acceptance index](runtime-acceptance.json) preserves final status and historical attribution. The captured [source pin](source-pin.json) remains unchanged. The design and verified baseline below retain the original implementation context.
 
 ## End-to-end boundary
 
@@ -16,7 +16,7 @@ The real client remains the sole owner of assignment, network progress/failure/c
 - `HumanoidRobotClient.__init__` accepts `pick_executor`, `pending_store`, `completion_callback` and `readback` (`hr_client/client.py:443`). Its public executor path returns before default box delivery (`:1490`). The built-in CLI does not inject an executor, so integration needs its own composition launcher.
 - `PickExecutor.run` is async; progress callbacks receive `PickSubtask` and integer progress and must be awaited (`hr_client/task_executor.py:33`; client callback at `client.py:1517`). `TaskContext` carries session/task/item/retry/rack/counter, resolved location and order identity (`hr_client/models.py:107`).
 - Known completion passes execution identity and terminal evidence into the durable client queue before network reporting (`hr_client/client.py:1791`). `unresolved(...)` holds without a terminal report or next-task request. Ordinary `failed(...)` is a platform failure and must never represent uncertain physical state.
-- Nova remains frozen at `39c6aff523e95bc03a1db10bb854aec8746d0df9`. Any later mixed run uses its real bridge/executor and the existing fake provider under the single agreed runtime owner. No Nova source changes are planned.
+- Nova remains frozen at `39c6aff523e95bc03a1db10bb854aec8746d0df9`. The mixed run uses its real bridge/executor and the existing fake provider under the single agreed runtime owner. No Nova source changes are planned.
 
 ## Assigned physical execution
 
@@ -56,7 +56,7 @@ The verified public `queue_recovered_completion(identity, terminal_evidence)` me
 
 The client owner also owns focused characterization and a generic client correction for lost failure reports or acknowledgments. Those cases must distinguish a dropped outbound report from a committed FAILED task whose responses were lost, record actual attempts, and preserve baseline evidence. The humanoid executor must not create a second reporter or manufacture failure acknowledgment. Client changes and physical-executor changes receive separate pins before combined acceptance.
 
-Final acceptance also requires a reviewed public report-only startup path for a known placement with a persisted physical hold. The client owner supplies that seam and its regression tests with the generic recovery correction. The bridge then adopts the agreed API and new source pin. Reporting must settle the proven placement while keeping the client PAUSED, with no FREE status, next-task request or physical motion. The frozen baseline remains fail-closed until that public interface exists; private client hold manipulation is not permitted.
+The reviewed public report-only startup path for a known placement with a persisted physical hold is implemented and accepted in `held-placement-restart-01`. The client supplies the public seam and regression tests; the bridge installs the exact bound hold before queueing or connection. Reporting settles the proven placement while retaining PAUSED, with no FREE, next-task request or physical motion. The historical baseline remains attributed to its older fail-closed behavior. Private client hold manipulation is not permitted.
 
 ## Ownership and runtime constraints
 

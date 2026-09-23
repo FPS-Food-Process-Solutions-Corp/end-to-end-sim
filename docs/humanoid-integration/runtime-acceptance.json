@@ -1,0 +1,318 @@
+{
+  "schema": 1,
+  "stage": "selected-lifecycle-runtime-controls-accepted",
+  "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
+  "client_production_commit": "9be6207a6c286d5f2f441f37b97b663a6256291a",
+  "client_py_sha256": "481163dc187fff8e62fdd9d2af6c919f3ed9f1ccae43d4f463acd900111a3f9d",
+  "client_pending_failure_sha256": "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a",
+  "client_settings_sha256": "01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584",
+  "production_files_sha256": {
+    "humanoid_harness/__init__.py": "e6c799401cc27b3793ec11ad9f6a2c80b0a72bf9452759b6af0a6a46f03c90ab",
+    "humanoid_harness/__main__.py": "e234ab53c8e14d70a8bb84bd39ebee1b2161b9d501c926e4e9741e0ff0d709e7",
+    "humanoid_harness/adapters/__init__.py": "b13febbb56fa72cf13a6774f081c830982eee35c0b21f70f4cb8002097c57da1",
+    "humanoid_harness/adapters/amr.py": "f4f7ae706dc73c5702f3a276ee70fd420640b826ab52cf4cce8455df26453b82",
+    "humanoid_harness/adapters/humanoid_mover.py": "54f52211c4d278aa8b68a5b46cf62dca2508ebd19c373017582e9de06864dd6d",
+    "humanoid_harness/adapters/lift.py": "a85f38743ef731ce367c4907c5f531758f9228e41f1de239d3cdc8da9e58a174",
+    "humanoid_harness/adapters/perception.py": "87345bfa8d6bf171915fb6b2441f0042394032a23483d2b6857d953b6056e469",
+    "humanoid_harness/adapters/platform.py": "89089e6e21a234577675def1bd132335dea29621c4c55362afd56de391ae20bc",
+    "humanoid_harness/adapters/vla.py": "654931e2fd429979cfabf0a821fd67477cfce5d1fa053ec5f3d0686505e64c2f",
+    "humanoid_harness/config.py": "0a57500403263ae3b8b033e37c5142e8f7d19d0f23abd36ff1a63d6694e01d07",
+    "humanoid_harness/controller.py": "f67415dd5002c32ea6e3126f65b2502194cf85e7bc5dacd80d7607be755ba230",
+    "humanoid_harness/integration/__init__.py": "5371fb7b2805de228b65d0e51d163de5137bf9e7de1b22083428dbea35f3d3ae",
+    "humanoid_harness/integration/__main__.py": "fc0553497955077048e8bf3d62ecf1a18514d269d44568fc9d89af2ff51264fb",
+    "humanoid_harness/integration/executor.py": "abc47907ab5f7edbbc76db390db0d70b6f6677e834be11aa3a7b8824ed039a92",
+    "humanoid_harness/integration/failure_attempts.py": "b4af6c6f53939fe06814ed7898e526cc58f1ce259e6bb4d441722eb98a60d7bc",
+    "humanoid_harness/models.py": "389833028250d0f19c7a1b57bce8457ac7175e9b71a164ce98b2481969400853",
+    "humanoid_harness/storage.py": "6a3f1ef2dce7f9cdb3b9d263fbb2ce4b8ba1958b015ed1f0a13a4252a14b9d52",
+    "humanoid_harness/stubs.py": "cc956ecf719459eb020726593b6c6f25a4c21e3fa719232d8131810ccd447279",
+    "humanoid_harness/visual.py": "2486ba22fb48695fba4e7fddf7a28f17d010f9962598d913703c33c17bcbbd7e"
+  },
+  "local_checks": {
+    "integration": 43,
+    "integration_seconds": 23.462,
+    "integration_exit_code": 0,
+    "checked_in_settings_launcher_smoke": "Passed within the 43-test suite; actual pinned client construction with network loops stubbed.",
+    "standalone": 21,
+    "standalone_scope": "Inherited prior standalone pass; no standalone production files changed in this pin-only adoption.",
+    "evidence_root": ".humanoid-runs/local-verification/client-lifecycle-pin-01",
+    "verification_summary": "verification-summary.json",
+    "imported_provenance": "imported-provenance.json",
+    "capture_note": "First capture wrapper recorded blank exit despite 43 OK; retained definitive rerun records 43 OK and exit 0."
+  },
+  "actual_platform_acceptance": "Eight isolated corrected-client cases accepted on simulator6d/clientb4; strict mixed-positive-03 and held-placement-restart-02 accepted on simulator1fb/client9be; Nova callback rerun accepted on Nova39/client9be. Earlier baseline and Nova b4 controls retain their own pins; excluded attempts remain excluded.",
+  "initial_integration_commit": "da0f09fd8564e0e5472f2c7144b076759bd1a96f",
+  "independent_review": "CLEAR: independent GPT-6 Sol read-only review verified the exact one-line launcher change, all 19 production hashes, actual client commit/four hashes, retained 43-pass/exit-0 evidence and included checked-settings no-network launcher smoke. Prior 21 standalone passes are inherited; old runtime attribution remains unchanged. Reviewer ran no services, network calls or additional tests.",
+  "hook_commit": "57f856a8e4cc1336d35b7b316f2ae4494422dbf1",
+  "baseline_runtime": {
+    "production_commit": "597ec2c21da1540e11ebd999d3552f84f9859a3c",
+    "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
+    "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
+    "manifest_sha256": "b7e9245fa00aab4ff8fb192c86f63b4c43917575dc173e39ba9fa47cb37a9553"
+  },
+  "client_checkout_head": "9be6207a6c286d5f2f441f37b97b663a6256291a",
+  "client_pending_completion_sha256": "3f2d33d94dd838af21b5e49c64cab1cf5c0a5bd34bb759fa63062e50af5bf228",
+  "corrected_client_runtime": {
+    "production_commit": "6d0111a951dd9506472b7149cb8ab426844a9b93",
+    "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
+    "client_documentation_head": "5969a0167aedbc7c7cbe5b03f5cafe90ec9de4ee",
+    "client_py_sha256": "70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4",
+    "launcher_sha256": "5c52cad1e8a9cee6fbb414fc42ada9625f3eec0ed84fe81b967d7787bf67aefd",
+    "manifest_sha256": "01492605fd47ea3a0435ffce73f62bc881075391a21c1114711a3265642bfaa7",
+    "accepted_isolated_cases": [
+      "failure-drop-fixed-02",
+      "failure-commit-fixed-01",
+      "held-placement-restart-01",
+      "safe-retry-loss-01",
+      "unknown-pick-hold-01",
+      "cancel-unknown-hold-01",
+      "exit76-completion-loss-02",
+      "partial-abc-02"
+    ],
+    "excluded_mixed_case": "mixed-positive-01",
+    "attribution": "Original source and captured manifest remain immutable; current pin adoption does not retroactively retest these cases."
+  },
+  "bridge_production_commit": "1fb043c4f056223e1e7d27b6fa5fabb7fdf5c75d",
+  "launch_time_manifest_sha256": "5a9c6a584d295913ffb6b3d8b58dc143c20a96e8b4ea598da56ba9a193b0551b",
+  "runtime_acceptance": {
+    "report": "RUNTIME-ACCEPTANCE.md",
+    "date": "2026-09-23",
+    "isolated_case_count": 8,
+    "simulator_production_commit": "6d0111a951dd9506472b7149cb8ab426844a9b93",
+    "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
+    "launch_time_manifest_sha256": "01492605fd47ea3a0435ffce73f62bc881075391a21c1114711a3265642bfaa7",
+    "evidence_root": ".humanoid-runs/integration",
+    "audit_index": {
+      "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/astra-docs/accepted-humanoid-audit-index.json",
+      "sha256": "623d52b1f13feeecbf7994e68698416cd423a0d1dcda834a3c832602d4cbc689",
+      "scope": "Eight isolated corrected-client humanoid cases only"
+    },
+    "accepted_isolated_audits": [
+      {
+        "case": "failure-drop-fixed-02",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/failure-drop-fixed-02.json",
+        "sha256": "a3ce1e7d7632de7159d7ded33b3c71221f00d0e49e07ccc1f1d2cb53f93ed8b9",
+        "status": "accepted",
+        "captured_source_files": 295
+      },
+      {
+        "case": "failure-commit-fixed-01",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/failure-commit-fixed-01.json",
+        "sha256": "740c26aa4d8f7bfdfb60457796e94cdba28a6b05c169280531b9caa717a2d9ef",
+        "status": "accepted",
+        "captured_source_files": 295
+      },
+      {
+        "case": "held-placement-restart-01",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/held-placement-restart-01.json",
+        "sha256": "0e156527cd3b2f4be76448a9c9d40f1cf696ecbdd6d6c025c88819f80cff1084",
+        "status": "accepted",
+        "captured_source_files": 299
+      },
+      {
+        "case": "safe-retry-loss-01",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/safe-retry-loss-01.json",
+        "sha256": "1502cfbdcffd3352733233005ce417b4d43b5a358140fac1449cd366ded0c2ae",
+        "status": "accepted",
+        "captured_source_files": 301
+      },
+      {
+        "case": "unknown-pick-hold-01",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/unknown-pick-hold-01.json",
+        "sha256": "aedf67500f419c7e69981fc183bb1116f15ea5566d984166b41f0a6e25f41748",
+        "status": "accepted",
+        "captured_source_files": 301
+      },
+      {
+        "case": "cancel-unknown-hold-01",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/cancel-unknown-hold-01.json",
+        "sha256": "873d25203af143661726e91ccfa951a04bdcfab40550757adff561ac62d16e6e",
+        "status": "accepted",
+        "captured_source_files": 301
+      },
+      {
+        "case": "exit76-completion-loss-02",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/exit76-completion-loss-02.json",
+        "sha256": "328505476ec188653b61b94d3ebdd6bb3d32dc02a13b70c287eb9da0895599a2",
+        "status": "accepted",
+        "captured_source_files": 299
+      },
+      {
+        "case": "partial-abc-02",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/partial-abc-02.json",
+        "sha256": "6ad09a521ed4f06f8f9c0ec4e8c7bb3e8cb0c9dca29dfc807b06b71293dccf1e",
+        "status": "accepted",
+        "captured_source_files": 300
+      }
+    ],
+    "mandatory_supplements": [
+      {
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/audits/exit76-completion-loss-02-transport-correction.json",
+        "sha256": "12bdeeace553e33a63c4b21a40cd0a5c9c17feb360bca51f9083308f36994a53",
+        "reason": "Six withheld summary markers are ten actual frames: five ACKs, four direct errors and one session-completed event. Preserve original audit; use supplement for transport counts."
+      }
+    ],
+    "source_capture_note": "The eight original isolated captures used their stated launch manifest digest and production files. This later acceptance index does not replace or modify any captured source-pin manifest.",
+    "mixed_status": "mixed-positive-01 excluded on original6d/b4; lifecycle-client reruns are recorded separately",
+    "nova_controls_status": "accepted_by_runtime_owner_and_independent_nova_review",
+    "retained_excluded_corrected_client_cases": [
+      "failure-drop-fixed-01",
+      "exit76-completion-loss-01",
+      "partial-abc-01",
+      "mixed-positive-01"
+    ],
+    "later_observation_only": "partial-abc-01-supplement",
+    "nova_controls": {
+      "production_commit": "39c6aff523e95bc03a1db10bb854aec8746d0df9",
+      "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
+      "evidence_root": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-b4-stage/docs/verification/2026-09-22-combined-nova-client-recovery",
+      "accepted": [
+        {
+          "case": "combined-b4-retry-queued-02",
+          "exported_evidence_files": 46,
+          "index_path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-b4-stage/docs/verification/2026-09-22-combined-nova-client-recovery/combined-b4-retry-queued-02/index.json",
+          "index_sha256": "73d9120ab5ab606952f69673b6bac4a8edb99b389366a8c3861d3b3c5e1c7194",
+          "result": "Five full timeouts/exhaustion/live queued exact pending; sixth original report rejected, exact readback confirms; durable callback then distinct followup; two starts, both READY, stock6 to4, FREE."
+        },
+        {
+          "case": "combined-b4-callback-boundary-01",
+          "exported_evidence_files": 54,
+          "index_path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-b4-stage/docs/verification/2026-09-22-combined-nova-client-recovery/combined-b4-callback-boundary-01/index.json",
+          "index_sha256": "4d4a0a7538d5cb55e46fee625b31e905af9433e053daf8b78db123674468c27a",
+          "result": "Test-wrapper kill at client CONFIRMED/callback false, Nova pending; same-store restart callback-only before new work, no original resend; two starts, both READY, stock6 to4, FREE."
+        },
+        {
+          "case": "combined-b4-readiness-false-02",
+          "exported_evidence_files": 53,
+          "index_path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-b4-stage/docs/verification/2026-09-22-combined-nova-client-recovery/combined-b4-readiness-false-02/index.json",
+          "index_sha256": "e6d9ba910cb553dc6c4940c9badf58e40538dbb9cbe1a7ab65aae465450bb536",
+          "result": "Exact known success plus fresh false readiness refuses recovery with immediate journal equality/stores absent. Later legitimate callback settles original READY while physical PAUSED and next QUEUED; one start through bounded observation ~8.1s after refusal. No saved final inventory."
+        }
+      ],
+      "retained_excluded": [
+        "combined-b4-retry-queued-01",
+        "combined-b4-readiness-false-01"
+      ],
+      "review_scope": "Runtime owner and independent Nova task; Task C records references, not a separate Nova runtime audit.",
+      "audit_index": {
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/astra-docs/accepted-nova-audit-index.json",
+        "sha256": "60a1393962908d70b5377603f2d5423938347c70c37a687141861ccaf0ffd41a"
+      },
+      "mandatory_supplement": {
+        "case": "combined-b4-retry-queued-02",
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-b4-stage/docs/verification/2026-09-22-combined-nova-client-recovery/combined-b4-retry-queued-02-checkpoint-supplement/supplement-manifest.json",
+        "sha256": "a8b1d60e26c87b08d8af92a3de8b21022b3a5c6bb07e09bbeabdeb44d4176bb8",
+        "artifact_count": 3,
+        "reason": "Original portable export excludes three five-timeout checkpoint snapshots. Supplement copies unchanged raw bytes; original export remains preserved."
+      },
+      "qualifications": [
+        "Fake ROS provider, real staged platform/Socket.IO/ROS transport; no hardware validation.",
+        "No production source/schema/business corrections during these controls.",
+        "Proxy summary markers omit order payloads; identity attribution uses chronology/API/provider/stores.",
+        "Driver/harness/API stop0 differs from intentional original bridge kill-9, proxy-15 and bridge/provider teardown1.",
+        "Owner live absence checks are distinct from independent saved-cleanup audit.",
+        "Compiled main.js post-check covers that entrypoint only, not complete dist tree.",
+        "Fresh DBs and all excluded raw artifacts remain retained."
+      ]
+    }
+  },
+  "lifecycle_runtime_acceptance": {
+    "simulator_production_commit": "1fb043c4f056223e1e7d27b6fa5fabb7fdf5c75d",
+    "client_production_commit": "9be6207a6c286d5f2f441f37b97b663a6256291a",
+    "launch_time_manifest_sha256": "5a9c6a584d295913ffb6b3d8b58dc143c20a96e8b4ea598da56ba9a193b0551b",
+    "selected_controls": [
+      "strict mixed Nova/Rack A plus humanoid/Rack B order",
+      "Nova callback boundary",
+      "humanoid held-placement restart"
+    ],
+    "status": "accepted_all_three_selected_controls",
+    "software_verification": {
+      "path": "C:/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client/docs/verification/mixed-peer-session/run-provenance.json",
+      "sha256": "5464a808a6d02f06a3667164c2465294c13cdf565e4b3c57233aab912eef007a",
+      "independentInventory": "All13 copiedbytecounts/hash and originalsverified; softwareonly,no runtimeacceptance",
+      "owner": "154focused protocol/pending_completion/pending_failure/settings_diff;385broad; in-pytestactualmoduleimports",
+      "independent": "153focused protocol/pending_completion/pending_failure/hr_failure_settings;385broad; separatepostrunimportprocess from/tmp NOTin-pytest",
+      "broadExclusions": "test_gui_console.py,test_gui_main_window.py,test_gui_settings_form.py,test_pipeline_rois.py,entiretest_log_handler.py",
+      "qualification": "The13filepacketestablishes5fileexclusions,notnine-failurehistoricalrationale; referencepreviousb4evidenceifneeded.",
+      "baselineBehavioral": "3 expectedfailures/124deselected onb4 retained separately",
+      "indexed_evidence_files": 13,
+      "total_files_including_manifest": 14
+    },
+    "retained_excluded_cases": [
+      {
+        "case": "mixed-positive-02",
+        "reason": "Test-only immediate poststop OFFLINE expectation; live recovery chronology observed, wholecase excluded",
+        "index": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/mixed-9be-stage/mixed-positive-02-stopped-index.json",
+        "sha256": "927174caa932b8718a0b0b0c5eb465dcee902275189be069ed50db4bef9c8380",
+        "artifacts": 369
+      }
+    ],
+    "mixed": {
+      "case": "mixed-positive-03",
+      "status": "accepted",
+      "database": "taska_20260922_humanoid_mixed_positive_03",
+      "order_id": "ord_muejtul5_v3tz3g",
+      "session_id": "hr_pick_sess_muejtun4_tf2w6y",
+      "index": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/mixed-9be-stage-03/mixed-positive-03-stopped-index.json",
+      "index_sha256": "d20430cf3c6ee4f8c1bb606c2792d7fe195d827a8531cc7d512bae86d77b7b4a",
+      "artifacts": 368,
+      "source_files": 310,
+      "source_manifest_sha256": "6f8a3ba262a27abf72d19e92a079a0abd1c4b0bead6a97617863fb5a99de97f4",
+      "loaded_modules": 28,
+      "physical_proof_sha256": "50962e281b5d5dfb9ac64ffbf62281f4653d1a75c4e1cc3f899dfcaa27805c37",
+      "release_proof_sha256": "ed37642c1525466b4451220904b3125028327919fc58610e3ff8805df80e82ac",
+      "qualifications": [
+        "Structured client readback trace and matching API snapshots; no HTTP GET body/packet trace.",
+        "Settled/poststop audit JSON files byte-identical; physical comparison is retained-field semantic equality, not blanket physical-file byte equality.",
+        "Poststop administrative FREE/online does not establish live process presence."
+      ]
+    },
+    "nova_callback": {
+      "case": "combined-9be-callback-boundary-01",
+      "status": "accepted_by_TaskA_and_independent_Nova_review",
+      "index": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/nova-9be-stage/docs/verification/2026-09-23-combined-nova-client-9be-recovery/combined-9be-callback-boundary-01/index.json",
+      "index_sha256": "4874948c99bf9984a3d57a7f594ab637f24ecadf3f65c7934e5f91c6a25a8687",
+      "result_sha256": "ee744ff220c679a77a5659e5ca97732292c89a6ffe6b4a3b032b41e78b628d60",
+      "exported_files": 55,
+      "review_scope": "TaskC records and independently inventories references; Nova runtime acceptance is by its owner/reviewer."
+    },
+    "held": {
+      "case": "held-placement-restart-02",
+      "status": "accepted",
+      "database": "taska_20260922_humanoid_held_placement_restart_02",
+      "order_id": "ord_muek8efj_hsy89y",
+      "session_id": "hr_pick_sess_muek8ehj_9fepcq",
+      "task_id": "hr_pick_task_ord_muek8efj_hsy89y_1",
+      "index": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-9be-stage/held-placement-restart-02-stopped-index.json",
+      "index_sha256": "c9a73c723ffd05ec408325c28124a188af2c2a563313bddcb9466461c46ee23a",
+      "artifacts": 378,
+      "source_files": 300,
+      "source_manifest_sha256": "ca166f2bf4c312aec2e56196d068941831c0fcd011c1fcc12ecb8839c1048640",
+      "physical_proof_sha256": "e6477ea8101249c652ee16967bdc193eb7e76b7062e0219872881f073a0df02a",
+      "hold_token": "sim-placement/eb554c3ad157e5164ad71f05f364ea37085869f56220b72f31ade30dbc205789",
+      "hold_version": 1,
+      "readiness_version": 2,
+      "mandatory_supplement": {
+        "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-9be-stage/held-placement-restart-02-hold-byte-supplement.json",
+        "sha256": "ee4e645f2f2c03f32a4b350c2493eb24f70c10727f5417a9286031499bce9fa0",
+        "reason": "Direct owner/readiness/crash-marker byte equality; original physical-byte audit generic scope phrase does not describe actual changes to these files."
+      },
+      "physical_comparison": "14 shared checkpoint/final files byte-identical; integration manifest changes for recovery, and completion store is newly created."
+    },
+    "owner_acceptance_index": {
+      "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/astra-docs/accepted-client-lifecycle-audit-index.json",
+      "sha256": "97dedf15a84276bb2125919fe8eddf2914ce09ea176409ded83aa9621c889e2d",
+      "scope": "Owner formal acceptance of three selected lifecycle controls; excluded mixed01/02 and supplements remain separate."
+    }
+  },
+  "document_kind": "post_run_acceptance_index",
+  "captured_source_pin": {
+    "path": "source-pin.json",
+    "sha256": "5a9c6a584d295913ffb6b3d8b58dc143c20a96e8b4ea598da56ba9a193b0551b",
+    "preserved_unchanged": true
+  },
+  "final_owner_check": {
+    "path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/selected-9be-final-owner-check-02.json",
+    "sha256": "d1ad691ded10376ad78454a2fdc0ce80f2110f091918a8e8a18813897bf4ce05",
+    "scope": "Owner live check: no owned processes/listeners3121-3123; client4,TaskC19,Nova8 production files unchanged. Independent TaskC saved-artifact reviews remain distinct."
+  }
+}
