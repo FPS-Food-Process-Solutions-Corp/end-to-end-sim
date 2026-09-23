@@ -1,10 +1,12 @@
 {
   "schema": 1,
-  "stage": "held-placement-hook-locally-verified-awaiting-client-adoption",
+  "stage": "durable-recovery-adoption-locally-verified",
   "standalone_base_commit": "02fabbec015d9444ece79ec38c089e69ec1faeaa",
-  "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
-  "client_documentation_head": "e6766e8319c9a6a832e8f058135a9d52b869a7c2",
-  "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
+  "client_production_commit": "b4b055765e801b7edd93d0abf4e87d226d6b9bee",
+  "client_documentation_head": "5969a0167aedbc7c7cbe5b03f5cafe90ec9de4ee",
+  "client_py_sha256": "70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4",
+  "client_pending_failure_sha256": "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a",
+  "client_settings_sha256": "01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584",
   "production_files_sha256": {
     "humanoid_harness/__init__.py": "e6c799401cc27b3793ec11ad9f6a2c80b0a72bf9452759b6af0a6a46f03c90ab",
     "humanoid_harness/__main__.py": "e234ab53c8e14d70a8bb84bd39ebee1b2161b9d501c926e4e9741e0ff0d709e7",
@@ -18,20 +20,26 @@
     "humanoid_harness/config.py": "0a57500403263ae3b8b033e37c5142e8f7d19d0f23abd36ff1a63d6694e01d07",
     "humanoid_harness/controller.py": "f67415dd5002c32ea6e3126f65b2502194cf85e7bc5dacd80d7607be755ba230",
     "humanoid_harness/integration/__init__.py": "5371fb7b2805de228b65d0e51d163de5137bf9e7de1b22083428dbea35f3d3ae",
-    "humanoid_harness/integration/__main__.py": "0a0ffa54106c3599eeb5423a2f763ef14fdf2f15a875f568fcb104777ab9a35a",
-    "humanoid_harness/integration/executor.py": "f9b91d834a9d5b03a82bc70b544db526104b991c143075642d09514b0a240103",
+    "humanoid_harness/integration/__main__.py": "5c52cad1e8a9cee6fbb414fc42ada9625f3eec0ed84fe81b967d7787bf67aefd",
+    "humanoid_harness/integration/executor.py": "abc47907ab5f7edbbc76db390db0d70b6f6677e834be11aa3a7b8824ed039a92",
+    "humanoid_harness/integration/failure_attempts.py": "b4af6c6f53939fe06814ed7898e526cc58f1ce259e6bb4d441722eb98a60d7bc",
     "humanoid_harness/models.py": "389833028250d0f19c7a1b57bce8457ac7175e9b71a164ce98b2481969400853",
     "humanoid_harness/storage.py": "6a3f1ef2dce7f9cdb3b9d263fbb2ce4b8ba1958b015ed1f0a13a4252a14b9d52",
     "humanoid_harness/stubs.py": "cc956ecf719459eb020726593b6c6f25a4c21e3fa719232d8131810ccd447279",
     "humanoid_harness/visual.py": "2486ba22fb48695fba4e7fddf7a28f17d010f9962598d913703c33c17bcbbd7e"
   },
   "local_checks": {
-    "integration": 32,
+    "integration": 43,
     "standalone": 21
   },
   "actual_platform_acceptance": "happy-03 accepted; failure-drop-02 and failure-commit-01 baseline characterizations accepted; fixed-client and remaining fault/mixed runs pending",
   "initial_integration_commit": "da0f09fd8564e0e5472f2c7144b076759bd1a96f",
-  "independent_review": "GPT-6 Sol cleared hook source; independent test owner passed 32 integration and 21 standalone tests; baseline review separately passed 29 and 21",
-  "runtime_production_commit": "597ec2c21da1540e11ebd999d3552f84f9859a3c",
-  "runtime_manifest_sha256": "b7e9245fa00aab4ff8fb192c86f63b4c43917575dc173e39ba9fa47cb37a9553"
+  "independent_review": "GPT-6 Sol cleared adoption source; independent test owner passed 43 integration and 21 standalone tests; real-client checked-in-settings launcher smoke passed without network",
+  "hook_commit": "57f856a8e4cc1336d35b7b316f2ae4494422dbf1",
+  "baseline_runtime": {
+    "production_commit": "597ec2c21da1540e11ebd999d3552f84f9859a3c",
+    "client_production_commit": "948fd23c1204f94983cc2e35865e3796f81b8a9c",
+    "client_py_sha256": "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777",
+    "manifest_sha256": "b7e9245fa00aab4ff8fb192c86f63b4c43917575dc173e39ba9fa47cb37a9553"
+  }
 }

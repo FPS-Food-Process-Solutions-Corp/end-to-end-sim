@@ -12,14 +12,14 @@ from argparse import Namespace
 from contextlib import redirect_stdout
 from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from hr_client.client import HumanoidRobotClient, PickExecutionOutcome, PickExecutionStatus
 from hr_client import locations as locations_module
 from hr_client.locations import AmrTarget, CounterLocation, LocationTable
-from hr_client.models import PickSubtask
+from hr_client.models import PickFailureReason, PickSubtask
 from hr_client.pending_completion import CompletionIdentity, CompletionState, PendingCompletionStore
+from hr_client.pending_failure import FailureIdentity, FailureState, PendingFailureStore
 from hr_client.robot_claim import RobotClaim
 from hr_client.settings import HrSettings
 from platform_common.pose_library import PoseLibrary
@@ -38,6 +38,10 @@ from tests.humanoid_integration.failure_crash_driver import config_factory as fa
 class PublicCompletionClient:
     def __init__(self):
         self.calls = []
+        self.hold_calls = []
+
+    def hold_execution_for_recovery(self, hold_id, message, *, task_id=None):
+        self.hold_calls.append((hold_id, message, task_id))
 
     async def queue_recovered_completion(self, identity, proof):
         self.calls.append((identity, proof))
@@ -49,6 +53,19 @@ def unit_state(root, ctx):
         name: json.loads((directory / (name + ".json")).read_text(encoding="ascii"))
         for name in ("controller", "device")
     }
+
+
+async def confirm_failed_outcome(executor, public_store, ctx, outcome):
+    if outcome.status is not PickExecutionStatus.FAILED or outcome.reason is not PickFailureReason.UNKNOWN:
+        raise AssertionError("Expected an exact physical failure outcome")
+    identity = FailureIdentity(ctx.session_id, ctx.task_id, ctx.order_id, ctx.retry_count, outcome.execution_id)
+    payload = {"pickSessionId": ctx.session_id, "pickTaskId": ctx.task_id, "message": outcome.message}
+    pending = public_store.queue(identity, outcome.reason.value, payload, outcome.terminal_evidence)
+    ack = {"eventType": "platform.pick_task_failed", "orderId": ctx.order_id, "pickSessionId": ctx.session_id, "pickTaskId": ctx.task_id, "status": "FAILED", "retryCount": ctx.retry_count, "maxRetries": 1, "willRetry": ctx.retry_count < 1, "message": outcome.message}
+    confirmed = public_store.update(pending, state=FailureState.CONFIRMED, platform_evidence={"source": "ack", "response": ack})
+    await executor.audit_failure_confirmation(confirmed)
+    public_store.update(confirmed, callback_acknowledged=True)
+    return identity
 
 
 class HumanoidExecutorTests(unittest.TestCase):
@@ -157,9 +174,11 @@ class HumanoidExecutorTests(unittest.TestCase):
                     return None
 
                 try:
+                    spec = executor.recovery_hold_spec()
+                    self.assertEqual(spec["task_id"], ctx.task_id)
+                    ensure_startup_ready(executor)
+                    self.assertEqual(executor.install_recovery_hold(client), spec)
                     queued = await executor.recover_completed(client)
-                    with self.assertRaises(ValueError):
-                        ensure_startup_ready(executor)
                     redelivered = await executor.run(task_context(retry_count=1), progress)
                     return queued, client.calls, redelivered
                 finally:
@@ -189,6 +208,60 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
             self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
             self.assertEqual(json.loads((root / "device-readiness.json").read_text(encoding="ascii"))["status"], "unknown")
+
+    def test_bound_owner_hold_write_failure_reconciles_only_after_public_hold_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ctx = task_context()
+            original_write = executor_module.write_json
+
+            def fail_bound_hold(path, value):
+                if Path(path).name == "device-owner.json" and isinstance(value.get("recovery_hold"), dict):
+                    raise OSError("simulated bound HOLD disk failure")
+                return original_write(path, value)
+
+            async def first_run():
+                executor = HumanoidPickExecutor(root, config_factory=lambda task: faulty_config(task, "post_place_retract", "unknown"))
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                try:
+                    return await executor.run(ctx, progress)
+                finally:
+                    await executor.drain()
+
+            with patch.object(executor_module, "write_json", side_effect=fail_bound_hold), redirect_stdout(io.StringIO()):
+                outcome = asyncio.run(first_run())
+            self.assertEqual(outcome.status, PickExecutionStatus.UNRESOLVED)
+            _, state = unit_state(root, ctx)
+            self.assertIsInstance(state["controller"]["physical_proof"], dict)
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
+
+            async def restart():
+                executor = HumanoidPickExecutor(root)
+                client = PublicCompletionClient()
+                try:
+                    with self.assertRaises(StateError):
+                        await executor.recover_completed(client)
+                    self.assertEqual(client.calls, [])
+                    spec = executor.recovery_hold_spec()
+                    self.assertIsNotNone(spec)
+                    self.assertEqual(executor.install_recovery_hold(client), spec)
+                    queued = await executor.recover_completed(client)
+                    return spec, queued, client.calls
+                finally:
+                    await executor.drain()
+
+            spec, queued, calls = asyncio.run(restart())
+            self.assertEqual(len(queued), 1)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], queued[0])
+            self.assertEqual(spec["task_id"], ctx.task_id)
+            self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "hold")
+            _, after = unit_state(root, ctx)
+            self.assertEqual(sum(record["kind"] == "place" and record["effect_applied"] for record in after["device"]["executions"].values()), 1)
 
     def test_held_placement_crash_hook_requires_valid_place_proof_and_is_opt_in(self):
         for hook, kind, expected_status in ((True, "pick", PickExecutionStatus.UNRESOLVED), (False, "post_place_retract", PickExecutionStatus.COMPLETED)):
@@ -225,13 +298,15 @@ class HumanoidExecutorTests(unittest.TestCase):
                 return default_config(ctx)
 
             async def scenario():
-                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                executor = HumanoidPickExecutor(root, config_factory=config_factory, pending_failure_store=public_store)
 
                 async def progress(_subtask, _percent):
                     return None
 
                 first = await executor.run(first_ctx, progress)
                 failed = await executor.run(failed_ctx, progress)
+                await confirm_failed_outcome(executor, public_store, failed_ctx, failed)
                 third = await executor.run(third_ctx, progress)
                 release_before_retry = json.loads((root / "device-readiness.json").read_text(encoding="ascii"))
                 retried = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
@@ -268,6 +343,76 @@ class HumanoidExecutorTests(unittest.TestCase):
             registry = json.loads((root / "task-identities.json").read_text(encoding="ascii"))
             self.assertEqual(registry["tasks"][failed_ctx.task_id]["retry_counts"], [0, 1])
 
+    def test_failure_intent_precedes_outcome_and_pending_older_attempt_blocks_new_retry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ctx = task_context(task_id="pastry-b")
+            public_store = PendingFailureStore(str(root / "pending-failures.json"))
+
+            async def scenario():
+                executor = HumanoidPickExecutor(root, config_factory=lambda task: faulty_config(task, "pick", "fail", (1, 2, 3)), pending_failure_store=public_store)
+
+                async def progress(_subtask, _percent):
+                    return None
+
+                try:
+                    failed = await executor.run(ctx, progress)
+                    saved = json.loads((root / "failure-attempts.json").read_text(encoding="ascii"))
+                    repeat = await executor.run(ctx, progress)
+                    newer = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
+                    client = HumanoidRobotClient(HrSettings(), object(), RobotClaim(), None, pick_executor=executor, pending_store=PendingCompletionStore(str(root / "pending-completions.json")), pending_failure_store=public_store, failure_callback=executor.audit_failure_confirmation)
+                    seeded = await executor.recover_failures(client)
+                    return failed, saved, repeat, newer, seeded
+                finally:
+                    await executor.drain()
+
+            with redirect_stdout(io.StringIO()):
+                failed, saved, repeat, newer, seeded = asyncio.run(scenario())
+            self.assertEqual(failed.status, PickExecutionStatus.FAILED)
+            self.assertTrue(failed.ready_for_next)
+            self.assertEqual(len(saved["attempts"]), 1)
+            attempt = next(iter(saved["attempts"].values()))
+            self.assertEqual(attempt["state"], "pending")
+            self.assertEqual(attempt["identity"]["retry_count"], 0)
+            self.assertEqual(attempt["identity"]["execution_id"], failed.execution_id)
+            self.assertEqual(attempt["terminal_evidence"], failed.terminal_evidence)
+            self.assertEqual(repeat.status, PickExecutionStatus.FAILED)
+            self.assertEqual(repeat.terminal_evidence, failed.terminal_evidence)
+            self.assertEqual(newer.status, PickExecutionStatus.UNRESOLVED)
+            self.assertEqual(len(seeded), 1)
+            self.assertEqual(seeded[0], FailureIdentity(**attempt["identity"]))
+            self.assertIs(PendingFailureStore(str(root / "pending-failures.json")).get(seeded[0]).state, FailureState.PENDING)
+            _, state = unit_state(root, ctx)
+            self.assertEqual(sum(record["kind"] == "pick" for record in state["device"]["executions"].values()), 3)
+            self.assertEqual(sum(record["kind"] == "failure_retract" and record["effect_applied"] for record in state["device"]["executions"].values()), 1)
+            self.assertEqual(json.loads((root / "task-identities.json").read_text(encoding="ascii"))["tasks"][ctx.task_id]["retry_counts"], [0])
+
+    def test_direct_run_rejects_orphan_confirmed_public_failure_before_any_motion(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            public_store = PendingFailureStore(str(root / "pending-failures.json"))
+            executor = HumanoidPickExecutor(root, pending_failure_store=public_store)
+            orphan = FailureIdentity("session-200", "orphan-task", "order-200", 0, "orphan-physical")
+            payload = {"pickSessionId": orphan.session_id, "pickTaskId": orphan.task_id, "message": "orphan failure"}
+            pending = public_store.queue(orphan, PickFailureReason.UNKNOWN.value, payload)
+            ack = {"eventType": "platform.pick_task_failed", "orderId": orphan.order_id, "pickSessionId": orphan.session_id, "pickTaskId": orphan.task_id, "status": "FAILED", "retryCount": 0, "maxRetries": 1, "willRetry": True, "message": payload["message"]}
+            confirmed = public_store.update(pending, state=FailureState.CONFIRMED, platform_evidence={"source": "ack", "response": ack})
+            public_store.update(confirmed, callback_acknowledged=True)
+
+            async def scenario():
+                async def progress(_subtask, _percent):
+                    return None
+
+                try:
+                    return await executor.run(task_context(task_id="pastry-new"), progress)
+                finally:
+                    await executor.drain()
+
+            outcome = asyncio.run(scenario())
+            self.assertEqual(outcome.status, PickExecutionStatus.UNRESOLVED)
+            self.assertEqual(list((root / "units").iterdir()), [])
+            self.assertEqual(json.loads((root / "task-identities.json").read_text(encoding="ascii"))["tasks"], {})
+
     def test_other_units_unsafe_post_place_hold_blocks_saved_failure_retry(self):
         for outcome in ("unknown", "collision", "cancel_unknown", "fail"):
             with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as temporary:
@@ -281,12 +426,14 @@ class HumanoidExecutorTests(unittest.TestCase):
                     return faulty_config(ctx, "post_place_retract", outcome, (1, 2) if outcome == "fail" else (1,))
 
                 async def scenario():
-                    executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                    public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                    executor = HumanoidPickExecutor(root, config_factory=config_factory, pending_failure_store=public_store)
 
                     async def progress(_subtask, _percent):
                         return None
 
                     failed = await executor.run(failed_ctx, progress)
+                    await confirm_failed_outcome(executor, public_store, failed_ctx, failed)
                     later = await executor.run(later_ctx, progress)
                     retried = await executor.run(task_context(task_id="pastry-b", retry_count=1), progress)
                     same_held = await executor.run(task_context(task_id="pastry-c", retry_count=1), progress)
@@ -321,12 +468,14 @@ class HumanoidExecutorTests(unittest.TestCase):
                 return default_config(ctx)
 
             async def fail_first():
-                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                executor = HumanoidPickExecutor(root, config_factory=config_factory, pending_failure_store=public_store)
 
                 async def progress(_subtask, _percent):
                     return None
 
                 result = await executor.run(failed_ctx, progress)
+                await confirm_failed_outcome(executor, public_store, failed_ctx, result)
                 await executor.drain()
                 return result
 
@@ -343,7 +492,8 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertIsNone(before["controller"]["post_place_readiness_proof"])
 
             async def recover():
-                executor = HumanoidPickExecutor(root, config_factory=config_factory)
+                public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                executor = HumanoidPickExecutor(root, config_factory=config_factory, pending_failure_store=public_store)
                 client = PublicCompletionClient()
 
                 async def progress(_subtask, _percent):
@@ -376,20 +526,12 @@ class HumanoidExecutorTests(unittest.TestCase):
             client_source = config_dir.parent.parent
             events = []
 
-            class InertClient:
-                def __init__(self, settings, hardware, claim, locations, pick_executor):
-                    self.sio = SimpleNamespace(connect=self.connect)
-                    self.executor = pick_executor
+            async def inert_run(_client):
+                events.append("run")
+                await asyncio.Future()
 
-                async def connect(self, _url, **_kwargs):
-                    raise AssertionError("Local launcher lifecycle test must not connect")
-
-                async def run(self):
-                    events.append("run")
-                    await asyncio.Future()
-
-                async def stop(self):
-                    events.append("stop")
+            async def inert_stop(_client):
+                events.append("stop")
 
             args = Namespace(
                 client_source=client_source,
@@ -403,7 +545,7 @@ class HumanoidExecutorTests(unittest.TestCase):
                 crash_after_place_once=False,
                 crash_after_held_placement_once=False,
             )
-            with patch.object(launcher_module, "HumanoidRobotClient", InertClient), redirect_stdout(io.StringIO()):
+            with patch.object(HumanoidRobotClient, "run", inert_run), patch.object(HumanoidRobotClient, "stop", inert_stop), redirect_stdout(io.StringIO()):
                 code = asyncio.run(launcher_module.run(args))
             self.assertEqual(code, 0)
             self.assertEqual(events, ["run", "stop"])
@@ -519,17 +661,17 @@ class HumanoidExecutorTests(unittest.TestCase):
                 restarted = HumanoidPickExecutor(root)
                 client = PublicCompletionClient()
                 try:
-                    recovered = await restarted.recover_completed(client)
                     with self.assertRaises(ValueError):
                         ensure_startup_ready(restarted)
-                    return outcome, recovered, client.calls
+                    with self.assertRaises(StateError):
+                        await restarted.recover_completed(client)
+                    return outcome, client.calls
                 finally:
                     await restarted.drain()
 
             with redirect_stdout(io.StringIO()):
-                outcome, recovered, calls = asyncio.run(scenario())
+                outcome, calls = asyncio.run(scenario())
             self.assertEqual(outcome.status, PickExecutionStatus.UNRESOLVED)
-            self.assertEqual(recovered, [])
             self.assertEqual(calls, [])
 
     def test_completed_task_id_cannot_be_reassigned_to_changed_counter_order_or_session(self):
@@ -664,13 +806,15 @@ class HumanoidExecutorTests(unittest.TestCase):
             ctx = task_context()
 
             async def scenario(factory):
-                executor = HumanoidPickExecutor(root, config_factory=factory)
+                public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                executor = HumanoidPickExecutor(root, config_factory=factory, pending_failure_store=public_store)
 
                 async def progress(_subtask, _percent):
                     return None
 
                 outcome = await executor.run(ctx, progress)
-                retry = await executor.run(task_context(retry_count=9), progress)
+                await confirm_failed_outcome(executor, public_store, ctx, outcome)
+                retry = await executor.run(task_context(retry_count=1), progress)
                 await executor.drain()
                 return outcome, retry
 
@@ -747,22 +891,31 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(json.loads((root / "device-owner.json").read_text(encoding="ascii"))["status"], "active")
 
             async def scenario():
-                executor = HumanoidPickExecutor(root, config_factory=failure_crash_config)
-                client = PublicCompletionClient()
+                public_store = PendingFailureStore(str(root / "pending-failures.json"))
+                completion_store = PendingCompletionStore(str(root / "pending-completions.json"))
+                executor = HumanoidPickExecutor(root, config_factory=failure_crash_config, pending_failure_store=public_store)
+                client = HumanoidRobotClient(HrSettings(), object(), RobotClaim(), None, pick_executor=executor, pending_store=completion_store, pending_failure_store=public_store, failure_callback=executor.audit_failure_confirmation)
                 recovered = await executor.recover_completed(client)
+                failure_ids = await executor.recover_failures(client)
                 ensure_startup_ready(executor)
+                self.assertEqual(len(failure_ids), 1)
+                self.assertEqual(failure_ids[0].retry_count, 0)
+                pending = public_store.get(failure_ids[0])
+                self.assertIs(pending.state, FailureState.PENDING)
+                saved_outcome = PickExecutionOutcome.failed(PickFailureReason.UNKNOWN, pending.message, execution_id=pending.identity.execution_id, terminal_evidence=pending.terminal_evidence)
+                await confirm_failed_outcome(executor, public_store, ctx, saved_outcome)
 
                 async def progress(_subtask, _percent):
                     return None
 
                 retry = await executor.run(task_context(retry_count=1), progress)
                 await executor.drain()
-                return recovered, client.calls, retry
+                return recovered, failure_ids, retry
 
             with redirect_stdout(io.StringIO()):
-                recovered, calls, retry = asyncio.run(scenario())
+                recovered, failure_ids, retry = asyncio.run(scenario())
             self.assertEqual(recovered, [])
-            self.assertEqual(calls, [])
+            self.assertEqual(len(failure_ids), 1)
             self.assertEqual(retry.status, PickExecutionStatus.FAILED)
             self.assertTrue(retry.ready_for_next)
             _, after = unit_state(root, ctx)
@@ -808,17 +961,17 @@ class HumanoidExecutorTests(unittest.TestCase):
                     return None
 
                 try:
-                    recovered = await executor.recover_completed(client)
                     with self.assertRaises(ValueError):
                         ensure_startup_ready(executor)
+                    with self.assertRaises(StateError):
+                        await executor.recover_completed(client)
                     repeat = await executor.run(task_context(retry_count=1), progress)
-                    return recovered, client.calls, repeat
+                    return client.calls, repeat
                 finally:
                     await executor.drain()
 
             with redirect_stdout(io.StringIO()):
-                recovered, calls, repeat = asyncio.run(after_restart())
-            self.assertEqual(recovered, [])
+                calls, repeat = asyncio.run(after_restart())
             self.assertEqual(calls, [])
             self.assertEqual(repeat.status, PickExecutionStatus.UNRESOLVED)
             _, state = unit_state(root, ctx)

@@ -12,7 +12,10 @@ from urllib.parse import urlparse
 
 from hr_client.client import HumanoidRobotClient
 from hr_client import client as client_module
+from hr_client import pending_failure as pending_failure_module
+from hr_client import settings as settings_module
 from hr_client.locations import LocationTable
+from hr_client.pending_failure import PendingFailureStore
 from hr_client.robot_claim import RobotClaim
 from hr_client.settings import load as load_settings
 from platform_common.pose_library import PoseLibrary
@@ -21,7 +24,9 @@ from .executor import HumanoidPickExecutor, default_config
 from ..storage import read_json, write_json
 
 
-EXPECTED_CLIENT_SHA256 = "65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777"
+EXPECTED_CLIENT_SHA256 = "70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4"
+EXPECTED_FAILURE_SHA256 = "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a"
+EXPECTED_SETTINGS_SHA256 = "01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584"
 
 
 class InertHardware:
@@ -50,6 +55,10 @@ def parser() -> argparse.ArgumentParser:
 
 
 def ensure_startup_ready(executor: HumanoidPickExecutor) -> None:
+    if executor._owner["status"] == "idle":
+        return
+    if executor._owner["status"] == "hold" and executor.recovery_hold_spec() is not None:
+        return
     if executor._owner["status"] != "idle":
         raise ValueError("Persistent physical owner remains unresolved; client startup is held: " + str(executor._owner))
 
@@ -91,11 +100,17 @@ def simulation_locations(source_path: Path, state_root: Path) -> Path:
 
 async def run(args) -> int:
     source = args.client_source.resolve()
+    pinned = ((client_module, "client.py", EXPECTED_CLIENT_SHA256),
+              (pending_failure_module, "pending_failure.py", EXPECTED_FAILURE_SHA256),
+              (settings_module, "settings.py", EXPECTED_SETTINGS_SHA256))
+    for module, filename, expected_hash in pinned:
+        loaded_path = Path(module.__file__).resolve()
+        expected_path = source / "hr_client" / filename
+        actual = hashlib.sha256(loaded_path.read_bytes()).hexdigest()
+        if loaded_path != expected_path or actual != expected_hash:
+            raise ValueError(f"Loaded platform-client module is not pinned: {loaded_path} sha256={actual}; expected {expected_path} sha256={expected_hash}")
     loaded = Path(client_module.__file__).resolve()
-    expected = source / "hr_client" / "client.py"
-    actual_hash = hashlib.sha256(loaded.read_bytes()).hexdigest()
-    if loaded != expected or actual_hash != EXPECTED_CLIENT_SHA256:
-        raise ValueError(f"Loaded platform-client is not pinned: {loaded} sha256={actual_hash}; expected {expected} sha256={EXPECTED_CLIENT_SHA256}")
+    actual_hash = EXPECTED_CLIENT_SHA256
     module_names = sorted(name for name in sys.modules if name in ("hr_client", "platform_common") or name.startswith(("hr_client.", "platform_common.")))
     loaded_sources = {}
     for module_name in module_names:
@@ -127,7 +142,7 @@ async def run(args) -> int:
     locations = LocationTable.load(str(location_overlay), poses.data)
     if locations.is_err or locations.data is None:
         raise ValueError(locations.message)
-    settings = replace(settings, server=replace(settings.server, url=args.url, completion_readback_url=args.readback_url, device_id=args.device_id), paths=replace(settings.paths, locations=str(location_overlay), pending_completions=str(root / "pending-completions.json")), logging=replace(settings.logging, file=str(root / "platform-client.log")))
+    settings = replace(settings, server=replace(settings.server, url=args.url, completion_readback_url=args.readback_url, device_id=args.device_id), paths=replace(settings.paths, locations=str(location_overlay), pending_completions=str(root / "pending-completions.json"), pending_failures=str(root / "pending-failures.json")), logging=replace(settings.logging, file=str(root / "platform-client.log")))
     fault_map = {}
     if args.faults_json is not None:
         fault_map = json.loads(args.faults_json.read_text(encoding="utf-8"))
@@ -142,10 +157,17 @@ async def run(args) -> int:
         config["faults"] = faults
         return config
 
-    executor = HumanoidPickExecutor(root, config_factory=config_factory, crash_after_place_once=args.crash_after_place_once, crash_after_held_placement_once=args.crash_after_held_placement_once)
+    failure_store = PendingFailureStore(str(root / "pending-failures.json"))
+    executor = HumanoidPickExecutor(root, config_factory=config_factory, crash_after_place_once=args.crash_after_place_once, crash_after_held_placement_once=args.crash_after_held_placement_once, pending_failure_store=failure_store)
     try:
+        executor.reconcile_active()
+        hold_spec = executor.recovery_hold_spec() if executor._owner["status"] == "hold" else None
+        ensure_startup_ready(executor)
         claim = RobotClaim()
-        client = HumanoidRobotClient(settings, InertHardware(), claim, locations.data, pick_executor=executor)
+        client = HumanoidRobotClient(settings, InertHardware(), claim, locations.data, pick_executor=executor,
+                                    pending_failure_store=failure_store, failure_callback=executor.audit_failure_confirmation)
+        if hold_spec is not None:
+            executor.install_recovery_hold(client)
         original_connect = client.sio.connect
 
         async def websocket_connect(url, **kwargs):
@@ -154,12 +176,15 @@ async def run(args) -> int:
 
         client.sio.connect = websocket_connect
         recovered = await executor.recover_completed(client)
+        recovered_failures = await executor.recover_failures(client)
         ensure_startup_ready(executor)
         manifest = {"schema": 1, "client_source": str(source), "loaded_client_file": str(loaded), "loaded_client_sha256": actual_hash,
                     "loaded_sources": loaded_sources,
                     "settings_source": settings.source_path, "state_root": str(root), "socket_url": args.url, "readback_url": args.readback_url,
                     "simulation_locations": str(location_overlay),
-                    "device_id": args.device_id, "recovered_completions": [item.key for item in recovered], "simulator": "humanoid_harness.StubDevice/1"}
+                    "device_id": args.device_id, "recovered_completions": [item.key for item in recovered],
+                    "recovered_failures": [item.key for item in recovered_failures], "recovery_hold_id": hold_spec["hold_id"] if hold_spec else None,
+                    "simulator": "humanoid_harness.StubDevice/1"}
         write_json(root / "integration-manifest.json", manifest)
         print(json.dumps(manifest, sort_keys=True), flush=True)
         stop_event = asyncio.Event()

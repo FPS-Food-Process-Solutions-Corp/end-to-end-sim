@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+from hr_client.pending_failure import PendingFailureStore
+
 from humanoid_harness.integration import HumanoidPickExecutor
 from humanoid_harness.stubs import StubDevice
 
@@ -13,7 +15,7 @@ from .fixtures import task_context
 
 
 async def main(state_root):
-    executor = HumanoidPickExecutor(state_root)
+    executor = HumanoidPickExecutor(state_root, pending_failure_store=PendingFailureStore(str(state_root / "pending-failures.json")))
     original_save = StubDevice._save
 
     def crash_after_durable_travel(device):

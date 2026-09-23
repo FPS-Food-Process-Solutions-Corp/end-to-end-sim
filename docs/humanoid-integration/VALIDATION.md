@@ -4,12 +4,12 @@ Date: 2026-09-22. Branch: `codex/humanoid-platform-integration`, based on standa
 
 ## Local acceptance
 
-**32 integration tests and all 21 existing standalone tests pass** with the held-placement crash hook. The initial `da0f09fd8564e0e5472f2c7144b076759bd1a96f` checkpoint had 16 integration tests; the accepted device-readiness baseline `597ec2c` had 29. These isolated tests do not establish an actual platform order result. Integration tests import the pinned real client's public context, outcome, identity and completion queue classes, while using fresh local simulator fixtures. No service, network, device or package installation was involved.
+**43 integration tests and all 21 existing standalone tests pass** with durable failure reporting and public recovery-hold adoption. The client production pin is `b4b055765e801b7edd93d0abf4e87d226d6b9bee`, tested at documentation HEAD `5969a0167aedbc7c7cbe5b03f5cafe90ec9de4ee`. These isolated tests use real client types, client construction and temporary stores with synthetic exact acknowledgment evidence. They do not establish an actual platform order result. No service, network, device or package installation was involved.
 
 Integration command inside the existing Ubuntu-22.04 environment:
 
 ```bash
-PYTHONPATH=/mnt/c/Users/andyl/.codex/worktrees/dfcb/platform-client:/mnt/c/Users/andyl/.codex/worktrees/f0cd/end-to-end-sim /home/user/.venvs/end-to-end-sim-ros/bin/python -m unittest discover -s tests/humanoid_integration -p 'test_*.py' -q
+PYTHONPATH=/mnt/c/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client:/mnt/c/Users/andyl/.codex/worktrees/f0cd/end-to-end-sim /home/user/.venvs/end-to-end-sim-ros/bin/python -m unittest discover -s tests/humanoid_integration -p 'test_*.py' -q
 ```
 
 Standalone command from this worktree on Windows:
@@ -21,21 +21,28 @@ Standalone command from this worktree on Windows:
 | Boundary | Local evidence |
 | --- | --- |
 | Assigned execution | Stops at physical proof without local platform reports, task selection or front-idle motion. |
-| Public client seam | Actual `TaskContext`, `PickExecutionOutcome`, `CompletionIdentity`, awaited progress and public pending completion queue. |
+| Public client seam | Actual context/outcome, completion/failure identities and stores, awaited progress, public recovery queues and synchronous recovery hold. |
 | Identity | Rejects changed order/session/task/counter or item/source slot; retry metadata does not repick a completed unit. |
 | Counter 4 | Real `LocationTable` loads the simulation overlay; original relative trajectory references remain valid after relocation. |
 | Safe failure | Exact no-effect source evidence, empty-hand/stocked-rack observation and bounded travel recovery precede FAILED with readiness true. Unknown/collision/cancel evidence holds. |
 | Current device readiness | New units inherit the latest verified robot state. B failure, C success, then B retry preserves C's current release and adds no B motion. Corrupted release pointer, posture or source fails closed. |
 | Placement and readiness | Verified placement survives an unsafe post-place recovery as COMPLETED with readiness false and a hold. Same-identity delivery cannot clear an explicit hold. |
 | Recovery | Child process exits after a durable place effect before proof; a fresh process recovers through the public queue with exactly one pick and place. |
-| Held-placement crash | Real child exits 78 only after exact placement proof, durable HOLD and unknown readiness, before returning its executor outcome; no pending-completion file exists. A fresh executor seeds that proof into a test receiver for the public recovery method, and the startup helper rejects the retained hold; the device still has one place effect. A separate fresh child with an existing one-shot marker returns COMPLETED with readiness false and leaves the marker unchanged. Default mode and unknown pick without placement cannot trigger the hook. These isolated children do not construct a real client or connect to the platform. |
+| Held-placement crash | Real child exits 78 after exact placement proof, durable HOLD and unknown readiness, before returning its outcome; no pending-completion file exists. Recovery requires installing the bound public hold before queueing, preserving one place. An existing marker suppresses another crash. Default mode and unknown pick without proof cannot trigger it. |
+| Failure reporting | Exact retry intent persists before FAILED; confirmed public-store callback audit precedes a new report generation. Changed identity/source/proof/message, ambiguous predecessors, orphan public records and missing physical journals fail closed. |
+| Persistence failure | Failed intent/audit writes cannot appear saved in memory. A failed bound-HOLD write returns unresolved without queueing; fresh exact ACTIVE reconciliation may persist and install a new hold before recovering the same placement. |
+| Real client hold | Real client with fresh stores stays PAUSED before queueing and across restart. Wrong token/version/source and direct recovery without synchronous installation are rejected. These local checks do not establish server reporting while held. |
 | Cancellation | Cleanup timeout cannot orphan an unguarded worker; late physical effects remain held and the device lock stays protected. |
 | Startup and corruption | Unresolved owner gates client startup; corrupt/stale/mismatched proof cannot become completion. |
-| Launcher | Inert client composition starts/stops without hardware or service calls in the local lifecycle test. |
+| Launcher | Loads unchanged checked-in settings, constructs the actual client with fresh stores, performs recovery/setup, writes its manifest and stops. Only run/stop network loops are stubbed; no optional key is injected. |
 
-For the baseline, all eight integration test source files and the five changed production files passed ASCII, syntax and module-level-import checks; independent Sol review reran both suites with 29/29 and 21/21 passing. The hook revision adds a ninth integration test source file. Its test owner ran the complete suites with 32/32 and 21/21 passing and checked all nine test files for ASCII, syntax and module-level imports. The production owner checked compilation and standalone tests; independent source review cleared the two changed production files and confirmed ASCII and a clean diff. The integration still uses the real client source at documentation HEAD `e6766e8319c9a6a832e8f058135a9d52b869a7c2`; `client.py` SHA256 is `65bc9effd3c11241517aad58290d109a67f6c792c165c286013267772a91d777`.
+The independent test owner ran the final 43-test integration suite in 20.985 seconds. All ten integration test files passed ASCII, syntax and module-level-import checks; the diff check passed. The 21 standalone tests passed in the preceding capture, before the final integration-only history guard, and were not needlessly repeated. Independent Sol review found no remaining blocker in the ledger, physical evidence, bound hold, startup ordering or direct executor gates. The production owner separately passed ASCII, syntax, module-level-import and compilation checks on all three changed integration modules.
 
-Hard-stop regressions cover failure-retract effects, placement before physical proof, post-place retract effects, placement before client queueing, and verified placement after entering a physical hold. Eligible ACTIVE recovery reconciles exact saved actions, completes the bounded safe-release sequence and verifies one physical place. A persisted explicit hold cannot use that recovery to clear itself. The exit-78 hook and its local tests do not establish reporting while held with the baseline client; [RECOVERY-ADOPTION.md](RECOVERY-ADOPTION.md) records the agreed new-client design and remaining acceptance.
+Tested client raw hashes are `client.py` `70ad4509c788d2736c2a38b029e17a498e7ce48a39c60e47bedee558120f9cd4`, `pending_failure.py` `8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a`, and `settings.py` `01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584`. The source manifest records all simulator production hashes. [RECOVERY-ADOPTION.md](RECOVERY-ADOPTION.md) records the separately reviewed client checks and the settings-loader defect caught by the real launcher test.
+
+Historical checkpoints remain distinct: `da0f09f` had 16 integration tests, the accepted `597ec2c` readiness baseline had 29, and `57f856a` had 32, all with the older dfcb client. The new result does not replace their source attribution or establish actual-platform acceptance.
+
+Hard-stop regressions cover failure-retract effects, placement before proof, post-place retract effects, placement before client queueing, and verified placement after entering a hold. Eligible ACTIVE recovery reconciles exact actions into verified release or a bound placement hold, preserving one place. Explicit holds cannot auto-clear. Actual held reporting, fixed failure-loss cases and other fresh runtime acceptance remain pending.
 
 ## Actual platform acceptance
 
@@ -62,7 +69,7 @@ The following matrix separates accepted baseline evidence from work still pendin
 | Safe retries and confirmed loss | Separate bounded navigation, VLA and full-cycle budgets; stable IDs for reconciliation, new IDs only for authorized physical attempts; exact successful placement and inventory effects. |
 | Completion acknowledgment loss | Real client pending queue/readback/reconnect settles the exact completion; no additional physical pick or place. |
 | Placement before client queue, then restart | A real process stop after a durable place; restart preserves placement and verifies safe release; public client recovery queue settles once. |
-| Held-placement reporting restart | Pending new public client seam: recover an exact placed pastry's report while retaining PAUSED and the durable physical hold; no FREE status, next-task request or additional motion. |
+| Held-placement reporting restart | Public seam adopted and locally checked; actual run pending. Recover the exact placement report while retaining PAUSED and the physical hold; no FREE, next-task request or additional motion. |
 | Physical uncertainty and cancellation | Persistent hold, no unjustified terminal failure/success, no dependent motion; same-identity redelivery cannot clear a safety hold. |
 | Partial A/B/C | A completes; B exhausts known no-effect attempts and recovers safely; C completes before B's platform retry; B is not picked again. Preserve the platform's terminal failed task, unconsumed failed reservation and PREPARING order if observed. |
 | Lost outbound failure report | Baseline `failure-drop-02` characterization accepted. Fixed-client rerun remains pending with a separate pin and fresh fixture. |

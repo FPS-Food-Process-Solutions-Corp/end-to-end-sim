@@ -2,6 +2,8 @@
 
 Branch: `codex/humanoid-platform-integration`, based on standalone harness commit `02fabbec015d9444ece79ec38c089e69ec1faeaa`. Astra owns coordination, decisions and documentation; Luna reads sources without edits; Sol implements, tests, reviews and owns agreed simulation runtime operations.
 
+Current checkpoint: the new public failure-report and recovery-hold APIs are adopted against client production `b4b055765e801b7edd93d0abf4e87d226d6b9bee`, with 43 integration tests, 21 standalone tests and independent review passing. The real-client launcher smoke loads checked-in settings without an optional-field workaround. Exact hashes and historical baseline attribution are in [source-pin.json](source-pin.json); fresh actual acceptance remains pending. The verified baseline details below retain the original implementation context.
+
 ## End-to-end boundary
 
 Use the unchanged real coffee-platform API and Socket.IO service, the recovered real platform-client, and its public injected `PickExecutor.run(TaskContext, progress_cb)` interface. The executor runs the complete per-pastry humanoid flow against simulated AMR, VLA, mover, lift and perception adapters.

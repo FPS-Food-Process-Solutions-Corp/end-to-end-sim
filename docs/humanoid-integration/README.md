@@ -6,25 +6,25 @@ It does not enable robot hardware. Tags, joint phases and counter targets remain
 
 ## Runtime and composition
 
-Use the existing Ubuntu-22.04 environment `/home/user/.venvs/end-to-end-sim-ros/bin/python`, which has the client's dependencies. No installation is required. The pinned real client source is `C:/Users/andyl/.codex/worktrees/dfcb/platform-client`; on WSL its path starts `/mnt/c/Users/andyl/`. Put that checkout and this worktree on `PYTHONPATH`.
+Use the existing Ubuntu-22.04 environment `/home/user/.venvs/end-to-end-sim-ros/bin/python`, which has the client's dependencies. No installation is required. The pinned real client source is `C:/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client`; on WSL its path starts `/mnt/c/Users/andyl/`. Put that checkout and this worktree on `PYTHONPATH`.
 
-The composition entry point is `python -m humanoid_harness.integration`. It requires a real-client settings file, a fresh integration state root, the pinned client source path, and distinct explicit local proxy/API URLs. The launcher selects `humanoid_robot`, forces WebSocket transport for Socket.IO and sends completion readback through the real client's direct API configuration.
+The composition entry point is `python -m humanoid_harness.integration`. It requires a real-client settings file, a fresh integration state root, the pinned client source path, and distinct explicit local proxy/API URLs. The launcher verifies the loaded client, failure-recovery and settings module paths/hashes, selects `humanoid_robot`, forces WebSocket transport for Socket.IO and sends public completion/failure readback through the real client's direct API configuration. [RECOVERY-ADOPTION.md](RECOVERY-ADOPTION.md) records the new client pin and verification status; historical baseline runs used the older dfcb checkout.
 
 Example inside WSL, after the sole runtime owner has prepared the fresh database, settings and services:
 
 ```bash
-PYTHONPATH=/mnt/c/Users/andyl/.codex/worktrees/dfcb/platform-client:/mnt/c/Users/andyl/.codex/worktrees/f0cd/end-to-end-sim /home/user/.venvs/end-to-end-sim-ros/bin/python -m humanoid_harness.integration --client-source /mnt/c/Users/andyl/.codex/worktrees/dfcb/platform-client --settings /path/to/fresh/hr-settings.json --state-root /path/to/fresh/humanoid-state --url http://127.0.0.1:3122 --readback-url http://127.0.0.1:3121 --device-id humanoid_robot --stop-after-seconds 60
+PYTHONPATH=/mnt/c/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client:/mnt/c/Users/andyl/.codex/worktrees/f0cd/end-to-end-sim /home/user/.venvs/end-to-end-sim-ros/bin/python -m humanoid_harness.integration --client-source /mnt/c/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client --settings /path/to/fresh/hr-settings.json --state-root /path/to/fresh/humanoid-state --url http://127.0.0.1:3122 --readback-url http://127.0.0.1:3121 --device-id humanoid_robot --stop-after-seconds 60
 ```
 
 The `/path/to/fresh/` values are explicit placeholders, not existing fixtures. Do not point this launcher at a captured/live journal or another case's state root. Changing only an API URL on the standalone harness does not perform this integration.
 
 ## Public executor seam
 
-`HumanoidPickExecutor` is exported by `humanoid_harness.integration`. Its constructor accepts a state root, an optional `config_factory(TaskContext)` and explicit one-shot crash test options. Public methods are async `run(context, progress_cb)`, `recover_completed(client)` and `drain()`.
+`HumanoidPickExecutor` is exported by `humanoid_harness.integration`. Its constructor accepts a state root, an optional `config_factory(TaskContext)`, the explicitly shared public failure store and one-shot crash test options. The launcher uses `reconcile_active()`, synchronous hold installation, async `recover_completed(client)` and `recover_failures(client)` before starting the client. Execution uses async `run(context, progress_cb)`; shutdown uses `drain()`.
 
-The launcher calls recovery before `client.run()`. A recovered exact placement is handed to the public `client.queue_recovered_completion(...)` method. Unknown physical ownership prevents new work. Shutdown drains or preserves a held worker before closing the client/device ownership; cancelling the coroutine alone does not release a running worker.
+The launcher calls recovery before `client.run()`. Exact placements and failure attempts use only the public `client.queue_recovered_completion(...)` and `client.queue_recovered_failure(...)` methods. Unknown physical ownership prevents new work. Shutdown drains or preserves a held worker before closing the client/device ownership; cancelling the coroutine alone does not release a running worker.
 
-The baseline public completion-recovery method has no readiness flag. After a restart with verified placement and an explicit unsafe physical hold, the bridge may preserve that exact completion in the durable client queue, but must keep the hold and refuse client startup. This differs from a live `completed(..., ready_for_next=False)` result, which the client can report while holding. An active-owner crash during post-place recovery may reconcile the exact saved action and start the client only after verified safe release. Queueing evidence alone never clears a physical hold.
+After a restart with verified placement and an explicit physical hold, the bridge installs the saved bound hold through synchronous `client.hold_execution_for_recovery(...)` before any queue await or connection. The client may report that placement while remaining PAUSED. The hold token/version binds the exact assignment, source, configuration, readiness version and placement-proof digest. Unknown holds without that verified context still refuse startup. An eligible ACTIVE crash may reconcile exact saved actions into verified safe release or a durable placement hold. Queueing, readback and acknowledgment never clear the physical hold; no operator resolver is implemented. The historical baseline refused held startup because that public client seam did not yet exist.
 
 The assigned mode stops at physical completion and does not create or report through a `StubPlatform`, select another task, or command front-counter idle. Its task-ID registry rejects a changed session/order/counter or item/rack/level/slot for an existing task. Retry count is recorded as metadata and cannot authorize another pick of an already completed unit.
 
@@ -32,7 +32,9 @@ The safe-failure revision requires a durable recovery to the configured symbolic
 
 Supported recovery sources are exhausted no-effect VLA picking or initial navigation, and positively known no-effect pick-side lift/posture/reset actions. They also require exact source-action readback and a versioned observation of empty hands with the pastry still at its assigned rack. Confirmed bun loss after its retry budget, post-pick failure without that source evidence, mismatched evidence and ambiguous recovery remain unresolved holds.
 
-The unchanged platform schedules unassigned items before retrying failed items, and permits one platform retry for a new task. Redelivery of an exhausted physical unit reuses its saved failure without another pick. That historical evidence establishes readiness when the failed unit released ownership; current readiness must come separately from the latest verified device release. A report-only retry must not overwrite that current release with the older unit's state. A failed report's network acknowledgment remains the real client's responsibility; physical readiness alone does not establish that the platform accepted the report.
+The unchanged platform schedules unassigned items before retrying failed items, and permits one platform retry for a new task. Redelivery of an exhausted physical unit reuses its saved failure without another pick, but a new report generation requires exact prior platform confirmation and the durable bridge callback audit. Historical failure proof establishes readiness when that unit released ownership; current readiness comes separately from the latest verified device release. A report-only retry cannot overwrite that current release with an older unit's state. Network acknowledgment remains the real client's responsibility; physical readiness alone does not establish report acceptance.
+
+Before physical dispatch, the bridge records the explicit retry count and exact assignment/source context. Before returning or recovering FAILED, it persists a separate immutable attempt intent over the saved physical failure proof. The public callback validates the exact confirmed client record and saves acceptance evidence before returning. An ambiguous older attempt remains held; observing a later retry is not confirmation. Confirmed attempts may need callback-only recovery, but must never be resent or cause another pick.
 
 Successful placement also requires a distinct post-place retract and fresh travel-readiness verification before another motion can begin. If placement is proven but this recovery fails, preserve and report the completed placement with readiness false, and retain the physical hold. Never turn that pastry into FAILED or pick it again. An explicit safety hold remains held even if the same task is delivered again.
 
@@ -46,13 +48,15 @@ The supplied real-client location file is preserved. In fresh copied settings, s
 | --- | --- |
 | `integration-manifest.json` | Loaded client module paths/hashes, source pin, endpoints, location overlay and recovered identities. |
 | `task-identities.json` | Immutable task/session/order/counter and item/rack/level/slot registry, plus observed retry counts. |
-| `device-owner.json` | Device-wide idle/active/hold ownership and matching `readiness_version`. Availability alone is not physical readiness. |
+| `device-owner.json` | Device-wide idle/active/hold ownership, readiness version and bound placement-recovery hold token/version. Availability alone is not physical readiness. |
 | `device-readiness.json` | Current ready/unknown state and increasing version; exact assignment/source/configuration, action/proof hash and observation version; verified symbolic posture/location and empty-hand state. |
 | `assignments/<unit-digest>.json` | Saved assignment context and terminal physical proof. |
 | `units/<unit-digest>/controller.json` | Per-unit durable controller intent, stage and result. |
 | `units/<unit-digest>/device.json` | Independently persisted simulated action effects and world. |
 | `units/<unit-digest>/events.jsonl`, `summary.json`, `world.html` | Per-unit progress, terminal physical result and world replay. |
 | `pending-completions.json` | The real client's durable completion queue; do not edit it to force settlement. |
+| `failure-attempts.json` | Bridge intent and callback audit per exact platform retry generation, bound to immutable physical failure proof. |
+| `pending-failures.json` | The separately injected real-client failure queue and platform reconciliation evidence. |
 
 The initial device readiness is an explicit fresh-simulation assumption: front location, idle posture, empty hands and no active motion. It may be created only for an empty state root. Missing or incompatible ownership/readiness records beside existing unit journals must fail closed; they must not reset the robot to the initial state.
 
@@ -66,9 +70,11 @@ A normal or timed launcher stop returns 0; this means the process stopped normal
 
 `--crash-after-place-once` exits with code 76 at `post_place_ready_check`: placement and post-place retract effects are durable, but release-readiness proof, executor return and client completion queueing have not finished. Restart the same launcher with the same state root and unchanged assignment configuration. Startup must reconcile the saved actions, verify readiness, queue the exact placement proof through the real client and avoid duplicate effects. The crash marker is durable and does not fire again for that fixture. A separate local child-process regression covers a hard stop immediately after the place effect, before placement proof, and verifies the remaining bounded recovery.
 
-`--crash-after-held-placement-once` tests a different boundary. After an exact verified placement, an unsafe post-place result first persists owner HOLD and unknown device readiness. The hook checks those saved records, atomically writes `crash-after-held-placement.used.json` and exits 78 before returning the completed executor outcome or queueing a client completion. The marker permits only one such exit per state root. A suitable simulator fault is an unknown `post_place_retract` result; unknown placement without verified proof cannot trigger this hook. The baseline client can recover the exact report into its queue but cannot start while this hold remains. Actual reporting while held awaits the reviewed public client recovery-hold seam and a fresh acceptance run.
+`--crash-after-held-placement-once` tests a different boundary. After an exact verified placement, an unsafe post-place result first persists owner HOLD and unknown device readiness. The hook checks those saved records, atomically writes `crash-after-held-placement.used.json` and exits 78 before returning the completed executor outcome or queueing a client completion. The marker permits only one such exit per state root. A suitable simulator fault is an unknown `post_place_retract` result; unknown placement without verified proof cannot trigger this hook. Restart must install the same bound public hold before recovering the completion, remain PAUSED and preserve one place effect. Actual acceptance is tracked separately in [VALIDATION.md](VALIDATION.md).
 
 For acknowledgment loss, the sole runtime owner controls the existing Socket.IO fault proxy. Keep completion readback pointed directly at the API. Do not replace the real client's acknowledgment/reconnect/readback behavior with a local success flag.
+
+[FAULT-CASES.md](FAULT-CASES.md) describes the remaining fresh fixtures and their required checkpoints. A transient owner-HOLD write failure must return unresolved without queueing. A fresh startup may validate the exact ACTIVE placement checkpoint, persist a new bound HOLD and install it before queueing; it cannot treat a failed in-memory write as durable state.
 
 ## Ownership and limitations
 
