@@ -1,0 +1,37 @@
+--- a/services/api/src/modules/admin-devices/admin-devices.service.ts
++++ b/services/api/src/modules/admin-devices/admin-devices.service.ts
+@@ -36,15 +36,23 @@ export interface AdminDevicesSnapshot {
+ @Injectable()
+ export class AdminDevicesService {
++  private latestSocketConnections: SocketConnectionSnapshot =
++    this.emptySocketConnections();
++
+   constructor(private readonly prisma: PrismaService) {}
+ 
+   async getSnapshot(
+-    socketConnections: SocketConnectionSnapshot = this.emptySocketConnections(),
++    socketConnections?: SocketConnectionSnapshot,
+   ): Promise<AdminDevicesSnapshot> {
++    if (socketConnections) {
++      this.latestSocketConnections = socketConnections;
++    }
++    const effectiveSocketConnections =
++      socketConnections ?? this.latestSocketConnections;
+     const devices = await (this.prisma as any).brewWorkcellDeviceStatus.findMany({
+       orderBy: { deviceId: 'asc' },
+     });
+ 
+     const mappedDevices: AdminDeviceStatus[] = devices.map((device: any) =>
+-      this.applySocketConnectionState(this.toDeviceStatus(device), socketConnections),
++      this.applySocketConnectionState(this.toDeviceStatus(device), effectiveSocketConnections),
+     );
+     const brewReady = REQUIRED_BREW_DEVICE_IDS.every((deviceId) => {
+@@ -57,7 +65,7 @@ export class AdminDevicesService {
+       requiredDeviceIds: [...REQUIRED_BREW_DEVICE_IDS],
+       brewReady,
+       pickReady,
+-      socketConnections,
++      socketConnections: effectiveSocketConnections,
+     };
+   }
+ 

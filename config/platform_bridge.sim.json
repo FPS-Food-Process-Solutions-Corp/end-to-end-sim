@@ -1,0 +1,36 @@
+{
+  "server": {
+    "enabled": true,
+    "url": "http://127.0.0.1:3001",
+    "namespace": "/socket-bridge",
+    "device_id": "nova5_arm",
+    "allow_legacy_humanoid_test": false,
+    "start_pick_timeout_s": 3.0,
+    "status_timeout_s": 3.0,
+    "poll_interval_s": 1.0,
+    "overall_pick_timeout_s": 120.0,
+    "startup_service_wait_s": 30.0,
+    "readiness_wait_s": 30.0
+  },
+  "paths": {
+    "journal": "/home/user/e2e-stage/runtime/ros/platform_bridge_journal.json"
+  },
+  "item_labels": {
+    "croissant": "croissant"
+  },
+  "counter_slots": {
+    "1": 1,
+    "2": 2,
+    "3": 3
+  },
+  "telemetry": {
+    "enabled": false,
+    "verified_schema": "disabled",
+    "robot_id": "nova5_arm",
+    "robot_type": "NOVA5",
+    "health_enabled": false,
+    "health_url": "http://127.0.0.1:8420/health",
+    "feed_info_topic": "",
+    "feed_info_alarm_key": ""
+  }
+}
