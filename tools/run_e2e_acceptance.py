@@ -143,7 +143,7 @@ def settings(rows):
     payload["server"].update({"url":"http://127.0.0.1:%d" % OPTIONS.humanoid_port,"completion_readback_url":"http://127.0.0.1:%d" % OPTIONS.api_port,"device_id":"humanoid_robot"})
     payload["logging"]["file"]=str(state/"platform-client.log")
     human=ROOT/"hr-settings.json"; write(human,payload)
-    args=argparse.Namespace(bridge_config_template=SIM/"config/platform_bridge.sim.json",proxy_port=OPTIONS.nova_port,completion_readback_url="http://127.0.0.1:%d" % OPTIONS.api_port,ros_setup=OPTIONS.ros_setup,overlay_setup=OPTIONS.overlay_setup,ros_domain_id=OPTIONS.ros_domain_id,ros_python=PY,completion_delay_seconds=5,bridge_source=BRIDGE,platform_client_source=CLIENT,api_url="http://127.0.0.1:%d" % OPTIONS.api_port)
+    args=argparse.Namespace(bridge_config_template=SIM/"config/platform_bridge.sim.json",proxy_port=OPTIONS.nova_port,completion_readback_url="http://127.0.0.1:%d" % OPTIONS.api_port,ros_setup=OPTIONS.ros_setup,overlay_setup=OPTIONS.overlay_setup,ros_domain_id=OPTIONS.ros_domain_id,ros_python=PY,completion_delay_seconds=15,bridge_source=BRIDGE,platform_client_source=CLIENT,api_url="http://127.0.0.1:%d" % OPTIONS.api_port)
     nova.make_bridge_config(args,ROOT/"nova-settings.json",ROOT/"nova-state/bridge-journal.json",ROOT/"nova-state/pending-completions.json")
     for p in (human,ROOT/"nova-settings.json"): capture(p,Path("generated")/p.name,rows)
     data=read(ROOT/"pre-run-source-manifest.json"); data["files"]=rows; data["generated_before_database"]=[str(human),str(ROOT/"nova-settings.json")]; write(ROOT/"pre-run-source-manifest.json",data)
