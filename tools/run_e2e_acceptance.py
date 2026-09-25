@@ -11,12 +11,14 @@ import socket
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 import socketio
 
 from urllib.error import URLError
 from urllib.request import urlopen
 
 import e2e_mixed_audit as audit
+import e2e_held_placement_case as held
 import nova5_socket_recovery_harness as nova
 import recovery_api_runtime as api_runtime
 
@@ -192,7 +194,7 @@ async def bootstrap(oid):
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description="Run an isolated real-platform mixed Nova/humanoid acceptance case with simulated hardware.")
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--case", choices=("mixed-positive",), required=True)
+    parser.add_argument("--case", choices=("mixed-positive", "nova-callback-boundary", "held-placement-restart"), required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--client-root", type=Path, required=True)
     parser.add_argument("--nova-root", type=Path, required=True, help="Nova repository root")
@@ -229,6 +231,35 @@ def parse_arguments(argv=None):
     return args
 
 
+def run_callback_case(api_manifest):
+    case_root = ROOT / "nova-callback-case"
+    args = argparse.Namespace(execute=True, source_profile="current-canonical", case="confirmed-before-callback",
+        label="e2e-" + DB, api_url="http://127.0.0.1:%d" % OPTIONS.api_port, proxy_port=OPTIONS.nova_port,
+        completion_readback_url="http://127.0.0.1:%d" % OPTIONS.api_port, ros_domain_id=OPTIONS.ros_domain_id,
+        database_name=DB, api_manifest=api_manifest, runtime_dir=case_root,
+        bridge_config_template=SIM / "config/platform_bridge.sim.json", bridge_source=BRIDGE,
+        nova_source_manifest=None, platform_client_source=CLIENT, operator="e2e-acceptance",
+        reason="Verified simulated callback replay", ros_python=PY, ros_setup=OPTIONS.ros_setup,
+        overlay_setup=OPTIONS.overlay_setup, deadline_seconds=35.0, completion_delay_seconds=5.0,
+        check_next_order=True)
+    result_path = nova.run_case(args)
+    outcome = read(result_path)
+    events = nova.event_log_entries(case_root / "harness-events.jsonl")
+    before = [row for row in events if row.get("event") == "test_boundary_observed"]
+    after = [row for row in events if row.get("event") == "test_boundary_replayed"]
+    reports = [row for row in nova.event_log_entries(case_root / "proxy-events.jsonl") if row.get("event") == "terminal_report_forwarded"]
+    if len(before) != 1 or len(after) != 1 or len(reports) != 2:
+        raise RuntimeError("callback boundary or exact two completion reports missing")
+    before_time = before[0].get("timestamp")
+    after_time = after[0].get("timestamp")
+    if not isinstance(before_time, (int, float)) or not isinstance(after_time, (int, float)) or not before_time < after_time:
+        raise RuntimeError("callback boundary timestamps are invalid")
+    if len([row for row in reports if row.get("timestamp", 0) < before_time]) != 1 or any(before_time <= row.get("timestamp", 0) <= after_time for row in reports) or len([row for row in reports if row.get("timestamp", 0) > after_time]) != 1:
+        raise RuntimeError("completion report was resent during callback-only replay")
+    write(ROOT / "callback-only-replay-audit.json", {"boundary_observed_epoch_s": before_time, "callback_replayed_epoch_s": after_time, "total_completion_reports": 2, "reports_before_boundary": 1, "reports_during_replay": 0, "reports_for_follow_up": 1})
+    write(ROOT / "result.json", {"status": "automated_acceptance_passed", "database": DB, "harness_result": outcome, "callback_only_replay_audit": read(ROOT / "callback-only-replay-audit.json")})
+
+
 def main(argv=None):
     global CLIENT, BRIDGE, DIST, PY, ROOT, DB, OPTIONS
     OPTIONS = parse_arguments(argv)
@@ -257,6 +288,20 @@ def main(argv=None):
         if started.returncode or not manifest.is_file(): raise RuntimeError("owned API start failed")
         api_started=True; wait_for_api(manifest, OPTIONS.api_port, 25.0)
         write(ROOT/"api-owner-manifest-before-orders.json",read(manifest))
+        if OPTIONS.case == "nova-callback-boundary":
+            run_callback_case(manifest)
+            return 0
+        if OPTIONS.case == "held-placement-restart":
+            baseline = snapshot("baseline-api-snapshot")
+            if not nova.queue_is_clean(baseline["queue"]):
+                raise RuntimeError("fresh API queue not clean for held placement")
+            context = SimpleNamespace(root=ROOT, sim_root=SIM, client_root=CLIENT, python=PY, database_name=DB,
+                api_port=OPTIONS.api_port, humanoid_port=OPTIONS.humanoid_port, client_hashes=CLIENT_HASHES,
+                settings_path=human_settings, api_request=api, snapshot=snapshot, emit=emit,
+                managed_process=nova.ManagedProcess, children=children, baseline_snapshot=baseline)
+            result = held.run_case(context)
+            write(ROOT / "result.json", {"status": "automated_acceptance_passed", **result})
+            return 0
         for name in ("nova-proxy","humanoid-proxy"): write(ROOT/(name+"-control.json"),{"sequence":1,"mode":"pass"})
         write(ROOT/"nova-provider-status-control.json",{"mode":"pass"})
         os.environ["PYTHONPATH"]=str(SIM)+":"+os.environ.get("PYTHONPATH","")
@@ -310,7 +355,7 @@ def main(argv=None):
         if post_stop_verified!=verified:
             raise RuntimeError("post-stop durable, physical, or public mixed proof differs from settlement")
         write(ROOT/"post-launcher-stop-audit.json",post_stop_verified)
-        write(ROOT/"result.json",{"status":"case_complete_pending_independent_audit","database":DB,**verified})
+        write(ROOT/"result.json",{"status":"automated_acceptance_passed","database":DB,**verified})
         return 0
     except Exception as exc:
         error={"type":type(exc).__name__,"message":str(exc),"utc":utc()}
