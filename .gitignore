@@ -186,3 +186,26 @@ install/
 log/
 runtime/
 .local/
+
+# Keep raw simulator captures local; commit only curated verification records.
+/docs/verification/**
+!/docs/verification/README.md
+!/docs/verification/merge-2026-09-24/
+!/docs/verification/merge-2026-09-24/manifest.json
+!/docs/verification/e2e-integration-2026-09-25/
+!/docs/verification/e2e-integration-2026-09-25/summary.json
+!/docs/verification/e2e-integration-2026-09-25/humanoid-pin/
+!/docs/verification/e2e-integration-2026-09-25/humanoid-pin/junit.xml
+!/docs/verification/e2e-integration-2026-09-25/humanoid-suite/
+!/docs/verification/e2e-integration-2026-09-25/humanoid-suite/junit.xml
+!/docs/verification/e2e-integration-2026-09-25/runner-software/
+!/docs/verification/e2e-integration-2026-09-25/runner-software/final-noros-junit.xml
+!/docs/verification/e2e-integration-2026-09-25/runner-software/three-case-junit.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-software.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-provider-isolation.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-held-placement.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-mixed-audit.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-api-owned-cleanup.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-cancellation.xml
+!/docs/verification/e2e-integration-2026-09-25/root-package-review/unittest-console.txt

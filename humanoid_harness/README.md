@@ -8,7 +8,7 @@ Start with the [runbook](../docs/humanoid-harness/README.md). It covers demonstr
 - [Source contracts and provenance](../docs/humanoid-harness/SOURCE_CONTRACTS.md)
 - [Validation and limitations](../docs/humanoid-harness/VALIDATION.md)
 
-Run from the repository root with Python 3.12 or newer:
+Run from the repository root with Python 3.10 or newer:
 
 ```text
 python -m humanoid_harness --scenario happy --state-dir .humanoid-runs/my-demo

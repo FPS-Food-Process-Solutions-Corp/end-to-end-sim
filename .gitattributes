@@ -1,2 +1,17 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve byte-for-byte verification artifacts whose SHA-256 values are recorded.
+/docs/verification/e2e-integration-2026-09-25/summary.json -text
+/docs/verification/e2e-integration-2026-09-25/humanoid-pin/junit.xml -text
+/docs/verification/e2e-integration-2026-09-25/humanoid-suite/junit.xml -text
+/docs/verification/e2e-integration-2026-09-25/runner-software/final-noros-junit.xml -text
+/docs/verification/e2e-integration-2026-09-25/runner-software/three-case-junit.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-software.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-provider-isolation.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-held-placement.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-mixed-audit.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-api-owned-cleanup.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-cancellation.xml -text
+/docs/verification/e2e-integration-2026-09-25/root-package-review/unittest-console.txt -text
+/docs/verification/merge-2026-09-24/manifest.json -text

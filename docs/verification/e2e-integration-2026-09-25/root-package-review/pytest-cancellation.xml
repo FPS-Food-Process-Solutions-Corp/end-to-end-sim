@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.912" timestamp="2026-09-25T14:48:59.564971" hostname="DESKTOP-208KAED"><testcase classname="tests.test_nova_post_dispatch_cancellation" name="test_late_start_reply_cannot_resurrect_cancelled_bridge_call" time="0.691" /></testsuite></testsuites>

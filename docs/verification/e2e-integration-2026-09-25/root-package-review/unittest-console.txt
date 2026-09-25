@@ -1,0 +1,6 @@
+test_mounts_and_refreshes_log_and_journal_panels (test_local_sim_console.LocalSimConsoleTextualTests) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.282s
+
+OK

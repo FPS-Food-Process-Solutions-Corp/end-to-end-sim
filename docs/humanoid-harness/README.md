@@ -6,7 +6,7 @@ Read [FLOW.md](FLOW.md) for the reconciled workflow, [PLAN.md](PLAN.md) for arch
 
 ## Start a demonstration
 
-Run commands from `C:/Users/andyl/.codex/worktrees/f0cd/end-to-end-sim`. Use Python 3.12 or newer. On this workstation, the tested interpreter is bundled with Codex:
+Run commands from the repository root (`D:/Work/FPS/Robotics/end-to-end-sim` in this workspace). Use Python 3.10 or newer. The original standalone acceptance used the following bundled interpreter; the portable `python` command below works with an appropriate interpreter on PATH:
 
 ```powershell
 & 'C:/Users/andyl/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -m humanoid_harness --scenario happy --state-dir .humanoid-runs/my-demo

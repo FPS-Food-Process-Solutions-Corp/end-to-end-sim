@@ -1,0 +1,425 @@
+{
+  "accepted_cases": [
+    {
+      "api_stop_returncode": 0,
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-final-05/cleanup-proof.json",
+          "sha256": "4040d323bac8bd051c0966e575166dbd5cdd06a1f7aa70d0d6bf8ddc1a9b4372"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-final-05/post-run-source-check.json",
+          "sha256": "26f40146353289b69d16f9bef4d63513243fde6e884688e0e7356ad4eb17ce57"
+        },
+        "pre-run-source-manifest.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-final-05/pre-run-source-manifest.json",
+          "sha256": "9ce81875b5bce958475129cde9bc8b906a5bc49169fb84a091e68a037f4496e9"
+        },
+        "request.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-final-05/request.json",
+          "sha256": "bbabf690416db74c6b8d37e807a1d5fdd3abd00c7157e920c342ba2ef426e6f5"
+        },
+        "result.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-final-05/result.json",
+          "sha256": "d9eced243fe11df29318aa02665d43e9a2904f7cc15b80039d6ebfc3c68ace4c"
+        }
+      },
+      "case": "mixed-positive",
+      "cleanup_issues": [],
+      "database_name": "taska_20260925_mixed_05",
+      "ports": [
+        3151,
+        3152,
+        3153
+      ],
+      "proof": {
+        "chronology": {
+          "exact_session_readback_utc": "2026-09-25T22:32:08.052Z",
+          "human_completion_ack_utc": "2026-09-25T22:31:54.447Z",
+          "human_reconnects_before_free": 0,
+          "human_socket_connected_utc": "2026-09-25T22:31:47.920Z",
+          "humanoid_free_emit_utc": "2026-09-25T22:32:08.053Z",
+          "no_task_for_device_ack_utc": "2026-09-25T22:31:54.471Z",
+          "nova_execution_id": "nova5-35f7346ec46040ed99afdda740ef1657",
+          "nova_terminal_epoch_s": 1790375524.158928
+        },
+        "croissant_stock": {
+          "after": [
+            5,
+            5
+          ],
+          "before": [
+            6,
+            6
+          ]
+        },
+        "moon_cake_stock": {
+          "after": [
+            7,
+            7
+          ],
+          "before": [
+            8,
+            8
+          ]
+        },
+        "normal_stop_audit_equal": true,
+        "nova_start_count": 1
+      },
+      "ros_domain_id": "74",
+      "run_name": "mixed-positive-final-05",
+      "source_files_changed": 0,
+      "source_files_checked": 338,
+      "status": "automated_acceptance_passed"
+    },
+    {
+      "api_stop_returncode": 0,
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/nova-callback-01/cleanup-proof.json",
+          "sha256": "d321d88def305f19f7fdcc088cb8853fa350755a79690f78bf799f75d00e971b"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/nova-callback-01/post-run-source-check.json",
+          "sha256": "3bf6dada85b1658567979e7167dcb787db94926596084e471987e5a00b5d4091"
+        },
+        "pre-run-source-manifest.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/nova-callback-01/pre-run-source-manifest.json",
+          "sha256": "a6c021fb5ce21322c3180799e237ee57db907a174643848158c62919284ddc82"
+        },
+        "request.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/nova-callback-01/request.json",
+          "sha256": "85092e05439a85a373b5d09bfc4d0bea4c756b6151770a1ce4ea89b3b1721f59"
+        },
+        "result.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/nova-callback-01/result.json",
+          "sha256": "e9a4b0f8ef16d5196b56596285675827a14fae9f26f4c5fa623a55208822c9a4"
+        }
+      },
+      "case": "nova-callback-boundary",
+      "cleanup_issues": [],
+      "database_name": "taska_20260925_callback_01",
+      "ports": [
+        3131,
+        3132,
+        3133
+      ],
+      "proof": {
+        "callback_only_replay": {
+          "boundary_observed_epoch_s": 1790375245.046963,
+          "callback_replayed_epoch_s": 1790375247.565559,
+          "reports_before_boundary": 1,
+          "reports_during_replay": 0,
+          "reports_for_follow_up": 1,
+          "total_completion_reports": 2
+        },
+        "croissant_after": 4,
+        "croissant_before": 6,
+        "first_order_id": "ord_muhj6w2n_trkkd0",
+        "follow_up_order_id": "ord_muhj72eb_gas9xk",
+        "start_metrics": {
+          "accepted_execution_ids": [
+            "nova5-ad2312597dc24f7dafbed72d39e35f3a",
+            "nova5-be0b059229f9470aba614fa1c4550679"
+          ],
+          "accepted_new_execution_count": 2,
+          "start_request_count": 2
+        }
+      },
+      "ros_domain_id": "72",
+      "run_name": "nova-callback-01",
+      "source_files_changed": 0,
+      "source_files_checked": 338,
+      "status": "automated_acceptance_passed"
+    },
+    {
+      "api_stop_returncode": 0,
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-02/cleanup-proof.json",
+          "sha256": "8e5e112ea1f81b11437d828bec1d20ef5649f86875d44b144135a0afe40abf6f"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-02/post-run-source-check.json",
+          "sha256": "46df17f74f2228782b2f6cdbae67aecec46a427015a7326e476b1ae5a1612d0c"
+        },
+        "pre-run-source-manifest.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-02/pre-run-source-manifest.json",
+          "sha256": "cddaf0a99dc9200b1fde194eb769f2e482674cc0cc981fdb52041a8fa9403d50"
+        },
+        "request.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-02/request.json",
+          "sha256": "a6bdac6415cc67bc24d1dfa2fa1beb06585fa4143ec66d7e2d86bd0b9daabfca"
+        },
+        "result.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-02/result.json",
+          "sha256": "10838dcf295c79c9aec9b7a5842dc745109965f88d249a00389cd47255096cbd"
+        }
+      },
+      "case": "held-placement-restart",
+      "cleanup_issues": [],
+      "database_name": "taska_20260925_held_02",
+      "ports": [
+        3141,
+        3142,
+        3143
+      ],
+      "proof": {
+        "admin_free_observations": 0,
+        "admin_paused_observations": 178,
+        "client_completion_attempts": 1,
+        "client_completion_state": "confirmed",
+        "inventory": {
+          "available_quantity": [
+            8,
+            7,
+            7
+          ],
+          "database_quantity": [
+            8,
+            8,
+            7
+          ]
+        },
+        "next_task_requests": 0,
+        "phase1_returncode": 78,
+        "phase2_returncode": 0,
+        "physical_effects_unchanged": true,
+        "place_execution_id": "unit-a099c1c9b9ff42656453/c0/place/a1",
+        "platform_order": "READY",
+        "platform_session": "COMPLETED",
+        "platform_task": "COMPLETED",
+        "recovery_hold_id": "sim-placement/2eebccfd059c6e9c56d8027020b90f889a30b2cd11ccfb2f89614796305a44b7"
+      },
+      "ros_domain_id": "73",
+      "run_name": "held-placement-02",
+      "source_files_changed": 0,
+      "source_files_checked": 338,
+      "status": "automated_acceptance_passed"
+    }
+  ],
+  "canonical_platform_modified": false,
+  "console_unittest": {
+    "artifact": {
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/unittest-console.txt",
+      "sha256": "29b7805f9b188a791be54a6813794f053ddcb9c3be614e93e0a044eae2c01417"
+    },
+    "errors": 0,
+    "failures": 0,
+    "tests": 1
+  },
+  "junit_artifacts": [
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/humanoid-pin/junit.xml",
+      "sha256": "cb04cfbbe48767115462f00723c8fa1dce9c443e8bc4b22ca51235c182174df4",
+      "tests": 5
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/humanoid-suite/junit.xml",
+      "sha256": "a5094ba1e1a11c3cdfe994a2657805d3aeed867be6054fae1fcdb45905ee8086",
+      "tests": 68
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/runner-software/final-noros-junit.xml",
+      "sha256": "6d08947024f808d7a52a1d05eaeed2208adb0a4030bb53f862ce7e558bb5d795",
+      "tests": 31
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/runner-software/three-case-junit.xml",
+      "sha256": "df559898ca1437ab486dfb328bd76d186cf67dd707edde97a3b481f40cbbece1",
+      "tests": 36
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-software.xml",
+      "sha256": "4f26cde7f7ceba5d0c498031be8c9982264d31f9e4e447abc523dbd02e5051af",
+      "tests": 46
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-provider-isolation.xml",
+      "sha256": "fe840b989b18420454270076f7ae6af169604db265d175250f70efac4e9835e1",
+      "tests": 10
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-held-placement.xml",
+      "sha256": "26154be63c8827e8420909304f62af579b1b883bcc1a006549dc54a2be68b7e7",
+      "tests": 9
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-mixed-audit.xml",
+      "sha256": "04def44b9975b624c5b48094b73cead7cd26c4cf6ecbb155608fe5b91230ba17",
+      "tests": 9
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-api-owned-cleanup.xml",
+      "sha256": "6bdf390101abccfadd9ffd708b4af1c9750d6e757bcb147b40bb9ac75a3c2951",
+      "tests": 6
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "path": "docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-cancellation.xml",
+      "sha256": "51c5b8d1c87832abb52597dc354b491f451b73d5b298774eba0bc47188d1272c",
+      "tests": 1
+    }
+  ],
+  "junit_groups_overlap": true,
+  "platform_patch_applied_this_integration": false,
+  "prior_attempts": [
+    {
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-01/cleanup-proof.json",
+          "sha256": "01887d208757a9b9dfe601eebefe0359d23a9491261a5668295f2cabed6b85b8"
+        },
+        "driver-error.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-01/driver-error.json",
+          "sha256": "4106ce733d91d5d039e8f88c9c05d5f066ab56c2255c8aeda5493522b2937c54"
+        }
+      },
+      "reason": "WSL root Git ownership refusal",
+      "run_name": "mixed-positive-01",
+      "stage": "pre-database"
+    },
+    {
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-02/cleanup-proof.json",
+          "sha256": "aea581b7ea6397d1e6ac76fa2ed92a9fec00f9d5abfd284a4bc058ed2cb502d2"
+        },
+        "driver-error.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-02/driver-error.json",
+          "sha256": "65e7eec82e72c7288d54e1e348902efee9fe8913ace0370ddf93e432b4b24b56"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-02/post-run-source-check.json",
+          "sha256": "ea14a522c6041676262d031068ee7b5d2d153bb09be0dc0c4be350ff52c765f0"
+        }
+      },
+      "reason": "selected venv symlink resolved to system Python",
+      "run_name": "mixed-positive-02",
+      "stage": "post-bootstrap"
+    },
+    {
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-03/cleanup-proof.json",
+          "sha256": "9df8bd18441667100f79ee6239afc6858f71c82dbffb6f3d019852ec4c1a24f5"
+        },
+        "driver-error.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-03/driver-error.json",
+          "sha256": "39f789722c12ba38774fc1cb9434f06269875bd0e1e1880b6c83e5b3adccbf2a"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/mixed-positive-03/post-run-source-check.json",
+          "sha256": "e80d69cbecd80cd0c25959c1128994a706f1c79d50d57b4f6528b15a74c18632"
+        }
+      },
+      "reason": "Nova terminal preceded required humanoid NO_TASK boundary",
+      "run_name": "mixed-positive-03",
+      "stage": "post-settlement"
+    },
+    {
+      "artifacts": {
+        "cleanup-proof.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-01/cleanup-proof.json",
+          "sha256": "259bef6ca5b4f3b770495cfce08b9dd5a627c4e3eaccab39f83095590c5f3073"
+        },
+        "driver-error.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-01/driver-error.json",
+          "sha256": "32e860ba94b72dba3dc5a9b4813ba0ce3e68b86373e39184a4fb76563ec28312"
+        },
+        "post-run-source-check.json": {
+          "path": "docs/verification/e2e-integration-2026-09-25/raw/held-placement-01/post-run-source-check.json",
+          "sha256": "08e99898e5c81a2c02c290bacf38508b7c9cebb97f5ef88605a23555e22c31e0"
+        }
+      },
+      "reason": "requested ports unavailable",
+      "run_name": "held-placement-01",
+      "stage": "pre-database"
+    }
+  ],
+  "raw_capture_and_databases_retained_locally": true,
+  "schema": 1,
+  "scope": "Prepared compiled platform API and Socket.IO unchanged during this integration; canonical clients; simulated hardware only",
+  "source": {
+    "client_commit": "adf51339db90f75ee078d51bc8fba36148414d89",
+    "client_modules": {
+      "client.py": {
+        "crlf_to_lf_sha256": "481163dc187fff8e62fdd9d2af6c919f3ed9f1ccae43d4f463acd900111a3f9d",
+        "raw_sha256": "9ebc1c4dd33287a13af32e8eb1160d7525a503fcadb5687975b0528cc2050379"
+      },
+      "pending_completion.py": {
+        "crlf_to_lf_sha256": "006e47f6c1510bfcda9c019aef5f7741e73187ce14b64a3f6b11fc358520b402",
+        "raw_sha256": "3f2d33d94dd838af21b5e49c64cab1cf5c0a5bd34bb759fa63062e50af5bf228"
+      },
+      "pending_failure.py": {
+        "crlf_to_lf_sha256": "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a",
+        "raw_sha256": "11504ae67af9ad6084ab07bef788b2ee7a9133e0df78e94fe984f7a01dc4e2a1"
+      },
+      "settings.py": {
+        "crlf_to_lf_sha256": "d88bcb104f1b851b95963a61904b8401e19b0ee9e1ae3a15a259b38dc76f8bb6",
+        "raw_sha256": "7520627cab334f88f29687780819e46de08b38d71ef2f947073d0501cd9f149f"
+      }
+    },
+    "client_pin_scheme": "sha256-crlf-to-lf-v1",
+    "compiled_api_main_sha256": "fcb12d13b5c3affc41f82a7f5052a2fb23dba81ceee8d0c9a1a8fd6b727af4ca",
+    "held_case_sha256": "f05b8214c36585bc27cedbd52388a0cfc08ba362389af5e01c152921b77e0571",
+    "mixed_audit_sha256": "1e049baca0f74e72dc80ca2ef850adb607f32144ca956cdf832a497cdebe8df3",
+    "nova_commit": "4055912c72a90e841b79cbc93852fe9cc807927a",
+    "nova_loaded_production_modules": {
+      "platform_bridge.completion_recovery": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/completion_recovery.py",
+        "sha256": "85646a205b611a6263fa96dbfc355032e2d3fc7db6ae55dff2948b9c01462f70"
+      },
+      "platform_bridge.executor": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/executor.py",
+        "sha256": "81eee90e6851628e1c6478867b01d8c909fdad0bd4c2cd0d830e6c4e08a20557"
+      },
+      "platform_bridge.journal": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/journal.py",
+        "sha256": "e8388e47aec117b552a8a2fc4c0c95044e2668bec6a880ba07cd3d4be0d6e046"
+      },
+      "platform_bridge.journal_lock": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/journal_lock.py",
+        "sha256": "2fbaaec98cc414ea2220d359f0b3dbaea615ecb129f18b793d02fe9eae72b121"
+      },
+      "platform_bridge.recover_execution": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/recover_execution.py",
+        "sha256": "1e79424689996570b66d6a3990081d6c93aec5c4036c32dbf3f539f2ab2fb88e"
+      },
+      "platform_bridge.recovery": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/recovery.py",
+        "sha256": "6a53c0bcae09ec02ffa2b16e548df22270358fa8caf0ad4c2c6b684b8a8b42a7"
+      },
+      "platform_bridge.ros_node": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/ros_node.py",
+        "sha256": "1e676ce76db10b90879261d3e32f295e1140e0951790c7983bcfb943ab13eaa5"
+      },
+      "platform_bridge.settings": {
+        "path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge/platform_bridge/settings.py",
+        "sha256": "d5235b6296d00a1dee6682d8134293a14afa8ed407839fa5e8a5fe15342a3f4a"
+      }
+    },
+    "python": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+    "root_commit": "390dc83d39166d14adb84f96a7e0e7d323aa2c47",
+    "runner_sha256": "39fd0d5f756d4bc4cc751287a164a36ac6ac4085ef1904d3183395a91200dddc"
+  }
+}

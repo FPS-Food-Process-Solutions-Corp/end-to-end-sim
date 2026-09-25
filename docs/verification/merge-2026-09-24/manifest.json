@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-09-24",
+  "scope": "Local platform-client dev and Nova nova5_vision_lebai_andy merges; no push, deployment, service, hardware, or root/humanoid/coffee-platform merge",
+  "repositories": {
+    "client": {
+      "canonical_path": "D:/Work/FPS/Robotics/platform-client",
+      "target_branch": "dev",
+      "before_commit": "64dd9628d1b5a5d8e6d48951a01af64810281da6",
+      "after_commit": "adf51339db90f75ee078d51bc8fba36148414d89",
+      "candidate_path": "C:/Users/andyl/.codex/worktrees/durable-failure-recovery/platform-client",
+      "candidate_branch": "codex/durable-failure-recovery",
+      "candidate_commit": "adf51339db90f75ee078d51bc8fba36148414d89",
+      "backup_branch": "codex/pre-merge-client-dev-20260924",
+      "backup_commit": "64dd9628d1b5a5d8e6d48951a01af64810281da6",
+      "integration": "git merge --ff-only codex/durable-failure-recovery",
+      "canonical_status_at_capture": "clean",
+      "excluded_candidate_change": "Uncommitted .gitignore addition /.local remains only in candidate worktree; it was not merged.",
+      "module_sha256": [
+        {
+          "path": "hr_client/client.py",
+          "canonical_checkout": "9EBC1C4DD33287A13AF32E8EB1160D7525A503FCADB5687975B0528CC2050379",
+          "reviewed_candidate_checkout": "481163DC187FFF8E62FDD9D2AF6C919F3ED9F1CCAE43D4F463ACD900111A3F9D",
+          "git_blob": "15f3663441baf263fb53319f2f1048397a038069"
+        },
+        {
+          "path": "hr_client/pending_completion.py",
+          "canonical_checkout": "3F2D33D94DD838AF21B5E49C64CAB1CF5C0A5BD34BB759FA63062E50AF5BF228",
+          "reviewed_candidate_checkout": "3F2D33D94DD838AF21B5E49C64CAB1CF5C0A5BD34BB759FA63062E50AF5BF228",
+          "git_blob": "22a9f078d842fddfffdfd9518a7e499501ef5be1"
+        },
+        {
+          "path": "hr_client/pending_failure.py",
+          "canonical_checkout": "11504AE67AF9AD6084AB07BEF788B2EE7A9133E0DF78E94FE984F7A01DC4E2A1",
+          "reviewed_candidate_checkout": "8A9C8822CFBCA96C48AF2401793220A8E2694F941111423327B9087DA63FC80A",
+          "git_blob": "6e92d52aae1f08c79aae83fcda70c91f89c1dd18"
+        },
+        {
+          "path": "hr_client/settings.py",
+          "canonical_checkout": "7520627CAB334F88F29687780819E46DE08B38D71EF2F947073D0501CD9F149F",
+          "reviewed_candidate_checkout": "01904C2C675FCD38645F508E4601796A07BB2B5F895DF2FE019A58D6A271E584",
+          "git_blob": "1e62962cdee08a215496f56064cc40d1e5ceca49"
+        }
+      ],
+      "module_hash_note": "Git blobs matched in canonical and candidate HEAD for all four modules. Checkout-byte differences in client.py, pending_failure.py, and settings.py disappear after normalizing CRLF/CR to LF; pending_completion.py is byte-identical. Use canonical checkout SHA-256 values for local source pins."
+    },
+    "nova": {
+      "canonical_path": "D:/Work/FPS/Robotics/nova5_ros2",
+      "target_branch": "nova5_vision_lebai_andy",
+      "before_commit": "fe1e9d07ad2e16d1c46838cce63b65943b5261c8",
+      "recovery_candidate_commit": "39c6aff523e95bc03a1db10bb854aec8746d0df9",
+      "preparation_commit": "4055912c72a90e841b79cbc93852fe9cc807927a",
+      "after_commit": "4055912c72a90e841b79cbc93852fe9cc807927a",
+      "candidate_path": "D:/Work/FPS/Robotics/end-to-end-sim/.local/nova5-recovery-worktree",
+      "preparation_branch": "codex/nova-merge-prep-20260924",
+      "backup_branch": "codex/pre-merge-nova-20260924",
+      "backup_commit": "fe1e9d07ad2e16d1c46838cce63b65943b5261c8",
+      "integration": "Fast-forwarded target through recovery candidate and test-only preparation commit",
+      "canonical_status_at_capture": "clean (Git reports an access warning for ignored .pytest_cache)",
+      "excluded_candidate_file": "Untracked src/platform_bridge/pending-completions.json remains only in candidate worktree; it was not committed or merged.",
+      "test_preparation": {
+        "target_path": "src/platform_bridge/test/test_platform_completion_e2e.py",
+        "reviewed_overlay_path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/nova-durable-failure-compat-b4b0557/test-overlay/test_platform_completion_e2e_overlay.py",
+        "reviewed_overlay_sha256": "EE45E240F4316DEE2B8E68718083D5BCA852296FBDB8871B4576AF966C67942B",
+        "canonical_checkout_sha256": "6CE71BCEB0C2B8A4ABE071270226C42808502E46CC2AE5A76D211FA0449877F6",
+        "canonical_git_blob": "8a363fbd0614fc84630161f3c08cebabe61b4c2c",
+        "normalized_line_endings_text_equal": true,
+        "change": "Isolated per-test pending completion/failure stores and corrected fake ACK fields for the durable client.",
+        "excluded_overlay_path": "C:/Users/andyl/.codex/worktrees/dfcb/platform-client/.local/humanoid-happy-stage/nova-durable-failure-compat-b4b0557/test-overlay/test_recovery_replay_overlay.py",
+        "excluded_overlay_reason": "Its helper-import rename was unnecessary; original test_recovery_replay.py import was retained."
+      }
+    }
+  },
+  "verification": {
+    "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+    "environment": "WSL Ubuntu-22.04, Python 3.10, existing virtual environment; no package installation",
+    "client": {
+      "source_path": "/mnt/d/Work/FPS/Robotics/platform-client",
+      "command": "wsl.exe -d Ubuntu-22.04 --cd /tmp -- env PYTHONPATH=/mnt/d/Work/FPS/Robotics/platform-client /home/user/.venvs/end-to-end-sim-ros/bin/python -m pytest -q -p no:cacheprovider /mnt/d/Work/FPS/Robotics/platform-client/tests/test_hr_protocol.py /mnt/d/Work/FPS/Robotics/platform-client/tests/test_pending_completion.py /mnt/d/Work/FPS/Robotics/platform-client/tests/test_pending_failure.py /mnt/d/Work/FPS/Robotics/platform-client/tests/test_hr_failure_settings.py /mnt/d/Work/FPS/Robotics/platform-client/tests/test_settings_diff.py",
+      "result": "164 passed in 9.84s",
+      "scope_limit": "Focused protocol, durable completion/failure, and settings tests; broad client suite was not run."
+    },
+    "nova_preparation_worktree": {
+      "nova_source_path": "/mnt/d/Work/FPS/Robotics/end-to-end-sim/.local/nova5-recovery-worktree/src/platform_bridge",
+      "client_source_path": "/mnt/d/Work/FPS/Robotics/platform-client",
+      "command_reconstruction": "PLATFORM_CLIENT_ROOT and NOVA_MIGRATION_TEST_ROOT pointed to those source paths; PYTHONPATH included preparation platform_bridge, platform_common, and canonical client; pytest -q -p no:cacheprovider ran the normal src/platform_bridge/test suite with JUnit /tmp/nova-merge-20260924.xml.",
+      "exact_command_preserved": false,
+      "result": "236 passed in 11.65s"
+    },
+    "nova_canonical_first_run": {
+      "nova_source_path": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge",
+      "client_source_path": "/mnt/d/Work/FPS/Robotics/platform-client",
+      "command_reconstruction": "Normal src/platform_bridge/test suite against canonical Nova and canonical client, pytest -q -p no:cacheprovider, JUnit /tmp/nova-merged-target-20260924.xml.",
+      "exact_command_preserved": false,
+      "result": "235 passed, 1 failed",
+      "failed_test": "test_lost_start_ack_recovers_known_success_without_a_second_start",
+      "observed_failure": "The test's fixed 0.5-second overall timeout elapsed amid lost-start-ACK trace/status handling; status call received 0.0 timeout, then unresolved result and no completion report.",
+      "rationale": "Timing sensitivity is consistent with the isolated test and full suite both passing on repeat. This is an inference, not a proven root cause."
+    },
+    "nova_canonical_isolated_repeat": {
+      "test": "test_lost_start_ack_recovers_known_success_without_a_second_start",
+      "result": "1 passed in 1.75s"
+    },
+    "nova_canonical_full_repeat": {
+      "result": "236 passed in 9.66s",
+      "junit_original_path": "/tmp/nova-merged-target-repeat-20260924.xml"
+    },
+    "raw_artifacts": {
+      "status": "unavailable_at_capture",
+      "reason": "The three JUnit XML files originally written under WSL /tmp and any transient stdout logs were no longer present when preservation was requested. No raw test output was recreated or represented as a copy.",
+      "original_junit_paths": [
+        "/tmp/nova-merge-20260924.xml",
+        "/tmp/nova-merged-target-20260924.xml",
+        "/tmp/nova-merged-target-repeat-20260924.xml"
+      ],
+      "client_junit": "not generated",
+      "isolated_repeat_junit": "not generated"
+    }
+  }
+}
