@@ -54,12 +54,13 @@ def capture(source,relative,rows):
     if before!=digest(source) or before!=digest(target): raise RuntimeError("source changed while captured: "+str(source))
     rows.append({"source":str(source),"copy":str(target),"sha256":before,"bytes":target.stat().st_size})
 def source_head(path, expected, label):
-    result = command(["git", "-C", str(path), "rev-parse", "HEAD"], label + "-head")
+    safe_root = path if label == "client" else path.parents[1]
+    result = command(["git", "-c", "safe.directory=" + str(safe_root), "-C", str(safe_root), "rev-parse", "HEAD"], label + "-head")
     if result.returncode or result.stdout.strip() != expected:
         raise RuntimeError(label + " source is not the reviewed merged commit")
     for extra in ([], ["--cached"]):
         scope = ["src/platform_bridge"] if label == "nova" else ["hr_client", "platform_common"]
-        clean = command(["git", "-c", "core.autocrlf=true", "-C", str(path), "diff", "--quiet", *extra, "--", *scope], label + "-clean")
+        clean = command(["git", "-c", "safe.directory=" + str(safe_root), "-c", "core.autocrlf=true", "-C", str(safe_root), "diff", "--quiet", *extra, "--", *scope], label + "-clean")
         if clean.returncode:
             raise RuntimeError(label + " selected source has tracked edits")
     return expected
@@ -118,7 +119,7 @@ def capture_inputs(rows):
                      ("client.py", "pending_completion.py", "pending_failure.py", "settings.py")}
     write(ROOT / "pre-run-source-manifest.json",
           {"schema": 1, "captured_at_utc": utc(), "client_commit": CLIENT_COMMIT,
-           "nova_commit": NOVA_COMMIT, "sim_commit": command(["git", "-C", str(SIM), "rev-parse", "HEAD"], "sim-head").stdout.strip(),
+           "nova_commit": NOVA_COMMIT, "sim_commit": command(["git", "-c", "safe.directory=" + str(SIM), "-C", str(SIM), "rev-parse", "HEAD"], "sim-head").stdout.strip(),
            "client_source": str(CLIENT), "nova_source": str(BRIDGE), "sim_source": str(SIM),
            "compiled_api_source": str(DIST), "client_module_sha256": CLIENT_HASHES, "files": rows})
     emit("source_capture", files=len(rows), manifest_sha256=digest(ROOT / "pre-run-source-manifest.json"))

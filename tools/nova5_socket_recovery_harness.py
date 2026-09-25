@@ -235,12 +235,13 @@ def require_current_sources(arguments: argparse.Namespace) -> None:
     """Validate current merged source and all actual imported-file candidates."""
     for path, expected, label in ((arguments.platform_client_source, CURRENT_CLIENT_COMMIT, "client"),
                                   (arguments.bridge_source, CURRENT_NOVA_COMMIT, "Nova")):
-        head = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
+        safe_root = path if label == "client" else path.parents[1]
+        head = subprocess.run(["git", "-c", "safe.directory=" + str(safe_root), "-C", str(safe_root), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
         if head.returncode or head.stdout.strip() != expected:
             raise HarnessError("selected %s source is not reviewed merged commit" % label)
         for extra in ([], ["--cached"]):
             scope = ["src/platform_bridge"] if label == "Nova" else ["hr_client", "platform_common"]
-            clean = subprocess.run(["git", "-c", "core.autocrlf=true", "-C", str(path), "diff", "--quiet", *extra, "--", *scope], capture_output=True, check=False)
+            clean = subprocess.run(["git", "-c", "safe.directory=" + str(safe_root), "-c", "core.autocrlf=true", "-C", str(safe_root), "diff", "--quiet", *extra, "--", *scope], capture_output=True, check=False)
             if clean.returncode:
                 raise HarnessError("selected %s source has tracked edits" % label)
     for name, expected in CURRENT_CLIENT_HASHES.items():
