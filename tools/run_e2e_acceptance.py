@@ -125,6 +125,15 @@ def capture_inputs(rows):
     emit("source_capture", files=len(rows), manifest_sha256=digest(ROOT / "pre-run-source-manifest.json"))
 
 
+def probe_child_dependencies():
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(CLIENT) + ":" + str(SIM)
+    probe = subprocess.run([str(PY), "-c", "import socketio; import hr_client.client; import humanoid_harness.integration"], cwd=SIM, env=env, capture_output=True, text=True, check=False)
+    emit("human_import_probe", interpreter=str(PY), returncode=probe.returncode, stdout=probe.stdout, stderr=probe.stderr)
+    if probe.returncode:
+        raise RuntimeError("selected child Python cannot import the humanoid client dependencies")
+
+
 def settings(rows):
     state=ROOT/"humanoid-state"; payload=read(CLIENT/"hr_client/config/hr_settings.json")
     payload["paths"]["poses"]=str(CLIENT/"hr_client/config/poses.json")
@@ -237,7 +246,7 @@ def main(argv=None):
           "ros_domain_id": OPTIONS.ros_domain_id, "python": str(PY), "started_utc": utc()})
     children=[]; rows=[]; api_started=False; error=None
     try:
-        capture_inputs(rows); human_settings,args=settings(rows)
+        capture_inputs(rows); human_settings,args=settings(rows); probe_child_dependencies()
         for port in (OPTIONS.api_port,OPTIONS.humanoid_port,OPTIONS.nova_port):
             with socket.socket() as probe: probe.bind(("127.0.0.1",port))
         clone=command(["runuser","-u","postgres","--","createdb","-T",OPTIONS.seed_db,DB],"clone-db")
