@@ -182,3 +182,7 @@ cython_debug/
 
 # Local humanoid harness run state and visual replay output
 .humanoid-runs/
+install/
+log/
+runtime/
+.local/
