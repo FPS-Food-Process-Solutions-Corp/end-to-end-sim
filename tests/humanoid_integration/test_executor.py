@@ -1,6 +1,7 @@
 """Public client executor contract and durable physical ownership tests."""
 
 import asyncio
+import hashlib
 import io
 import json
 import subprocess
@@ -550,7 +551,10 @@ class HumanoidExecutorTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(events, ["run", "stop"])
             manifest = json.loads((root / "integration-manifest.json").read_text(encoding="ascii"))
-            self.assertEqual(manifest["loaded_client_sha256"], launcher_module.EXPECTED_CLIENT_SHA256)
+            self.assertEqual(manifest["loaded_client_sha256"], hashlib.sha256(Path(launcher_module.client_module.__file__).read_bytes()).hexdigest())
+            self.assertEqual(manifest["loaded_client_normalized_sha256"], launcher_module.EXPECTED_CLIENT_SHA256)
+            self.assertEqual(manifest["client_pin_scheme"], launcher_module.PIN_SCHEME)
+            self.assertEqual(set(manifest["pinned_sources"]), {"client.py", "pending_completion.py", "pending_failure.py", "settings.py"})
             self.assertEqual(Path(manifest["simulation_locations"]), root / "simulation-locations.json")
 
     def test_real_client_location_table_accepts_symbolic_counter_four_overlay(self):

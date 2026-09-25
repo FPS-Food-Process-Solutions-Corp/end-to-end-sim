@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from hr_client.client import HumanoidRobotClient
 from hr_client import client as client_module
+from hr_client import pending_completion as pending_completion_module
 from hr_client import pending_failure as pending_failure_module
 from hr_client import settings as settings_module
 from hr_client.locations import LocationTable
@@ -25,8 +26,10 @@ from ..storage import read_json, write_json
 
 
 EXPECTED_CLIENT_SHA256 = "481163dc187fff8e62fdd9d2af6c919f3ed9f1ccae43d4f463acd900111a3f9d"
+EXPECTED_COMPLETION_SHA256 = "006e47f6c1510bfcda9c019aef5f7741e73187ce14b64a3f6b11fc358520b402"
 EXPECTED_FAILURE_SHA256 = "8a9c8822cfbca96c48af2401793220a8e2694f941111423327b9087da63fc80a"
-EXPECTED_SETTINGS_SHA256 = "01904c2c675fcd38645f508e4601796a07bb2b5f895df2fe019a58d6a271e584"
+EXPECTED_SETTINGS_SHA256 = "d88bcb104f1b851b95963a61904b8401e19b0ee9e1ae3a15a259b38dc76f8bb6"
+PIN_SCHEME = "sha256-crlf-to-lf-v1"
 
 
 class InertHardware:
@@ -98,19 +101,30 @@ def simulation_locations(source_path: Path, state_root: Path) -> Path:
     return path
 
 
+def verify_source_file(module, source: Path, filename: str, expected_hash: str) -> dict:
+    loaded_path = Path(module.__file__).resolve()
+    expected_path = source / "hr_client" / filename
+    if loaded_path != expected_path:
+        raise ValueError(f"Loaded platform-client module is outside selected source: {loaded_path}; expected {expected_path}")
+    content = loaded_path.read_bytes()
+    raw_hash = hashlib.sha256(content).hexdigest()
+    normalized_hash = hashlib.sha256(content.replace(b"\r\n", b"\n")).hexdigest()
+    if normalized_hash != expected_hash:
+        raise ValueError(f"Loaded platform-client module is not pinned: {loaded_path} raw_sha256={raw_hash} normalized_sha256={normalized_hash}; expected normalized_sha256={expected_hash}")
+    return {"path": str(loaded_path), "sha256": raw_hash, "normalized_sha256": normalized_hash}
+
+
 async def run(args) -> int:
     source = args.client_source.resolve()
     pinned = ((client_module, "client.py", EXPECTED_CLIENT_SHA256),
+              (pending_completion_module, "pending_completion.py", EXPECTED_COMPLETION_SHA256),
               (pending_failure_module, "pending_failure.py", EXPECTED_FAILURE_SHA256),
               (settings_module, "settings.py", EXPECTED_SETTINGS_SHA256))
+    pinned_sources = {}
     for module, filename, expected_hash in pinned:
-        loaded_path = Path(module.__file__).resolve()
-        expected_path = source / "hr_client" / filename
-        actual = hashlib.sha256(loaded_path.read_bytes()).hexdigest()
-        if loaded_path != expected_path or actual != expected_hash:
-            raise ValueError(f"Loaded platform-client module is not pinned: {loaded_path} sha256={actual}; expected {expected_path} sha256={expected_hash}")
+        pinned_sources[filename] = verify_source_file(module, source, filename, expected_hash)
     loaded = Path(client_module.__file__).resolve()
-    actual_hash = EXPECTED_CLIENT_SHA256
+    actual_hash = pinned_sources["client.py"]["sha256"]
     module_names = sorted(name for name in sys.modules if name in ("hr_client", "platform_common") or name.startswith(("hr_client.", "platform_common.")))
     loaded_sources = {}
     for module_name in module_names:
@@ -120,7 +134,9 @@ async def run(args) -> int:
         module_path = Path(module.__file__).resolve()
         if source not in module_path.parents:
             raise ValueError(f"Loaded {module_name} outside pinned client source: {module_path}")
-        loaded_sources[module_name] = {"path": str(module_path), "sha256": hashlib.sha256(module_path.read_bytes()).hexdigest()}
+        content = module_path.read_bytes()
+        loaded_sources[module_name] = {"path": str(module_path), "sha256": hashlib.sha256(content).hexdigest(),
+                                       "normalized_sha256": hashlib.sha256(content.replace(b"\r\n", b"\n")).hexdigest()}
     if args.stop_after_seconds is not None and args.stop_after_seconds <= 0:
         raise ValueError("Stop deadline must be positive")
     for value in (args.url, args.readback_url):
@@ -178,7 +194,9 @@ async def run(args) -> int:
         recovered = await executor.recover_completed(client)
         recovered_failures = await executor.recover_failures(client)
         ensure_startup_ready(executor)
-        manifest = {"schema": 1, "client_source": str(source), "loaded_client_file": str(loaded), "loaded_client_sha256": actual_hash,
+        manifest = {"schema": 2, "client_source": str(source), "loaded_client_file": str(loaded), "loaded_client_sha256": actual_hash,
+                    "loaded_client_normalized_sha256": pinned_sources["client.py"]["normalized_sha256"],
+                    "client_pin_scheme": PIN_SCHEME, "pinned_sources": pinned_sources,
                     "loaded_sources": loaded_sources,
                     "settings_source": settings.source_path, "state_root": str(root), "socket_url": args.url, "readback_url": args.readback_url,
                     "simulation_locations": str(location_overlay),
