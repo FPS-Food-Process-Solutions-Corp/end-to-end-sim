@@ -19,6 +19,7 @@ from urllib.request import urlopen
 
 import e2e_mixed_audit as audit
 import e2e_held_placement_case as held
+import e2e_operator_recovery_case as operator_recovery
 import nova5_socket_recovery_harness as nova
 import recovery_api_runtime as api_runtime
 
@@ -194,7 +195,7 @@ async def bootstrap(oid):
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description="Run an isolated real-platform mixed Nova/humanoid acceptance case with simulated hardware.")
     parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--case", choices=("mixed-positive", "nova-callback-boundary", "held-placement-restart"), required=True)
+    parser.add_argument("--case", choices=("mixed-positive", "nova-callback-boundary", "held-placement-restart", *operator_recovery.CASES), required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--client-root", type=Path, required=True)
     parser.add_argument("--nova-root", type=Path, required=True, help="Nova repository root")
@@ -291,7 +292,7 @@ def main(argv=None):
         if OPTIONS.case == "nova-callback-boundary":
             run_callback_case(manifest)
             return 0
-        if OPTIONS.case == "held-placement-restart":
+        if OPTIONS.case == "held-placement-restart" or OPTIONS.case in operator_recovery.CASES:
             baseline = snapshot("baseline-api-snapshot")
             if not nova.queue_is_clean(baseline["queue"]):
                 raise RuntimeError("fresh API queue not clean for held placement")
@@ -299,7 +300,7 @@ def main(argv=None):
                 api_port=OPTIONS.api_port, humanoid_port=OPTIONS.humanoid_port, client_hashes=CLIENT_HASHES,
                 settings_path=human_settings, api_request=api, snapshot=snapshot, emit=emit,
                 managed_process=nova.ManagedProcess, children=children, baseline_snapshot=baseline)
-            result = held.run_case(context)
+            result = operator_recovery.run_case(context, OPTIONS.case) if OPTIONS.case in operator_recovery.CASES else held.run_case(context)
             write(ROOT / "result.json", {"status": "automated_acceptance_passed", **result})
             return 0
         for name in ("nova-proxy","humanoid-proxy"): write(ROOT/(name+"-control.json"),{"sequence":1,"mode":"pass"})

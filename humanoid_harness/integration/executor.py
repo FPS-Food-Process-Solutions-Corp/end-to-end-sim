@@ -117,6 +117,17 @@ class HumanoidPickExecutor:
         self._installed_hold_id = None
         self._closed = False
         try:
+            operator_path = self.root / "operator-recovery.json"
+            if operator_path.exists():
+                operator_actions = read_json(operator_path)
+                if (operator_actions.get("schema") != 1
+                        or not isinstance(operator_actions.get("actions"), dict)):
+                    raise StateError("Invalid operator recovery action journal")
+                if any(not isinstance(action, dict)
+                       or action.get("status") in ("in_progress", "blocked")
+                       or action.get("status") not in ("complete", "refused")
+                       for action in operator_actions["actions"].values()):
+                    raise StateError("Incomplete operator recovery action blocks device startup")
             if not fresh_device and (not self.owner_path.exists() or not self.registry_path.exists() or not self.readiness_path.exists()):
                 raise StateError("Existing device journals lack owner, identity registry or readiness record")
             if self.owner_path.exists():

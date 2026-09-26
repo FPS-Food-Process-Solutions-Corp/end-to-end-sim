@@ -1,5 +1,7 @@
 # Recommended operator recovery workflow
 
+**Implementation follow-up (2026-09-25):** The user authorized the simulator-first milestone after the E2E integration was merged locally into main. See the [implementation plan](operator-recovery-plan.md). Current code inspection found the unchanged public client APIs sufficient for the offline workflow, so this milestone is confined to `end-to-end-sim`. The recommendation below remains the broader design; its proposed acceptance checks are not test results.
+
 Prepared 2026-09-24. This is a proposal for review, not an implemented feature or permission to operate hardware. Existing tested behavior and its limits are in [the master verification report](master-verification-report.md).
 
 ## Recommendation

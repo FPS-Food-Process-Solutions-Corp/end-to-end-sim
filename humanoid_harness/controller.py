@@ -22,7 +22,7 @@ class Harness:
         "jolt": "pick_reset", "pick_reset": "pick", "navigate_idle": "done",
     }
 
-    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None, assigned: bool = False, cancel_requested=None, phase_callback=None, initial_world: dict | None = None):
+    def __init__(self, state_dir: Path, config: dict, resume: bool = False, *, amr=None, mover=None, lift=None, vla=None, perception=None, platform=None, assigned: bool = False, cancel_requested=None, phase_callback=None, initial_world: dict | None = None, lock_owned_externally: bool = False):
         validate_config(config)
         if assigned and (len(config["tasks"]) != 1 or config["tasks"][0]["rack"] != "B"):
             raise ValueError("Assigned mode requires exactly one Rack B task")
@@ -34,12 +34,14 @@ class Harness:
             raise StateError("--resume requires an existing harness state directory")
         if not resume:
             state_dir.mkdir(parents=True, exist_ok=True)
-        self.lock = StateLock(state_dir / ".harness.lock")
-        self.lock.acquire()
+        self.lock = None if lock_owned_externally else StateLock(state_dir / ".harness.lock")
+        if self.lock is not None:
+            self.lock.acquire()
         try:
             self._initialize(state_dir, config, resume, amr, mover, lift, vla, perception, platform)
         except (StateError, ValueError, OSError, KeyError, TypeError):
-            self.lock.release()
+            if self.lock is not None:
+                self.lock.release()
             raise
 
     def _initialize(self, state_dir: Path, config: dict, resume: bool, amr, mover, lift, vla, perception, platform) -> None:
@@ -535,6 +537,53 @@ class Harness:
         self._emit("post_place_readiness_verified", proof=proof)
         self._set_phase("done")
 
+    def operator_probe_post_place_release(self, action_id: str | None = None) -> dict | None:
+        """Take one fresh simulated readiness observation without submitting motion."""
+        phase = self.state.get("phase")
+        if (not self.assigned or phase not in ("hold", "done")
+                or phase == "done" and action_id is None
+                or not self._assigned_proof_valid()):
+            raise StateError("Operator probe requires one held unit with exact verified placement")
+        task = self._task()
+        cycle = self._unit()["cycle"]
+        attempt = self._unit().get("post_place_retract_attempts", 0)
+        execution_id = f"{self.state['unit_namespace']}/c{cycle}/post_place_retract/a{attempt}"
+        expected = Execution(execution_id, task["task_id"], "post_place_retract",
+                             self.config["poses"]["travel"], cycle * 100 + attempt, "INTENDED")
+        saved = self.device.state["executions"].get(execution_id)
+        if (not isinstance(saved, dict) or saved.get("task_id") != expected.task_id
+                or saved.get("kind") != expected.kind or saved.get("target") != expected.target
+                or saved.get("generation") != expected.generation
+                or saved.get("status") != "COMPLETED" or saved.get("effect_applied") is not True
+                or any(row.get("status") in ("RUNNING", "UNKNOWN")
+                       for row in self.device.state["executions"].values())):
+            raise StateError("Exact post-place retract is not already completed and quiescent")
+        world_before = deepcopy(self.device.state["world"])
+        executions_before = deepcopy(self.device.state["executions"])
+        observed = self.perception.verify_release_readiness(
+            task["task_id"], cycle, task["counter"], execution_id, expected.target)
+        if self.device.state["world"] != world_before or self.device.state["executions"] != executions_before:
+            raise StateError("Readiness probe changed physical world or execution ledger")
+        if observed.is_err or observed.data is None or not self._release_matches(
+                observed.data, task, cycle, execution_id, expected.target):
+            return None
+        proof = {"schema": 1, "assignment": dict(self.state["assignment"]),
+                 "physical_place_execution_id": self.state["physical_proof"]["place_execution_id"],
+                 "recovery_execution_id": execution_id, "recovery_status": "COMPLETED",
+                 "recovery_target": expected.target, "recovery_generation": expected.generation,
+                 "readiness_observation": asdict(observed.data), "readiness_scope": "at_unit_release",
+                 "provenance": "humanoid_harness.StubDevice/1",
+                 "config_fingerprint": self.state["config_fingerprint"],
+                 "operator_action_id": action_id}
+        self.state["post_place_readiness_proof"] = proof
+        self._unit()["status"] = "complete"
+        self._save()
+        self._emit("operator_post_place_readiness_verified", proof=proof)
+        self._set_phase("done")
+        if not self._post_place_proof_valid():
+            raise StateError("Fresh operator readiness proof failed exact readback")
+        return deepcopy(proof)
+
     def _release_matches(self, evidence, task: dict, cycle: int, execution_id: str, travel_pose: str) -> bool:
         return (evidence.task_id == task["task_id"] and evidence.cycle == cycle and evidence.counter == task["counter"]
                 and evidence.recovery_execution_id == execution_id and isinstance(evidence.observation_version, int) and evidence.observation_version > 0
@@ -768,7 +817,8 @@ class Harness:
             self.close()
 
     def close(self) -> None:
-        self.lock.release()
+        if self.lock is not None:
+            self.lock.release()
 
     def _run(self) -> dict:
         for _ in range(1000):

@@ -12,7 +12,7 @@ The humanoid harness and root E2E package are integrated on `codex/e2e-humanoid-
 
 Each accepted case verified 338 captured source files unchanged, stopped its owned API and left its reserved test ports clear. The report also records the overlapping software checks and unsuccessful fixture attempts; their counts are not combined into a unique total. Curated results are versioned and raw captures/databases remain local.
 
-The original `end-to-end-sim/main` remains at `62158af`; this integration is ready for branch review. No canonical `coffee-platform` change was made. Tests reused the prepared API stage, whose earlier staging history remains relevant. Platform partial-order settlement, cancellation accounting and terminal replay defects remain open. The general humanoid operator-resolution workflow, combined browser frontend behavior and physical hardware still need separate work.
+On September 25, the verified integration was fast-forwarded locally into `end-to-end-sim/main` at `0c9e81d78a0c06ff7c40c92851599e1c0bb94e90`. The original `62158af` remains preserved by `codex/pre-humanoid-integration-20260925`. Operator recovery is the next work item on `codex/operator-recovery`. No canonical `coffee-platform` change was made. Tests reused the prepared API stage, whose earlier staging history remains relevant. Platform partial-order settlement, cancellation accounting and terminal replay defects remain open. The general humanoid operator-resolution workflow, combined browser frontend behavior and physical hardware still need separate work.
 
 ## Historical coverage and source epochs
 

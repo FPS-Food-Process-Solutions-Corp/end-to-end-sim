@@ -8,7 +8,7 @@ Use the [acceptance runbook](e2e-acceptance-runbook.md) for copyable commands. T
 
 | Item | Change and reason |
 |---|---|
-| Harness branch integration | The cumulative humanoid feature at `cef2e87` is included, along with the root tools, configuration, requirements, tests and documentation. The original `main` remains at `62158af`; `codex/pre-humanoid-integration-20260925` preserves it. |
+| Harness branch integration | The cumulative humanoid feature at `cef2e87` is included, along with the root tools, configuration, requirements, tests and documentation. Integration started from `main` at `62158af`; `codex/pre-humanoid-integration-20260925` preserves that original tip. The subsequent main merge is recorded below. |
 | Client source checks | Four imported client modules must come from the selected source root and match reviewed SHA-256 values after CRLF-to-LF normalization. Raw hashes are also recorded. Equivalent Windows/Linux line endings work; substantive edits or another checkout are rejected. |
 | Maintained acceptance runner | `tools/run_e2e_acceptance.py` runs the mixed-order, Nova callback-boundary and held-placement restart controls with explicit source roots, fresh state/database names, local ports and ROS domain. Its active path no longer depends on ignored legacy driver scripts. |
 | Audits and recovery cases | `tools/e2e_mixed_audit.py` preserves the exact mixed-device chronology and physical/inventory assertions. `tools/e2e_held_placement_case.py` preserves the crash, recovery and persistent-hold assertions. |
@@ -63,7 +63,7 @@ The runtime review also found and fixed the missing Nova source-identity fields 
 
 ## Remaining limits and next steps
 
-This branch is ready for review and a later merge into `end-to-end-sim/main`; it has not been pushed or deployed. The separate platform status patch remains a handoff artifact, not a canonical platform change.
+Following review, the user authorized the local merge. `end-to-end-sim/main` was fast-forwarded from `62158af` to `0c9e81d78a0c06ff7c40c92851599e1c0bb94e90` on September 25; the original tip remains preserved by `codex/pre-humanoid-integration-20260925`. No remote push or deployment was performed. Subsequent operator-recovery work starts on the separate `codex/operator-recovery` branch. The separate platform status patch remains a handoff artifact, not a canonical platform change.
 
 The unchanged platform's partial-order settlement, cancellation-accounting and terminal-replay limitations remain. The held-placement control deliberately preserves a physical hold; there is still no general humanoid operator-resolution workflow. See [the operator recommendation](operator-recovery-recommendation-2026-09-24.md).
 
