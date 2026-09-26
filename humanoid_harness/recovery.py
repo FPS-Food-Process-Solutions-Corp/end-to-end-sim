@@ -1,6 +1,7 @@
 """Operator-only inspection and no-motion recovery for saved humanoid simulator runs."""
 
 import argparse
+from contextlib import redirect_stdout
 import json
 from pathlib import Path
 import sys
@@ -69,21 +70,22 @@ def _human_inspection(result):
 def main(argv=None):
     arguments = parser().parse_args(argv)
     try:
-        if arguments.command == "inspect":
-            result = inspect_state(arguments.state_root, arguments.client_source)
-        else:
-            identity = {"order_id": arguments.order_id, "session_id": arguments.session_id,
-                        "task_id": arguments.task_id, "counter": arguments.counter}
-            common = {"action_id": arguments.action_id, "operator": arguments.operator,
-                      "reason": arguments.reason, "identity": identity, "hold_id": arguments.hold_id,
-                      "place_execution_id": arguments.place_execution_id,
-                      "expected_inspection_sha256": arguments.expected_inspection_sha256}
-            if arguments.command == "reconcile-report":
-                result = reconcile_report(arguments.state_root, arguments.client_source,
-                                          api_url=arguments.api_url,
-                                          socket_url=arguments.socket_url, **common)
+        with redirect_stdout(sys.stderr):
+            if arguments.command == "inspect":
+                result = inspect_state(arguments.state_root, arguments.client_source)
             else:
-                result = release_hold(arguments.state_root, arguments.client_source, **common)
+                identity = {"order_id": arguments.order_id, "session_id": arguments.session_id,
+                            "task_id": arguments.task_id, "counter": arguments.counter}
+                common = {"action_id": arguments.action_id, "operator": arguments.operator,
+                          "reason": arguments.reason, "identity": identity, "hold_id": arguments.hold_id,
+                          "place_execution_id": arguments.place_execution_id,
+                          "expected_inspection_sha256": arguments.expected_inspection_sha256}
+                if arguments.command == "reconcile-report":
+                    result = reconcile_report(arguments.state_root, arguments.client_source,
+                                              api_url=arguments.api_url,
+                                              socket_url=arguments.socket_url, **common)
+                else:
+                    result = release_hold(arguments.state_root, arguments.client_source, **common)
     except Exception as exc:
         if arguments.format == "json":
             print(json.dumps({"schema": 1, "status": "error", "message": str(exc)}, sort_keys=True))

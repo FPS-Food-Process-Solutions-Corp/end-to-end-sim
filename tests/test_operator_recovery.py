@@ -350,3 +350,47 @@ def test_new_release_action_reobserves_after_preexisting_valid_proof(tmp_path, b
     events = (unit / "events.jsonl").read_text(encoding="ascii")
     assert '"observation_version": 2' in events
     assert '"observation_version": 3' in events
+
+
+def _release_cli_args(root, source, args):
+    return ["release-hold", "--state-root", str(root), "--client-source", str(source),
+            "--format", "json", "--action-id", args["action_id"],
+            "--operator", args["operator"], "--reason", args["reason"],
+            "--order-id", args["identity"]["order_id"],
+            "--session-id", args["identity"]["session_id"],
+            "--task-id", args["identity"]["task_id"],
+            "--counter", str(args["identity"]["counter"]),
+            "--place-execution-id", args["place_execution_id"],
+            "--hold-id", args["hold_id"],
+            "--expected-inspection-sha256", args["expected_inspection_sha256"]]
+
+
+def test_successful_release_cli_keeps_json_stdout_single_and_progress_stderr(tmp_path, capsys):
+    from humanoid_harness.recovery import main
+    root, source, unit, proof, args = _fixture(tmp_path)
+    _confirm(root, proof, args["identity"])
+    args = _refresh(root, source, args)
+    capsys.readouterr()
+    assert main(_release_cli_args(root, source, args)) == 0
+    output = capsys.readouterr()
+    result = json.loads(output.out)
+    assert result["status"] == "complete"
+    assert result["action_id"] == args["action_id"]
+    assert output.out.count("\n") == 1
+    assert "operator_post_place_readiness_verified" in output.err
+    assert "phase" in output.err
+    assert read_json(root / "device-owner.json")["status"] == "idle"
+
+
+def test_refused_release_cli_remains_one_json_result(tmp_path, capsys):
+    from humanoid_harness.recovery import main
+    root, source, unit, proof, args = _fixture(tmp_path, "post_place_retract", "unknown")
+    _confirm(root, proof, args["identity"])
+    args = _refresh(root, source, args)
+    capsys.readouterr()
+    assert main(_release_cli_args(root, source, args)) == 2
+    output = capsys.readouterr()
+    result = json.loads(output.out)
+    assert result["status"] == "refused"
+    assert output.out.count("\n") == 1
+    assert read_json(root / "device-owner.json")["status"] == "hold"
