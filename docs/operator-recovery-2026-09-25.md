@@ -1,37 +1,80 @@
-# Operator recovery implementation and verification - 2026-09-25
+# Operator recovery verification - 2026-09-25
 
-Status: draft. The software baseline is committed as `16d3944147ebc25e969e60253bb01edd305f0aa8`. The first real-API operator attempt exposed a fixture timing error; fresh acceptance is pending the corrected fixture.
+Status: simulator CLI milestone implemented and verified on `codex/operator-recovery`. The earlier E2E integration is merged locally into `main` at `0c9e81d`. Operator recovery is a separate change for review; nothing was pushed.
 
-## Main merge and repository scope
+## What an operator can do
 
-The verified E2E integration was fast-forwarded locally into `end-to-end-sim/main` at `0c9e81d78a0c06ff7c40c92851599e1c0bb94e90`. The original main tip `62158af` remains preserved. Operator recovery is being developed on `codex/operator-recovery`.
+The new command inspects a stopped humanoid simulator run, reconciles an eligible saved placement report, and releases an eligible exact physical hold. It records who acted, why, the task and hold identity, and the evidence before and after the action. The [runbook](operator-recovery-runbook.md) has the commands and refusal guidance.
 
-This milestone changes only `end-to-end-sim`. The canonical client, Nova and platform codebases remain unchanged. It reuses the existing client recovery behavior; it does not implement platform accounting or hardware recovery.
+A placement can be confirmed by the platform while the device remains held. Release requires a genuinely completed retract plus a fresh safe-readiness observation. An UNKNOWN retract remains held. Recovery does not move the robot, repeat a pick, or provide a general force-ready button.
 
-## Implemented scope under validation
+## Changed items to review
 
-- A shared simulator recovery service and CLI with separate inspection, report reconciliation and physical-hold release.
-- Offline inspection that separates physical evidence, report/callback state and readiness, with exact identity and an inspection fingerprint.
-- Operator/reason attribution and a stable action ID, with intent recorded before mutation and guarded replay after interruption.
-- Reconciliation of verified saved placement evidence through the pinned client, including the crash before a completion report was queued, while preserving the physical hold.
-- A no-motion readiness probe limited to a genuinely completed retract. Unknown/running outcomes remain held.
-- A startup gate for unfinished or malformed recovery actions, so normal dispatch cannot overtake recovery finalization.
-- Two separate maintained acceptance controls: unknown retract must remain held; completed retract with an invalid first readiness observation can be rechecked and released.
+All source changes are in `end-to-end-sim`.
 
-See the [plan](operator-recovery-plan.md) for the acceptance criteria and the [runbook draft](operator-recovery-runbook.md) for the operator workflow.
+| Item | Change and purpose |
+|---|---|
+| `humanoid_harness/operator_recovery.py` | Shared inspection, saved-report reconciliation, exact hold release and durable action audit. Exclusive locks and an inspection fingerprint reject competing writers and changed context. |
+| `humanoid_harness/recovery.py` | Operator CLI with human and JSON output, exact identity inputs, action ID, actor and reason. JSON output stays separate from progress logs. |
+| `humanoid_harness/controller.py` | Narrow no-motion readiness verification and action-tagged proof for a completed retract; physical world and execution history remain unchanged. |
+| `humanoid_harness/integration/executor.py` | Normal startup refuses an incomplete or malformed recovery journal, including interruption between readiness, ownership and final audit writes. |
+| `tools/e2e_operator_recovery_case.py` | Real-API acceptance fixture for held placement, report reconciliation, refusal/release, replay and restart, with preserved CLI, wire, API and state evidence. |
+| `tools/run_e2e_acceptance.py` | Two operator case modes using fresh run directories and database clones, source capture and owned cleanup. |
+| Three operator test modules | Service/CLI, independent crash and stale-state review, and acceptance-fixture checks. |
+| Runbook, plan, reports and evidence index | Operator instructions, tested scope, failures and fixes, exact provenance and remaining work. |
 
-## Findings and evidence limits recorded during development
+The canonical `platform-client` remains on `dev` at `adf51339db90f75ee078d51bc8fba36148414d89`. Canonical `nova5_ros2` remains on `nova5_vision_lebai_andy` at `4055912c72a90e841b79cbc93852fe9cc807927a`. Neither required another source change. Canonical `coffee-platform` remained read-only. Runtime checks used the existing prepared WSL platform stage and isolated database clones; that stage has previously documented test-only patch history and is not a pristine canonical-platform claim.
 
-Review found that a readback-only implementation could not settle the exit-78 pre-queue boundary. Reconciliation was changed to use the existing client completion queue/flush path with the physical hold installed before connecting. The real-API acceptance controls must verify the resulting report once, with no repeated physical work.
+## Runtime results
 
-Independent review also found that publishing ready ownership before finalizing the recovery record could allow ordinary startup to dispatch too early. The simulator executor now gates startup on unfinished recovery actions; crash/repair/restart tests cover this boundary. Harmless terminal preflight refusals must not create a permanent startup block.
+Both selected cases ran against the real prepared platform API, Socket.IO capture proxy and canonical pinned client, with executable source captured at `be2ec370ba865f899a855b305f5d36df276d0caf`.
 
-An early focused test run reported 12 passes and one failure because fixture progress output was mixed with the CLI JSON capture. The test clears its prior captured output before invoking the CLI. A later 13-test run passed. The failed run's raw files were overwritten before separate retention; its failure was observed in tool output, and no replacement raw result has been fabricated. Later runs use separate evidence filenames. Counts and final source attribution will be finalized after validation.
+| Selected case | What happened | Result |
+|---|---|---|
+| `operator-unknown-03` | The simulator stopped after verified placement with an UNKNOWN retract. Offline recovery sent exactly one original completion report; the platform confirmed it. Release refused. Restart added no assignment, physical effect or next-task request. Owner HOLD and unknown readiness persisted; the live device checkpoint was PAUSED/online. | Passed |
+| `operator-motion-busy-02` | The retract was completed but its first readiness observation was motion_busy. Recovery confirmed the report, took a fresh safe observation (version 2), and released only the exact hold. Replaying the same action made no new write; changing its intent refused. Ordinary restart added no assignment or physical effect, and the live device checkpoint was FREE/online. | Passed |
 
-## Remaining scope
+Each final case verified all 341 captured source files unchanged. Both normal launcher shutdowns ended with an OFFLINE checkpoint; each owned API stopped successfully and cleanup found no issues or remaining test listeners. The negative case's unchanged hold and the positive case's exact release were checked against durable state as well as sampled API/proxy observations.
 
-Local cancellation/completion-reporting recovery, reporting OPERATOR_HOLD overrides, the Nova recovery adapter and a GUI remain deferred. Their absence must not be described as passing the full original recommendation.
+The [machine-readable summary](verification/operator-recovery-2026-09-25/summary.json) records exact source versions, artifact hashes, case results and cleanup. Full raw state, proxy traffic, logs and source captures remain local under `docs/verification/operator-recovery-2026-09-25/raw/`; only selected reports and the summary are committed. Historical integration pins and earlier evidence were not rewritten.
 
-The simulator observer does not validate real robot pose, motion stopping, gripper contents or hardware safety. The earlier accepted unknown-retract hold is deliberately unresolved. The existing platform's partial-order, cancellation-accounting and terminal-replay limitations remain.
+## Software checks
 
-The first actual `operator-unknown-01` attempt used `16d3944`. It reached report reconciliation, refusal and restart checks but failed because the fixture required PAUSED after intentional normal launcher shutdown, when the API reported OFFLINE. Its exact completion report had one attempt, durable ownership remained held, all 341 captured source files were unchanged, and owned cleanup succeeded. The raw attempt and database are preserved as a failed attempt, not accepted or relabeled. The corrected fixture must check PAUSED/FREE while the client is alive and check shutdown separately.
+| Report | Result | Scope and source qualification |
+|---|---|---|
+| [CLI and independent recovery checks](verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.txt) | 26 passed | Final CLI fix: 20 focused checks plus 6 independent review checks. The tested code was subsequently committed as `be2ec370`. |
+| [Earlier focused recovery checks](verification/operator-recovery-2026-09-25/pytest-operator-recovery-probing-stage.txt) | 18 passed | Probing-stage implementation before the later CLI output fix; these checks are also represented in the final focused suite. |
+| [Humanoid regression](verification/operator-recovery-2026-09-25/pytest-humanoid-regression-probing-stage.txt) | 68 passed | Existing standalone/integration behavior after the probing-stage fix. Later edits were confined to fixture lifecycle checks and CLI output separation; controller/executor code did not change afterward. |
+| [Acceptance fixture checks](verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.txt) | 7 passed | Correct live-state and normal-shutdown checkpoints, including launcher liveness on both sides of the API read; committed in `46ab51d`. |
+| [Independent crash/proof review](verification/operator-recovery-2026-09-25/pytest-operator-review-probe-crash.txt) | 6 passed | Crash before a fresh probe cannot reuse an earlier safe proof; changed context and unfinished actions refuse. These checks also appear in the 26-test run above. |
+
+These suites overlap and ran at documented implementation stages; the counts are not an aggregate total or a claim that every suite reran after each later edit. Corresponding JUnit records are included beside the console reports.
+
+## Findings and fixes
+
+- **Placement saved before report queueing:** the forced exit occurs before the normal completion queue exists. Recovery reconstructs the eligible completion from verified saved placement evidence and sends through the existing guarded client API. It does not invent a platform confirmation.
+- **Interrupted multi-file recovery:** readiness, ownership and audit state can be written separately. Durable intent and progress stages allow a retry of the same action to finish safely; normal startup refuses unresolved recovery.
+- **Old readiness proof:** a new action must obtain a fresh observation. A durable probing stage and action-tagged proof prevent a crash immediately before probing from reusing a prior safe observation.
+- **Wrong fixture checkpoint:** `operator-unknown-01` failed because the fixture expected PAUSED after intentionally stopping the launcher. The normal final state is OFFLINE. The fixture now checks PAUSED/FREE while the launcher is alive and separately checks OFFLINE after shutdown.
+- **Mixed CLI output:** `operator-motion-busy-01` safely released the hold but then failed strict JSON parsing because two progress messages preceded the result. The CLI now sends progress to stderr and one JSON document to stdout. The fixture continues to parse the complete stdout; it does not hide the defect by stripping lines.
+
+## Preserved attempts and evidence limits
+
+| Attempt | Source | Disposition |
+|---|---|---|
+| `operator-unknown-01` | `16d3944` | Failed fixture timing expectation; preserved, excluded from acceptance. |
+| `operator-unknown-02` | `46ab51d` | Passed and independently audited at its own historical source. The final selected negative case is unknown-03. |
+| `operator-motion-busy-01` | `46ab51d` | Failed CLI structured-output boundary after physical release; remaining acceptance steps were not reached. Preserved, excluded from acceptance. |
+| First focused test attempt | Early implementation | 12 passed / 1 failed because setup progress remained in the test capture. The test was corrected to clear setup capture. Its original raw files were overwritten before the retention instruction; only the recorded observation remains. No replacement failed report was manufactured. |
+
+## Remaining work
+
+This completes the first simulator CLI milestone, not the entire [broader recommendation](operator-recovery-recommendation-2026-09-24.md).
+
+- Cancellation accounting and failure-report `OPERATOR_HOLD` resolution remain deferred and unexercised as recovery workflows. Platform defects are unchanged.
+- A Nova operator adapter, browser recovery UI and broader device recovery policy remain unimplemented.
+- Real hardware readiness, calibrated movement, sensors, physical stopping and recovery from genuinely unknown hardware outcomes require separate adapters and hardware validation.
+- The normal humanoid launcher has no completion callback, so `callback_acknowledged=false` is not applicable to this path; the tests do not fabricate a callback.
+- Status observations are sampled checkpoints, not proof of uninterrupted device state between samples. The tested crash boundaries and one-report evidence do not establish exactly-once behavior under every possible network or process failure.
+
+Recommended next step: review this separate branch and, if useful, conduct a user-operated CLI trial on a fresh disposable simulator run. After that, add a read-only recovery panel backed by this service, then scope the Nova adapter independently.

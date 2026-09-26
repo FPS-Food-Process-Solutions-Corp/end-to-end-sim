@@ -8,6 +8,7 @@ This repository joins the platform client, Nova bridge and humanoid pick-loop si
 |---|---|
 | Watch the humanoid pick loop without starting services | [Standalone humanoid runbook](docs/humanoid-harness/README.md) |
 | Run the combined mixed-device and recovery acceptance cases | [E2E acceptance runbook](docs/e2e-acceptance-runbook.md) |
+| Inspect a held simulator run, reconcile its report or release an eligible hold | [Operator recovery runbook](docs/operator-recovery-runbook.md) |
 | Connect the humanoid simulator to the real local platform client | [Platform integration guide](docs/humanoid-integration/README.md) |
 | Try the earlier staged Nova snack scenario through the kiosk/admin frontend | [First-order runbook](docs/first-order-runbook.md) |
 | Review coverage, failures and remaining work | [Master verification report](docs/master-verification-report.md) |
@@ -39,6 +40,6 @@ Direct use of the fake ROS provider requires `ROS_LOCALHOST_ONLY=1` and an expli
 
 The harness verifies software behavior around action identity, progress, physical-result simulation, durable reporting, restart recovery and holds. It does not establish calibrated poses, reachability, sensor reliability, physical stopping or hardware exactly-once execution. Counter 4 is a distinct symbolic simulation target.
 
-The unchanged platform still has the partial-order, cancellation-accounting and replay limits described in the [master report](docs/master-verification-report.md). The [operator recovery recommendation](docs/operator-recovery-recommendation-2026-09-24.md) is proposed follow-up work, not an implemented physical recovery command.
+The unchanged platform still has the partial-order, cancellation-accounting and replay limits described in the [master report](docs/master-verification-report.md). The [operator recovery CLI](docs/operator-recovery-runbook.md) now supports saved-state inspection, eligible report reconciliation and an evidence-checked simulator hold release without motion. The [verification report](docs/operator-recovery-2026-09-25.md) records its tests and limits. Broader reporting-hold resolution, the Nova adapter, a GUI and hardware recovery remain follow-up work in the [recommendation](docs/operator-recovery-recommendation-2026-09-24.md).
 
 The repository retains reviewed source, tests and documentation. Local run state and historical raw captures are preserved separately from the source commits; each acceptance record states which evidence and source version support its conclusions.

@@ -209,3 +209,17 @@ runtime/
 !/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-api-owned-cleanup.xml
 !/docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-cancellation.xml
 !/docs/verification/e2e-integration-2026-09-25/root-package-review/unittest-console.txt
+
+# Curated operator recovery records; per-case raw captures remain local.
+!/docs/verification/operator-recovery-2026-09-25/
+!/docs/verification/operator-recovery-2026-09-25/summary.json
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-recovery-probing-stage.txt
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-recovery-probing-stage.xml
+!/docs/verification/operator-recovery-2026-09-25/pytest-humanoid-regression-probing-stage.txt
+!/docs/verification/operator-recovery-2026-09-25/pytest-humanoid-regression-probing-stage.xml
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-review-probe-crash.txt
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-review-probe-crash.xml
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.txt
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.xml
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.txt
+!/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.xml

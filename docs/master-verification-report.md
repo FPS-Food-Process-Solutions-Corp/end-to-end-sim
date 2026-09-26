@@ -1,5 +1,11 @@
 # Master system verification report
 
+## Current operator recovery update - 2026-09-25
+
+The first simulator recovery CLI milestone passed two real-API controls at `be2ec370ba865f899a855b305f5d36df276d0caf` on the separate `codex/operator-recovery` branch. An UNKNOWN retract remains held after report reconciliation and restart; a genuinely completed retract with an invalid first readiness observation can be released after a fresh safe observation without motion. Both cases confirmed exactly one saved completion report, repeated no physical work, preserved all 341 captured source files and passed owned-process cleanup.
+
+The [operator report](operator-recovery-2026-09-25.md) lists every changed component, software checks, failures, fixes and remaining work. The [runbook](operator-recovery-runbook.md) provides inspect, reconcile-report and release-hold commands. The [curated summary](verification/operator-recovery-2026-09-25/summary.json) retains exact provenance; unsuccessful earlier attempts remain excluded from final acceptance. Live PAUSED/FREE and post-shutdown OFFLINE are sampled checkpoints. Hardware, the recovery GUI, Nova adapter and cancellation/reporting-hold resolution remain outside this milestone. Canonical client, Nova and platform code were unchanged.
+
 ## Current integration update - 2026-09-25
 
 The humanoid harness and root E2E package are integrated on `codex/e2e-humanoid-integration`. All three maintained real-API simulation controls passed on executable source `390dc83d39166d14adb84f96a7e0e7d323aa2c47`, using canonical client `dev` at `adf51339` and Nova `nova5_vision_lebai_andy` at `4055912c`. See the [integration review report](e2e-integration-2026-09-25.md) for changed items, fixes, tests and limits, the [runbook](e2e-acceptance-runbook.md) for repeatable commands, and the [curated evidence summary](verification/e2e-integration-2026-09-25/summary.json) for exact provenance.
@@ -12,7 +18,7 @@ The humanoid harness and root E2E package are integrated on `codex/e2e-humanoid-
 
 Each accepted case verified 338 captured source files unchanged, stopped its owned API and left its reserved test ports clear. The report also records the overlapping software checks and unsuccessful fixture attempts; their counts are not combined into a unique total. Curated results are versioned and raw captures/databases remain local.
 
-On September 25, the verified integration was fast-forwarded locally into `end-to-end-sim/main` at `0c9e81d78a0c06ff7c40c92851599e1c0bb94e90`. The original `62158af` remains preserved by `codex/pre-humanoid-integration-20260925`. Operator recovery is the next work item on `codex/operator-recovery`. No canonical `coffee-platform` change was made. Tests reused the prepared API stage, whose earlier staging history remains relevant. Platform partial-order settlement, cancellation accounting and terminal replay defects remain open. The general humanoid operator-resolution workflow, combined browser frontend behavior and physical hardware still need separate work.
+On September 25, the verified integration was fast-forwarded locally into `end-to-end-sim/main` at `0c9e81d78a0c06ff7c40c92851599e1c0bb94e90`. The original `62158af` remains preserved by `codex/pre-humanoid-integration-20260925`. The first simulator operator-recovery CLI milestone is implemented separately on `codex/operator-recovery`; see the [operator verification report](operator-recovery-2026-09-25.md), [runbook](operator-recovery-runbook.md) and [evidence summary](verification/operator-recovery-2026-09-25/summary.json). No canonical `coffee-platform` change was made. Tests reused the prepared API stage, whose earlier staging history remains relevant. Platform partial-order settlement, cancellation accounting and terminal replay defects remain open. The broader reporting-hold and cancellation recovery workflows, Nova operator adapter, recovery GUI, combined browser frontend behavior and physical hardware still need separate work.
 
 ## Historical coverage and source epochs
 

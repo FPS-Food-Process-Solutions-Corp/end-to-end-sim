@@ -1,0 +1,858 @@
+{
+  "branch": "codex/operator-recovery",
+  "canonical_client": {
+    "commit": "adf51339db90f75ee078d51bc8fba36148414d89",
+    "raw_module_sha256": {
+      "client.py": "9ebc1c4dd33287a13af32e8eb1160d7525a503fcadb5687975b0528cc2050379",
+      "pending_completion.py": "3f2d33d94dd838af21b5e49c64cab1cf5c0a5bd34bb759fa63062e50af5bf228",
+      "pending_failure.py": "11504ae67af9ad6084ab07bef788b2ee7a9133e0df78e94fe984f7a01dc4e2a1",
+      "settings.py": "7520627cab334f88f29687780819e46de08b38d71ef2f947073d0501cd9f149f"
+    },
+    "source": "/mnt/d/Work/FPS/Robotics/platform-client"
+  },
+  "final_executable_head": "be2ec370ba865f899a855b305f5d36df276d0caf",
+  "final_runs_share_exact_captured_production_source_hashes": true,
+  "generated_utc": "2026-09-26T01:22:14.682689+00:00",
+  "limitations": [
+    "PAUSED/FREE and OFFLINE are sampled checkpoints, not continuous state proof.",
+    "Humanoid completion callback is unconfigured; callback_acknowledged false is N/A. Exact ledger and wire count prove no resend.",
+    "Physical evidence is persisted simulated state, not live hardware telemetry.",
+    "Failure-report OPERATOR_HOLD resolver is outside this workflow.",
+    "Raw captures and databases remain local and excluded from curated commit.",
+    "Initial 12-of-13 primary test failure happened before raw retention; its raw JUnit is unavailable and not reconstructed.",
+    "Test reports overlap and counts are not additive."
+  ],
+  "main_before_operator_work": "0c9e81d",
+  "nova": {
+    "commit": "4055912c72a90e841b79cbc93852fe9cc807927a",
+    "runtime_used_by_operator_cases": false,
+    "source": "/mnt/d/Work/FPS/Robotics/nova5_ros2/src/platform_bridge"
+  },
+  "prepared_platform": {
+    "canonical_platform_modified_this_integration": false,
+    "captured_file_count": 244,
+    "captured_file_index_recipe": "SHA-256 of ASCII compact JSON (sort_keys=True, separators=(',', ':')) over sorted [relative source path under compiled_api_source, captured SHA-256] pairs from pre-run-source-manifest.json; generated per-run settings excluded",
+    "captured_file_index_sha256": "1efd206cff571b91c647b4466ca0601cb6e2bf301d5e66e1de49c0b80814cb23",
+    "compiled_api_source": "/home/user/e2e-stage/coffee-platform/services/api/dist",
+    "prepared_stage_may_include_prior_status_snapshot_patch": true
+  },
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "bytes": 644,
+          "path": "raw/operator-unknown-01/request.json",
+          "sha256": "0d0ffb2bcc77db8723a126e681f4d2cd20e531b3f7b0e42acd519d64fb3fd692"
+        },
+        {
+          "bytes": 146531,
+          "path": "raw/operator-unknown-01/pre-run-source-manifest.json",
+          "sha256": "c6de1febd79b79d2fcd0c95b6f85029cc0484721db18cadb29ad0cb620efc724"
+        },
+        {
+          "bytes": 97,
+          "path": "raw/operator-unknown-01/post-run-source-check.json",
+          "sha256": "a632ff647a9ee9345488476d6f30f4e92dd9a687ff21c5c45e414bc15fe1f24d"
+        },
+        {
+          "bytes": 502,
+          "path": "raw/operator-unknown-01/cleanup-proof.json",
+          "sha256": "11cae171153e760114e49e4625d78b2d21e5498e07287cfd545c0f1e9bf3fc71"
+        },
+        {
+          "bytes": 10065,
+          "path": "raw/operator-unknown-01/driver-events.jsonl",
+          "sha256": "10c5f7a9b17b89742964466081178e6512fb50bd9518096c63a23e461c055363"
+        },
+        {
+          "bytes": 12179,
+          "path": "raw/operator-unknown-01/humanoid-proxy-events.jsonl",
+          "sha256": "feb793ab4ca5c7b0d08971fb479e30412f1aada7d8eb98dc349bc63b37ac553f"
+        },
+        {
+          "bytes": 9292,
+          "path": "raw/operator-unknown-01/operator-reconcile-report.json",
+          "sha256": "285a4aa0cba82b38a9f284b87b8ce3264f98c7d14d21f8740f218606897cfc83"
+        },
+        {
+          "bytes": 8000,
+          "path": "raw/operator-unknown-01/operator-release-hold.json",
+          "sha256": "751301a8e62d83b69dca99036aea2d81a37485b55a5f0801f328775f0d6f359d"
+        },
+        {
+          "bytes": 140,
+          "path": "raw/operator-unknown-01/driver-error.json",
+          "sha256": "1abe6cd2a050b032aea475084307415eaec1a1f357e653ca76db5266de668654"
+        },
+        {
+          "bytes": 18601,
+          "path": "raw/operator-unknown-01/held-crash-checkpoint-api-snapshot.json",
+          "sha256": "b8c5ac8c3f9c59a6ba236a066110a5652a0deddd8f0e513ee6140690ecac29c7"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-01/post-report-api-snapshot.json",
+          "sha256": "efd64663c5b7a411aa7ed5c3d65b4f15fc415a4cfaf7c9b972bf4c0a42bbf075"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-01/post-release-attempt-api-snapshot.json",
+          "sha256": "ae1a204b3984a78482c1af53a51742ba151ea8b3a47bfa6546987f9b0ccbed1c"
+        },
+        {
+          "bytes": 18539,
+          "path": "raw/operator-unknown-01/final-api-snapshot.json",
+          "sha256": "8317356827b38c10871a9a9e235bbf333c61acacb23b2896e78dcb2fb515b87f"
+        },
+        {
+          "bytes": 0,
+          "path": "raw/operator-unknown-01.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "case": "operator-unknown-retract",
+      "cleanup": {
+        "api_stop_returncode": 0,
+        "issue_count": 0,
+        "owned_children": [
+          {
+            "name": "operator-proxy",
+            "returncode": -15
+          },
+          {
+            "name": "operator-phase1",
+            "returncode": 78
+          },
+          {
+            "name": "operator-phase2",
+            "returncode": 0
+          }
+        ],
+        "reserved_listener_count": 0
+      },
+      "database_name": "taska_20260925_operator_unknown_01",
+      "disposition": "failed_fixture_state_timing",
+      "driver_error": {
+        "message": "post-restart device state violates readiness gate",
+        "type": "RuntimeError"
+      },
+      "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+      "name": "operator-unknown-01",
+      "ports": {
+        "api": 3161,
+        "humanoid_proxy": 3162,
+        "nova_reserved": 3163
+      },
+      "ros_domain_id": "75",
+      "sampled_public_device_states": {
+        "after_normal_stop": {
+          "online": false,
+          "state": "OFFLINE",
+          "utc": "2026-09-26T00:50:51.043747+00:00"
+        },
+        "post_report": {
+          "online": false,
+          "state": "PAUSED",
+          "utc": "2026-09-26T00:50:11.313964+00:00"
+        }
+      },
+      "source_capture_file_count": 341,
+      "source_check": {
+        "changed_count": 0,
+        "file_count": 341
+      },
+      "source_head": "16d3944147ebc25e969e60253bb01edd305f0aa8"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 644,
+          "path": "raw/operator-unknown-02/request.json",
+          "sha256": "f023d83256f2a1733c77694c112a9b3e7d3e4a78172a80b1dc002fae9481a251"
+        },
+        {
+          "bytes": 146531,
+          "path": "raw/operator-unknown-02/pre-run-source-manifest.json",
+          "sha256": "ccb5f91d71d846d4de4c3812b6bb1d69cc53e3f923420944a513ddf9037f36c6"
+        },
+        {
+          "bytes": 97,
+          "path": "raw/operator-unknown-02/post-run-source-check.json",
+          "sha256": "60e57d956ccfaf7024783a027da7054bf72fd83244f1d6ed6ba7783503ed41b1"
+        },
+        {
+          "bytes": 502,
+          "path": "raw/operator-unknown-02/cleanup-proof.json",
+          "sha256": "a0ce05d0b8412ddb623149c9290550434036c6a5468022eeb24be6834589e9dd"
+        },
+        {
+          "bytes": 4435,
+          "path": "raw/operator-unknown-02/driver-events.jsonl",
+          "sha256": "ff1cc0d9ac015b681accd3dde5d7974c495560a50af35f012a4b204779ba4535"
+        },
+        {
+          "bytes": 12186,
+          "path": "raw/operator-unknown-02/humanoid-proxy-events.jsonl",
+          "sha256": "b4b1e4c3d34ed9c8aa516e822a49d383c8c06b27907d4ce82fbf7bca6c4e3653"
+        },
+        {
+          "bytes": 9292,
+          "path": "raw/operator-unknown-02/operator-reconcile-report.json",
+          "sha256": "ed6ac203c01645a511ed36ed6553353244f2e4cff2636749820785848dd100dd"
+        },
+        {
+          "bytes": 8000,
+          "path": "raw/operator-unknown-02/operator-release-hold.json",
+          "sha256": "a47ed6969eb4866fadf7daca023c2ca9995d890478d8f4ed0dd8f9c16f112f9d"
+        },
+        {
+          "bytes": 8319,
+          "path": "raw/operator-unknown-02/result.json",
+          "sha256": "7abd571d686dcd03e8319a18ad1602775f1b0566a10aeb5879ea4c5a77ed8d90"
+        },
+        {
+          "bytes": 18601,
+          "path": "raw/operator-unknown-02/held-crash-checkpoint-api-snapshot.json",
+          "sha256": "d26354710bdc732078154705ed830c3723462b0279375c31d5a98258e1dea653"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-02/post-report-api-snapshot.json",
+          "sha256": "647d79ab30c664c7dead7e476ed96c427040d7860cf69b277f9ef73992543536"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-02/post-release-attempt-api-snapshot.json",
+          "sha256": "b415a23cc5d66cf14d03d2f73d44a28cf8ba53ff0682e781ec974d17062e29c2"
+        },
+        {
+          "bytes": 18544,
+          "path": "raw/operator-unknown-02/ordinary-restart-live-api-snapshot.json",
+          "sha256": "cc9f114bad5c323aa293004e0d9d3a08ee2b85d567b9272e01d02fa659647b87"
+        },
+        {
+          "bytes": 18539,
+          "path": "raw/operator-unknown-02/final-api-snapshot.json",
+          "sha256": "aeeb2f460c8f5bb5617e09363902ac06350691adae881bc30600b3c596af2994"
+        },
+        {
+          "bytes": 0,
+          "path": "raw/operator-unknown-02.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "automated_result": {
+        "callback_acknowledged": false,
+        "completion_wire_reports": 1,
+        "duplicate_completion_reports": 0,
+        "final_device_state": "OFFLINE",
+        "fresh_observation_version": null,
+        "live_device_state": "PAUSED",
+        "new_assignments": 0,
+        "new_physical_effects": 0,
+        "next_task_requests_after_restart": 1,
+        "next_task_requests_before_reconcile": 1,
+        "release_action_status": "refused",
+        "release_returncode": 2,
+        "report_action_status": "complete",
+        "report_attempts": 1,
+        "status": "automated_acceptance_passed"
+      },
+      "case": "operator-unknown-retract",
+      "cleanup": {
+        "api_stop_returncode": 0,
+        "issue_count": 0,
+        "owned_children": [
+          {
+            "name": "operator-proxy",
+            "returncode": -15
+          },
+          {
+            "name": "operator-phase1",
+            "returncode": 78
+          },
+          {
+            "name": "operator-phase2",
+            "returncode": 0
+          }
+        ],
+        "reserved_listener_count": 0
+      },
+      "database_name": "taska_20260925_operator_unknown_02",
+      "disposition": "historical_pass",
+      "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+      "name": "operator-unknown-02",
+      "ports": {
+        "api": 3161,
+        "humanoid_proxy": 3162,
+        "nova_reserved": 3163
+      },
+      "ros_domain_id": "75",
+      "sampled_public_device_states": {
+        "after_normal_stop": {
+          "online": false,
+          "state": "OFFLINE",
+          "utc": "2026-09-26T00:59:10.228750+00:00"
+        },
+        "ordinary_restart_live": {
+          "online": true,
+          "state": "PAUSED",
+          "utc": "2026-09-26T00:58:34.974917+00:00"
+        },
+        "post_report": {
+          "online": false,
+          "state": "PAUSED",
+          "utc": "2026-09-26T00:58:30.489932+00:00"
+        }
+      },
+      "source_capture_file_count": 341,
+      "source_check": {
+        "changed_count": 0,
+        "file_count": 341
+      },
+      "source_head": "46ab51d201196968b8ea87419d3d8594e1c36646"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 650,
+          "path": "raw/operator-motion-busy-01/request.json",
+          "sha256": "ab7bf97c502eb06ce1fd52ab37271fb45c86fe0557f04eab4e167cceca7146b4"
+        },
+        {
+          "bytes": 147911,
+          "path": "raw/operator-motion-busy-01/pre-run-source-manifest.json",
+          "sha256": "fb331958462da09f51be7e73128b62d74f901a16fcd2d421b7b3a313a031ea9b"
+        },
+        {
+          "bytes": 97,
+          "path": "raw/operator-motion-busy-01/post-run-source-check.json",
+          "sha256": "908cfe00342103c4c11b5c8bef369b90c29ee3f5409f6eb7810f329187303c98"
+        },
+        {
+          "bytes": 386,
+          "path": "raw/operator-motion-busy-01/cleanup-proof.json",
+          "sha256": "ca9411b811f2a23c78f858b1751b7b92e08aeef8b8a42e081606a05975d5e014"
+        },
+        {
+          "bytes": 4591,
+          "path": "raw/operator-motion-busy-01/driver-events.jsonl",
+          "sha256": "06c50ccfe66e98b727ff7e5324f111a3ae52b80a4531fd4129b8f3dd2ee5bccf"
+        },
+        {
+          "bytes": 9897,
+          "path": "raw/operator-motion-busy-01/humanoid-proxy-events.jsonl",
+          "sha256": "7430d1065ab1e6d8893305930eb932e3844de3267103f394055140a076096de6"
+        },
+        {
+          "bytes": 9308,
+          "path": "raw/operator-motion-busy-01/operator-reconcile-report.json",
+          "sha256": "dcc1168d219a22d3c39b5e0bf481e762c6eefd6b0ba07f6528cb3b9bc33ae19c"
+        },
+        {
+          "bytes": 6801,
+          "path": "raw/operator-motion-busy-01/operator-release-hold.json",
+          "sha256": "c3da61a91a1f36984dc40ffe880d2faced434359d747a8364bfbafec5abdac83"
+        },
+        {
+          "bytes": 133,
+          "path": "raw/operator-motion-busy-01/driver-error.json",
+          "sha256": "102b2955e3b53dd45cfe6355c1de102e207987762c7b1673dc5a014f386b1789"
+        },
+        {
+          "bytes": 18609,
+          "path": "raw/operator-motion-busy-01/held-crash-checkpoint-api-snapshot.json",
+          "sha256": "6b06a65bd5992fcbbb416fa26ee7299c7988f73c1a9ff5e7dee4f6fbb3041345"
+        },
+        {
+          "bytes": 18562,
+          "path": "raw/operator-motion-busy-01/post-report-api-snapshot.json",
+          "sha256": "a4a6969ea62ed74d15d58ab9a4a8cf250494655679248c13c859e972a3017651"
+        },
+        {
+          "bytes": 0,
+          "path": "raw/operator-motion-busy-01.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "case": "operator-motion-busy-release",
+      "cleanup": {
+        "api_stop_returncode": 0,
+        "issue_count": 0,
+        "owned_children": [
+          {
+            "name": "operator-proxy",
+            "returncode": -15
+          },
+          {
+            "name": "operator-phase1",
+            "returncode": 78
+          }
+        ],
+        "reserved_listener_count": 0
+      },
+      "database_name": "taska_20260925_operator_ready_01",
+      "disposition": "failed_cli_json_stdout",
+      "driver_error": {
+        "message": "operator CLI emitted non-JSON release-hold",
+        "type": "RuntimeError"
+      },
+      "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+      "name": "operator-motion-busy-01",
+      "ports": {
+        "api": 3171,
+        "humanoid_proxy": 3172,
+        "nova_reserved": 3173
+      },
+      "ros_domain_id": "76",
+      "sampled_public_device_states": {
+        "post_report": {
+          "online": false,
+          "state": "PAUSED",
+          "utc": "2026-09-26T01:00:43.614611+00:00"
+        }
+      },
+      "source_capture_file_count": 341,
+      "source_check": {
+        "changed_count": 0,
+        "file_count": 341
+      },
+      "source_head": "46ab51d201196968b8ea87419d3d8594e1c36646"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 644,
+          "path": "raw/operator-unknown-03/request.json",
+          "sha256": "ed74caa7d25c84ce74221bde07b955a1efa8b50f2ae25dd0104316c8f652eef4"
+        },
+        {
+          "bytes": 146531,
+          "path": "raw/operator-unknown-03/pre-run-source-manifest.json",
+          "sha256": "e77bafb3796a99b172a8d1f8b807769c1ade34a70a9b5142138884d369065c38"
+        },
+        {
+          "bytes": 97,
+          "path": "raw/operator-unknown-03/post-run-source-check.json",
+          "sha256": "db9a954e33cb29c18681e0c6317581c76fd1f7bf3c682fbecade1201cf34392f"
+        },
+        {
+          "bytes": 502,
+          "path": "raw/operator-unknown-03/cleanup-proof.json",
+          "sha256": "079283503aa10db9896f4fd9f5b883b75a5fdadf7f0ec99cb3c19104723703b1"
+        },
+        {
+          "bytes": 9909,
+          "path": "raw/operator-unknown-03/driver-events.jsonl",
+          "sha256": "92789cf300f742d2e5a01df56afb4c4c9b80b7fe55e90e19bb51a036f70d78ec"
+        },
+        {
+          "bytes": 12185,
+          "path": "raw/operator-unknown-03/humanoid-proxy-events.jsonl",
+          "sha256": "32645465a5e364690be1aacda4cbcadb2269261ede851794fa912e006041d95e"
+        },
+        {
+          "bytes": 9292,
+          "path": "raw/operator-unknown-03/operator-reconcile-report.json",
+          "sha256": "42dc61281bcbbb5e1f05d932b988c1292d38ca9f58ab22e1ef3b9c371d540803"
+        },
+        {
+          "bytes": 8000,
+          "path": "raw/operator-unknown-03/operator-release-hold.json",
+          "sha256": "62c065fdf461c2c05ad212d1d4a22cc18e76758bb48dbc783c93b5cc129c2055"
+        },
+        {
+          "bytes": 8319,
+          "path": "raw/operator-unknown-03/result.json",
+          "sha256": "ec07fce4b0c694392d4cc535ce4d134fbc8d3ea4c863e5effa45f8c440f87f08"
+        },
+        {
+          "bytes": 18601,
+          "path": "raw/operator-unknown-03/held-crash-checkpoint-api-snapshot.json",
+          "sha256": "7fde78fa1d3730ddb867491af5e90c0f83e901d0a778bd2451734efcf10bc599"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-03/post-report-api-snapshot.json",
+          "sha256": "8ed44871b53fe8ff84d512c9b92c678408864d4c4379f0fd11bd37918151e899"
+        },
+        {
+          "bytes": 18554,
+          "path": "raw/operator-unknown-03/post-release-attempt-api-snapshot.json",
+          "sha256": "5d05381336afd412eebe714dbb3ec7d8de39129ef98e3fb1566abfe9850f9a62"
+        },
+        {
+          "bytes": 18544,
+          "path": "raw/operator-unknown-03/ordinary-restart-live-api-snapshot.json",
+          "sha256": "f49370fd7890b567eff8e7a991954cbace2c6761f87e2a09bf72594ffd9f50ea"
+        },
+        {
+          "bytes": 18539,
+          "path": "raw/operator-unknown-03/final-api-snapshot.json",
+          "sha256": "99861252129cc28d3ee26647cf9bfca3c86e228569cb2f5c80aa7a73f74ecc82"
+        },
+        {
+          "bytes": 0,
+          "path": "raw/operator-unknown-03.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "automated_result": {
+        "callback_acknowledged": false,
+        "completion_wire_reports": 1,
+        "duplicate_completion_reports": 0,
+        "final_device_state": "OFFLINE",
+        "fresh_observation_version": null,
+        "identities": {
+          "hold_id": "sim-placement/cbeed0734daf90b4a4e32120803b3bead310be33733f25fc88ffbf825c250784",
+          "order_id": "ord_muhoxabw_q8cdxs",
+          "place_execution_id": "unit-9762cf3e0860ca8706af/c0/place/a1",
+          "release_action_id": "e02eed6f-7e73-4f6d-ab1f-e025a8dee765",
+          "report_action_id": "04cd91a7-4430-4096-8665-7512cec0fe7d",
+          "retract_execution_id": "unit-9762cf3e0860ca8706af/c0/post_place_retract/a1",
+          "session_id": "hr_pick_sess_muhoxadn_gllecx",
+          "task_id": "hr_pick_task_ord_muhoxabw_q8cdxs_1"
+        },
+        "live_device_state": "PAUSED",
+        "new_assignments": 0,
+        "new_physical_effects": 0,
+        "next_task_requests_after_restart": 1,
+        "next_task_requests_before_reconcile": 1,
+        "release_action_status": "refused",
+        "release_returncode": 2,
+        "report_action_status": "complete",
+        "report_attempts": 1,
+        "status": "automated_acceptance_passed"
+      },
+      "case": "operator-unknown-retract",
+      "cleanup": {
+        "api_stop_returncode": 0,
+        "issue_count": 0,
+        "owned_children": [
+          {
+            "name": "operator-proxy",
+            "returncode": -15
+          },
+          {
+            "name": "operator-phase1",
+            "returncode": 78
+          },
+          {
+            "name": "operator-phase2",
+            "returncode": 0
+          }
+        ],
+        "reserved_listener_count": 0
+      },
+      "database_name": "taska_20260925_operator_unknown_03",
+      "disposition": "final_pass",
+      "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+      "name": "operator-unknown-03",
+      "ports": {
+        "api": 3161,
+        "humanoid_proxy": 3162,
+        "nova_reserved": 3163
+      },
+      "ros_domain_id": "75",
+      "sampled_public_device_states": {
+        "after_normal_stop": {
+          "online": false,
+          "state": "OFFLINE",
+          "utc": "2026-09-26T01:08:38.078111+00:00"
+        },
+        "ordinary_restart_live": {
+          "online": true,
+          "state": "PAUSED",
+          "utc": "2026-09-26T01:08:03.196169+00:00"
+        },
+        "post_report": {
+          "online": false,
+          "state": "PAUSED",
+          "utc": "2026-09-26T01:07:58.720290+00:00"
+        }
+      },
+      "source_capture_file_count": 341,
+      "source_check": {
+        "changed_count": 0,
+        "file_count": 341
+      },
+      "source_head": "be2ec370ba865f899a855b305f5d36df276d0caf"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 650,
+          "path": "raw/operator-motion-busy-02/request.json",
+          "sha256": "71ac64914e84d38a8df30a03fdaf09f15cc6c625a9c1efecaf0f9469aa878b33"
+        },
+        {
+          "bytes": 147911,
+          "path": "raw/operator-motion-busy-02/pre-run-source-manifest.json",
+          "sha256": "973a5877704976855539e6cc9d6ddb1db3774c74bcef85236d0a47a7564eb735"
+        },
+        {
+          "bytes": 97,
+          "path": "raw/operator-motion-busy-02/post-run-source-check.json",
+          "sha256": "65fe3a03643efe511d9ae377cedcb944d1874771e06ee549cecbf81c9fc3758d"
+        },
+        {
+          "bytes": 505,
+          "path": "raw/operator-motion-busy-02/cleanup-proof.json",
+          "sha256": "f8bbb1ac8d660ce276e6cd47cf10dcfd53e15283d354d00d1bd2a05c9b95ab3a"
+        },
+        {
+          "bytes": 4442,
+          "path": "raw/operator-motion-busy-02/driver-events.jsonl",
+          "sha256": "943f896611fc6f899ba3edb4bb977d6875da5e56c938d62f0262c769e04861d7"
+        },
+        {
+          "bytes": 12135,
+          "path": "raw/operator-motion-busy-02/humanoid-proxy-events.jsonl",
+          "sha256": "52af78ac652f1fb9fad3da177792bb389d1476a327ddfc80a4293cb98de1f3df"
+        },
+        {
+          "bytes": 9308,
+          "path": "raw/operator-motion-busy-02/operator-reconcile-report.json",
+          "sha256": "db8c953a9a18bdd73d23fae630956e0683d13553d0e2bb5e805174565f9775f3"
+        },
+        {
+          "bytes": 11969,
+          "path": "raw/operator-motion-busy-02/operator-release-hold.json",
+          "sha256": "326049a10a5d2d7146006869ba65f7a2662bb142e0a186158b68da22fe1b5dd4"
+        },
+        {
+          "bytes": 9881,
+          "path": "raw/operator-motion-busy-02/result.json",
+          "sha256": "289e45f0a32622ebe1cc3753d17959e06d8a10b3dbb67161c5fd14882d01a9b7"
+        },
+        {
+          "bytes": 18609,
+          "path": "raw/operator-motion-busy-02/held-crash-checkpoint-api-snapshot.json",
+          "sha256": "2b540e93e4806d115db0304b40f11b448047abd4d1041c4a5a46d9921ea1a2b3"
+        },
+        {
+          "bytes": 18562,
+          "path": "raw/operator-motion-busy-02/post-report-api-snapshot.json",
+          "sha256": "95b5fcc4a6bd822192777a6f75adf28d092304148c532635c85e42e49607465c"
+        },
+        {
+          "bytes": 18562,
+          "path": "raw/operator-motion-busy-02/post-release-attempt-api-snapshot.json",
+          "sha256": "5ea1be19c8ca8e7d21147fde3d013addd4470670ce76aa35cc4f35771ce9e62f"
+        },
+        {
+          "bytes": 18510,
+          "path": "raw/operator-motion-busy-02/ordinary-restart-live-api-snapshot.json",
+          "sha256": "33745a3f259734774d28c5aa2ba110e5e205c071419c2f9131afa676a3809e3c"
+        },
+        {
+          "bytes": 18547,
+          "path": "raw/operator-motion-busy-02/final-api-snapshot.json",
+          "sha256": "1c8704c9ba8785265b2f64639ac6746e536c0023bd130d8d86aab0b41cc7bfff"
+        },
+        {
+          "bytes": 10876,
+          "path": "raw/operator-motion-busy-02/operator-release-hold-repeat.json",
+          "sha256": "7a83fb1689ce2eb889bcd5f081b65e9579a01703569922d5272f008e8365c9b5"
+        },
+        {
+          "bytes": 1347,
+          "path": "raw/operator-motion-busy-02/operator-release-hold-conflicting-intent.json",
+          "sha256": "662b00dcd1e5cce7a91b21b79fdc0f2e2f33344427297c3f3621318534c37864"
+        },
+        {
+          "bytes": 0,
+          "path": "raw/operator-motion-busy-02.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "automated_result": {
+        "callback_acknowledged": false,
+        "completion_wire_reports": 1,
+        "duplicate_completion_reports": 0,
+        "final_device_state": "OFFLINE",
+        "fresh_observation_version": 2,
+        "identities": {
+          "hold_id": "sim-placement/098d85b5cde228aaa1f4a8f3b9ffd01ce297a173f353cd1c18b73b6a5e6d52e0",
+          "order_id": "ord_muhozt7z_t4uttt",
+          "place_execution_id": "unit-099820920231d07b27b4/c0/place/a1",
+          "release_action_id": "ee08cf95-2c20-443d-ad80-0ceee6eb9173",
+          "report_action_id": "eee90ae9-c752-49b0-97ab-a7beb475db7d",
+          "retract_execution_id": "unit-099820920231d07b27b4/c0/post_place_retract/a1",
+          "session_id": "hr_pick_sess_muhozt9s_zcxja7",
+          "task_id": "hr_pick_task_ord_muhozt7z_t4uttt_1"
+        },
+        "live_device_state": "FREE",
+        "new_assignments": 0,
+        "new_physical_effects": 0,
+        "next_task_requests_after_restart": 1,
+        "next_task_requests_before_reconcile": 1,
+        "release_action_status": "complete",
+        "release_returncode": 0,
+        "report_action_status": "complete",
+        "report_attempts": 1,
+        "status": "automated_acceptance_passed"
+      },
+      "case": "operator-motion-busy-release",
+      "cleanup": {
+        "api_stop_returncode": 0,
+        "issue_count": 0,
+        "owned_children": [
+          {
+            "name": "operator-proxy",
+            "returncode": -15
+          },
+          {
+            "name": "operator-phase1",
+            "returncode": 78
+          },
+          {
+            "name": "operator-phase2",
+            "returncode": 0
+          }
+        ],
+        "reserved_listener_count": 0
+      },
+      "database_name": "taska_20260925_operator_ready_02",
+      "disposition": "final_pass",
+      "interpreter": "/home/user/.venvs/end-to-end-sim-ros/bin/python",
+      "name": "operator-motion-busy-02",
+      "ports": {
+        "api": 3171,
+        "humanoid_proxy": 3172,
+        "nova_reserved": 3173
+      },
+      "ros_domain_id": "76",
+      "sampled_public_device_states": {
+        "after_normal_stop": {
+          "online": false,
+          "state": "OFFLINE",
+          "utc": "2026-09-26T01:10:37.593234+00:00"
+        },
+        "ordinary_restart_live": {
+          "online": true,
+          "state": "FREE",
+          "utc": "2026-09-26T01:10:02.782449+00:00"
+        },
+        "post_report": {
+          "online": false,
+          "state": "PAUSED",
+          "utc": "2026-09-26T01:09:56.458461+00:00"
+        }
+      },
+      "source_capture_file_count": 341,
+      "source_check": {
+        "changed_count": 0,
+        "file_count": 341
+      },
+      "source_head": "be2ec370ba865f899a855b305f5d36df276d0caf"
+    }
+  ],
+  "schema": 1,
+  "scope": "real unchanged prepared coffee-platform API/Socket.IO and canonical client; simulated AMR/mover/VLA/perception only",
+  "simulator_and_runner_source_sha256": {
+    "humanoid_harness/controller.py": "3c6fc9cf3806508e592ff7e101cd677031277b4d3ee96bb09d19a5aa0d318043",
+    "humanoid_harness/integration/executor.py": "a9d6a869e86060e8154c6742d2c55e21bd87336b68170a79db3d639fb6a6ad98",
+    "humanoid_harness/operator_recovery.py": "dccf599d1ff08f19f5fcc368bbb19e21ad8c192ea263c6f3e309ad4f5b9cc32d",
+    "humanoid_harness/recovery.py": "035f924283f7c955ed664a02a758d23956530576d9b8d5db2b2657215a45b8e4",
+    "tools/e2e_operator_recovery_case.py": "6611c6c13bbc4beee870c3be0ba16291d0b7dae5a57400ba48027ca11ac87166",
+    "tools/run_e2e_acceptance.py": "2d9fca96883e40cb21e3b5f76d18ce9f931e35d36f2ec9eea7e97a96579d4135"
+  },
+  "tests": [
+    {
+      "artifacts": [
+        {
+          "bytes": 257,
+          "path": "pytest-operator-recovery-probing-stage.txt",
+          "sha256": "9c833d6f6c67c32e081a357599503d61f54e970e999e897fbc512c8f0965bd40"
+        },
+        {
+          "bytes": 2682,
+          "path": "pytest-operator-recovery-probing-stage.xml",
+          "sha256": "65a94a30e725d45e30a469aba492b0834801ff9abcb3471a0afdef319b05c16b"
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "scope": "focused operator service; overlaps CLI26",
+      "source_epoch": "pre-16d3944 working tree later committed in 16d3944",
+      "tests": 18
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 259,
+          "path": "pytest-humanoid-regression-probing-stage.txt",
+          "sha256": "de3edbc95d81bdadc0c33682c3baf53c8cbe09e6bfe130a66f31045ce55df040"
+        },
+        {
+          "bytes": 12009,
+          "path": "pytest-humanoid-regression-probing-stage.xml",
+          "sha256": "666a7b0649c1eae1210419ae2b04b65065622a11460fbc37876c3ead83e456a0"
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "scope": "existing humanoid regression",
+      "source_epoch": "pre-16d3944 working tree later committed in 16d3944",
+      "tests": 68
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 248,
+          "path": "pytest-operator-review-probe-crash.txt",
+          "sha256": "63b87bcdc46d33cd9f53831f08d8372aabae730c30d1f6a7715ecd1fd990cc70"
+        },
+        {
+          "bytes": 1066,
+          "path": "pytest-operator-review-probe-crash.xml",
+          "sha256": "81c159e10c3964ed4270c5e9743a10c765b26ea54389af13c1df593c22f00e46"
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "scope": "independent transaction/freshness; overlaps CLI26",
+      "source_epoch": "pre-16d3944 working tree later committed in 16d3944",
+      "tests": 6
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 251,
+          "path": "pytest-operator-fixture-live-liveness.txt",
+          "sha256": "abcabfbb305f9579179740df9d88dcefaeea6879c9ba4e693af9b492b1883f23"
+        },
+        {
+          "bytes": 1220,
+          "path": "pytest-operator-fixture-live-liveness.xml",
+          "sha256": "fbd7b15f890c873c83b36268ea3fd8f09c3cdf9d7d4b327cf6871ff2783eb1e1"
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "scope": "maintained fixture safety",
+      "source_epoch": "pre-46ab51d working tree later committed in 46ab51d",
+      "tests": 7
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 247,
+          "path": "pytest-operator-cli-json-fix.txt",
+          "sha256": "554df75cb6c280c0c711b5a0e994b6bc4b1116b83aeeec672c52b5dbcb9e81d5"
+        },
+        {
+          "bytes": 3791,
+          "path": "pytest-operator-cli-json-fix.xml",
+          "sha256": "c788c0ede8613f07a1c3995b6e506c0cc4de78fe79c74107bb4dd43dd826976e"
+        }
+      ],
+      "errors": 0,
+      "failures": 0,
+      "scope": "focused plus independent; overlaps prior focused/review",
+      "source_epoch": "pre-be2ec37 working tree later committed in be2ec37",
+      "tests": 26
+    }
+  ]
+}

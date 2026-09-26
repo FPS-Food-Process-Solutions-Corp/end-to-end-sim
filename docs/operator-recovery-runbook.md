@@ -1,6 +1,6 @@
 # Operator recovery runbook
 
-Status: draft while the simulator CLI and acceptance checks are being implemented.
+Status: validated for the first simulator CLI milestone at executable source `be2ec370ba865f899a855b305f5d36df276d0caf`. See the [verification report](operator-recovery-2026-09-25.md) for the two final runtime cases, software checks, preserved failed attempts and limits.
 
 This workflow is for the humanoid simulator's saved integration state. It does not command motion. It keeps placement/reporting, physical hold and readiness separate. The earlier Nova operator command remains a separate workflow.
 
@@ -25,7 +25,7 @@ These variables belong to the current shell session. Set them again if you open 
 "$E2E_RECOVERY_PY" -m humanoid_harness.recovery inspect --state-root "$E2E_RECOVERY_STATE" --client-source "$E2E_RECOVERY_CLIENT" --format human
 ```
 
-Use `--format json` for structured output. Exit code 0 means inspection or a completed action; 1 reports a service/validation error; 2 reports refusal or another non-complete action result (argument-usage errors also use 2). Read the result before deciding whether to resume or start a new action. Inspection shows saved offline evidence, the exact identity and hold, reporting/callback state, readiness, action eligibility and audit history. A confirmed report does not mean the robot is ready.
+Use `--format json` for structured output: stdout contains one JSON result and service progress goes to stderr. Preserve both streams when recording evidence. Exit code 0 means inspection or a completed action; 1 reports a service/validation error; 2 reports refusal or another non-complete action result (argument-usage errors also use 2). Read the result before deciding whether to resume or start a new action. Inspection shows saved offline evidence, the exact identity and hold, reporting/callback state, readiness, action eligibility and audit history. A confirmed report does not mean the robot is ready.
 
 Copy the inspection fingerprint and exact order, session, task, counter, place-execution and hold identifiers before choosing an action. Every placeholder in the examples below must be replaced. Use a new UUID for a new action, and keep the complete original command if it must be resumed after an interruption.
 
@@ -65,7 +65,7 @@ An unknown retract outcome remains held. This milestone does not implement hardw
 
 These controls create their own test database, API, client and simulator processes, then stop the processes and retain the results. They are automatic verification runs, not a way to leave an API running for later manual recovery. The prepared environment and source-root requirements are described in the [E2E acceptance runbook](e2e-acceptance-runbook.md).
 
-From the repository root in the prepared WSL shell, create the output parent and choose one fresh case:
+The following commands are fresh user examples, not the paths of the archived verification runs. The accepted archives are `operator-unknown-03` and `operator-motion-busy-02`, recorded in the [evidence summary](verification/operator-recovery-2026-09-25/summary.json). From the repository root in the prepared WSL shell, create the output parent and choose one fresh case:
 
 ```bash
 mkdir -p .local/operator-acceptance

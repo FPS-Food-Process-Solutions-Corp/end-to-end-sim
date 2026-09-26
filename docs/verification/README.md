@@ -7,6 +7,8 @@ This directory separates curated review records from raw local test output. Sour
 - [2026-09-24 merge manifest](merge-2026-09-24/manifest.json): the client and Nova local branch merges, source hashes and reported software test results. Its temporary raw JUnit/log files were unavailable when archival was attempted; the manifest states that limit.
 - [2026-09-25 integration summary](e2e-integration-2026-09-25/summary.json): three accepted runtime controls using the canonical merged client and Nova checkouts, selected software results, hashes and retained unsuccessful attempts. Output was saved directly to durable local run directories. The [integration report](../e2e-integration-2026-09-25.md) explains the changes, selected records committed for review and local raw-output paths.
 
+- [2026-09-25 operator recovery summary](operator-recovery-2026-09-25/summary.json): two accepted simulator operator controls at `be2ec370`, the separate historical pass and failed attempts, source hashes, selected overlapping software reports and cleanup. The [operator report](../operator-recovery-2026-09-25.md) explains inspection, report reconciliation and exact no-motion hold release. Full raw captures remain local under `operator-recovery-2026-09-25/raw/`; the original early 12-pass/1-fail test output was overwritten before retention and is explicitly unavailable.
+
 The [master verification report](../master-verification-report.md) describes coverage and remaining issues. The [merge review](../merge-review-2026-09-24.md) and its inventories retain the earlier review snapshot; subsequent execution records identify which changes were actually integrated.
 
 ## Historical evidence

@@ -62,3 +62,7 @@ Success requires the case-specific API, task, inventory and physical-effect asse
 | `held-placement-restart` | Exit 78 occurs after verified placement and durable hold, before completion queueing. Restart reports the same placement while preserving the hold, with no FREE signal or new physical task. |
 
 The unchanged platform's partial-order, cancellation-accounting and replay limitations remain in scope as observed behavior, not repaired server behavior. Hardware reachability, calibrated poses, real sensors, controller motion and browser rendering require separate validation. See the [master verification report](master-verification-report.md) for historical coverage and the [dated integration report](e2e-integration-2026-09-25.md) for exact source versions and results.
+
+## Separate operator recovery controls
+
+The [operator recovery runbook](operator-recovery-runbook.md) adds `operator-unknown-retract` and `operator-motion-busy-release` cases. They test saved-report reconciliation and exact simulator hold refusal/release without motion, followed by ordinary restart. Their [verification report](operator-recovery-2026-09-25.md) and [summary](verification/operator-recovery-2026-09-25/summary.json) record their own fixture, source versions and results. They are separate from the original three controls above and do not revalidate those historical cases or establish browser/hardware recovery.

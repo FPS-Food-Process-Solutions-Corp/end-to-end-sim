@@ -1,6 +1,6 @@
 # Operator recovery implementation plan - 2026-09-25
 
-Status: implementation and validation in progress on `codex/operator-recovery`. This is a plan, not a test-result record.
+Status: the first simulator CLI milestone is implemented and verified on `codex/operator-recovery`. This document retains the design and acceptance criteria; the [verification report](operator-recovery-2026-09-25.md) records the actual source versions, passing controls, failures and limits.
 
 ## Starting point and scope
 
@@ -51,6 +51,6 @@ Readiness and ownership are separate atomic files. Recovery must therefore handl
 | Scope distinction | Local state changes remain distinct from platform confirmation and inventory correction. |
 | Local cancellation/reporting workaround | Deferred and not exercised in this milestone. Refusing a reporting OPERATOR_HOLD does not count as validating the proposed cancellation-resolution workflow. |
 
-Focused tests cover the service, CLI and interruption cases. A separate Sol review checks implementation and extends the maintained real-API simulator acceptance workflow with fresh databases and run directories. Results will be saved directly under `docs/verification/operator-recovery-2026-09-25/`; raw captures remain local and only selected summaries/test reports will be committed. The completed report will state exact versions, failures, fixes, passing checks and remaining limits.
+Focused tests cover the service, CLI and interruption cases. A separate Sol review checks implementation and extends the maintained real-API simulator acceptance workflow with fresh databases and run directories. Results are saved directly under `docs/verification/operator-recovery-2026-09-25/`; raw captures remain local and only selected summaries/test reports are committed. The completed report states exact versions, failures, fixes, passing checks and remaining limits. Cancellation/reporting-hold resolution, the Nova adapter, a GUI and hardware recovery remain deferred; they were not accepted by these controls.
 
 Keep historical humanoid source pins and acceptance manifests unchanged. New operator runs capture all current simulator production files, including new recovery modules and any changed controller code, alongside the exact unchanged canonical client revision and guarded module hashes. Historical simulator hashes do not validate new code.

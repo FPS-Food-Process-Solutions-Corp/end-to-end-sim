@@ -15,3 +15,16 @@
 /docs/verification/e2e-integration-2026-09-25/root-package-review/pytest-cancellation.xml -text
 /docs/verification/e2e-integration-2026-09-25/root-package-review/unittest-console.txt -text
 /docs/verification/merge-2026-09-24/manifest.json -text
+
+# Operator recovery evidence uses recorded raw-byte SHA-256 values.
+/docs/verification/operator-recovery-2026-09-25/summary.json -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-recovery-probing-stage.txt -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-recovery-probing-stage.xml -text
+/docs/verification/operator-recovery-2026-09-25/pytest-humanoid-regression-probing-stage.txt -text
+/docs/verification/operator-recovery-2026-09-25/pytest-humanoid-regression-probing-stage.xml -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-review-probe-crash.txt -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-review-probe-crash.xml -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.txt -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.xml -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.txt -text
+/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.xml -text
