@@ -74,3 +74,28 @@ def test_action_selection_carries_exact_identity_and_inspection():
                     "--counter", "2", "--place-execution-id", "place",
                     "--hold-id", "sim-placement/token",
                     "--expected-inspection-sha256", "a" * 64)
+
+
+@pytest.mark.parametrize("live_state", ["PAUSED", "FREE"])
+def test_live_readiness_and_intentional_stop_are_distinct(live_state):
+    live = {"devices": {"devices": [{"deviceId": "humanoid_robot",
+                                     "state": live_state, "online": True}]}}
+    stopped = {"devices": {"devices": [{"deviceId": "humanoid_robot",
+                                        "state": "OFFLINE", "online": False}]}}
+    assert operator.require_device(live, live_state, True)["state"] == live_state
+    assert operator.require_device(stopped, "OFFLINE", False)["state"] == "OFFLINE"
+    with pytest.raises(RuntimeError):
+        operator.require_device(stopped, live_state, True)
+    with pytest.raises(RuntimeError):
+        operator.require_device(live, "OFFLINE", False)
+
+
+def test_live_checkpoint_rejects_launcher_exit_during_api_readback():
+    from types import SimpleNamespace
+    snapshot = {"devices": {"devices": [{"deviceId": "humanoid_robot",
+                                         "state": "PAUSED", "online": True}]}}
+    alive = SimpleNamespace(poll=lambda: None)
+    exited = SimpleNamespace(poll=lambda: 0)
+    assert operator.require_live_device(snapshot, "PAUSED", alive)["online"] is True
+    with pytest.raises(RuntimeError, match="exited during live"):
+        operator.require_live_device(snapshot, "PAUSED", exited)

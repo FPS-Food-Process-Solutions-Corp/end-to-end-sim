@@ -145,6 +145,23 @@ def check_report(before, after, public, ids, hold):
     return records[0]
 
 
+def require_device(snapshot, expected, online):
+    matches = [row for row in snapshot["devices"]["devices"]
+               if row.get("deviceId") == "humanoid_robot"]
+    if (len(matches) != 1 or matches[0].get("state") != expected
+            or matches[0].get("online") is not online):
+        raise RuntimeError("public device state/online gate expected %s/%s" %
+                           (expected, online))
+    return matches[0]
+
+
+def require_live_device(snapshot, expected, process):
+    device = require_device(snapshot, expected, True)
+    if process.poll() is not None:
+        raise RuntimeError("ordinary launcher exited during live API checkpoint")
+    return device
+
+
 def ready_observation(before, after, task_id):
     old = held.read(held.unit(before) / "device.json")
     new = held.read(held.unit(after) / "device.json")
@@ -267,6 +284,7 @@ def run_case(context, case):
             or reports_after_reconcile[0].get("event_name") != "hr.pick_task_completed"):
         raise RuntimeError("guarded report-only client did not send one exact completion through proxy")
     public_report = wait_for_settlement(context, oid)
+    require_device(public_report, "PAUSED", False)
     held.capture_state(context, "post-report", oid)
     report_state = root / "post-report-durable-state"
     report_record = check_report(
@@ -346,13 +364,37 @@ def run_case(context, case):
     second = context.managed_process(
         "operator-phase2", launcher, context.sim_root,
         root / "operator-phase2.log", dict(env))
+    status_before_restart = sum(row.get("event") == "humanoid_status_report_observed"
+                                for row in held.events(root / "humanoid-proxy-events.jsonl"))
+    expected = "PAUSED" if case == "operator-unknown-retract" else "FREE"
     context.children.append(second)
     second.start()
+    live = None
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        if second.process.poll() is not None:
+            raise RuntimeError("ordinary launcher exited before live readiness checkpoint")
+        status_rows = [row for row in held.events(root / "humanoid-proxy-events.jsonl")
+                       if row.get("event") == "humanoid_status_report_observed"]
+        new_rows = status_rows[status_before_restart:]
+        if new_rows and new_rows[-1].get("state") == expected and new_rows[-1].get("online") is True:
+            candidate = context.snapshot("ordinary-restart-live-api-snapshot", oid)
+            matches = [row for row in candidate["devices"]["devices"]
+                       if row.get("deviceId") == "humanoid_robot"]
+            if len(matches) == 1 and matches[0].get("state") == expected and matches[0].get("online") is True:
+                require_live_device(candidate, expected, second.process)
+                live = candidate
+                break
+        time.sleep(0.2)
+    if live is None:
+        raise RuntimeError("ordinary launcher never published live readiness state")
     second.process.wait(timeout=45)
     if second.process.returncode != 0:
         raise RuntimeError("ordinary client restart did not stop normally")
     final = held.capture_state(context, "final", oid)
     final_state = root / "final-durable-state"
+    if not live["utc"] < final["utc"]:
+        raise RuntimeError("live checkpoint does not precede intentional normal stop")
     require_no_new_effects(first_state, final_state)
     if held.moon(final) != (7, 7):
         raise RuntimeError("restart changed once-only inventory")
@@ -380,11 +422,14 @@ def run_case(context, case):
             or (case == "operator-unknown-retract"
                 and len(next_requests) != checkpoint_next_requests)):
         raise RuntimeError("restart duplicated completion or accepted new task")
-    human = [row for row in final["devices"]["devices"]
-             if row.get("deviceId") == "humanoid_robot"]
-    expected = "PAUSED" if case == "operator-unknown-retract" else "FREE"
-    if len(human) != 1 or human[0].get("state") != expected:
-        raise RuntimeError("post-restart device state violates readiness gate")
+    require_device(live, expected, True)
+    require_device(final, "OFFLINE", False)
+    status_rows = [row for row in frames if row.get("event") == "humanoid_status_report_observed"]
+    restart_rows = status_rows[status_before_restart:]
+    if (not restart_rows or restart_rows[-1].get("state") != expected
+            or any(row.get("state") == ("FREE" if expected == "PAUSED" else "PAUSED")
+                   for row in restart_rows)):
+        raise RuntimeError("ordinary restart emitted a conflicting live readiness state")
     return {"case": case, "database": context.database_name,
             "order_id": oid, "session_id": sid, "task_id": tid,
             "place_execution_id": boundary["place_execution_id"],
@@ -394,7 +439,8 @@ def run_case(context, case):
             "report_result": report_result, "release_result": release_result,
             "release_returncode": release_code,
             "fresh_observation_version": observation_version,
-            "final_device_state": expected, "phase1_returncode": 78,
+            "live_device_state": expected, "final_device_state": "OFFLINE",
+            "phase1_returncode": 78,
             "phase2_returncode": 0, "completion_wire_reports": len(reports),
             "duplicate_completion_reports": len(reports) - 1,
             "new_physical_effects": 0,

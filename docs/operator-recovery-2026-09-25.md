@@ -1,6 +1,6 @@
 # Operator recovery implementation and verification - 2026-09-25
 
-Status: draft. Software review is in progress; the new real-API operator acceptance controls have not run yet.
+Status: draft. The software baseline is committed as `16d3944147ebc25e969e60253bb01edd305f0aa8`. The first real-API operator attempt exposed a fixture timing error; fresh acceptance is pending the corrected fixture.
 
 ## Main merge and repository scope
 
@@ -33,3 +33,5 @@ An early focused test run reported 12 passes and one failure because fixture pro
 Local cancellation/completion-reporting recovery, reporting OPERATOR_HOLD overrides, the Nova recovery adapter and a GUI remain deferred. Their absence must not be described as passing the full original recommendation.
 
 The simulator observer does not validate real robot pose, motion stopping, gripper contents or hardware safety. The earlier accepted unknown-retract hold is deliberately unresolved. The existing platform's partial-order, cancellation-accounting and terminal-replay limitations remain.
+
+The first actual `operator-unknown-01` attempt used `16d3944`. It reached report reconciliation, refusal and restart checks but failed because the fixture required PAUSED after intentional normal launcher shutdown, when the API reported OFFLINE. Its exact completion report had one attempt, durable ownership remained held, all 341 captured source files were unchanged, and owned cleanup succeeded. The raw attempt and database are preserved as a failed attempt, not accepted or relabeled. The corrected fixture must check PAUSED/FREE while the client is alive and check shutdown separately.

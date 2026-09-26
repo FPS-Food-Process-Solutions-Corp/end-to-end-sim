@@ -25,7 +25,7 @@ These variables belong to the current shell session. Set them again if you open 
 "$E2E_RECOVERY_PY" -m humanoid_harness.recovery inspect --state-root "$E2E_RECOVERY_STATE" --client-source "$E2E_RECOVERY_CLIENT" --format human
 ```
 
-Use `--format json` for structured output. Inspection shows saved offline evidence, the exact identity and hold, reporting/callback state, readiness, action eligibility and audit history. A confirmed report does not mean the robot is ready.
+Use `--format json` for structured output. Exit code 0 means inspection or a completed action; 1 reports a service/validation error; 2 reports refusal or another non-complete action result (argument-usage errors also use 2). Read the result before deciding whether to resume or start a new action. Inspection shows saved offline evidence, the exact identity and hold, reporting/callback state, readiness, action eligibility and audit history. A confirmed report does not mean the robot is ready.
 
 Copy the inspection fingerprint and exact order, session, task, counter, place-execution and hold identifiers before choosing an action. Every placeholder in the examples below must be replaced. Use a new UUID for a new action, and keep the complete original command if it must be resumed after an interruption.
 
@@ -37,7 +37,7 @@ Keep the physical hold while reconciling an eligible report through the existing
 "$E2E_RECOVERY_PY" -m humanoid_harness.recovery reconcile-report --state-root "$E2E_RECOVERY_STATE" --client-source "$E2E_RECOVERY_CLIENT" --format human --action-id "<new-UUID>" --operator "<operator-id>" --reason "Reconcile the saved placement report without motion" --order-id "<order-id>" --session-id "<session-id>" --task-id "<task-id>" --counter "<counter>" --place-execution-id "<place-execution-id>" --hold-id "<hold-id>" --expected-inspection-sha256 "<inspection-sha256>" --api-url "http://127.0.0.1:<owned-api-port>"
 ```
 
-The API URL selects the original local platform/database. For an owned capture proxy, the optional `--socket-url` selects the exact saved loopback Socket.IO URL; otherwise the direct API is used for the report connection. HTTP readback and Socket.IO report sends are separate evidence.
+`--api-url` supplies the original local platform base URL for HTTP readback. Reports are sent over Socket.IO. By default the Socket.IO connection uses that same base URL; the optional `--socket-url` instead selects the exact saved loopback capture-proxy URL. Both routes must lead to the original run's API/database. HTTP readback and Socket.IO report sends are separate evidence.
 
 This action must not request another task or repeat the placement. Read the result and inspect again. Use the new inspection fingerprint for a different action. Pending, confirmed and operator-held reporting states remain distinct; a reporting refusal is not permission to clear a physical hold.
 
