@@ -19,6 +19,7 @@ from shelf_parameters import shelf_layout
 from bag_opener import make_bag_opener
 from me6_station import make_me6_station_component
 from nova_suction import make_nova_suction_tool
+from customer_barrier import make_customer_barrier
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default=str(HERE / 'scene_config.json'))
@@ -767,7 +768,7 @@ RANGE_ORANGE=material('Nova-5 range guide',(.58,.20,.045,1),0,.7)
 
 make_architecture()
 make_source_annotations()
-makers={'table':make_table,'counter':make_table,'cart':make_table,'machine':make_machine,'dispenser':make_dispenser,'shelf':make_shelf,'box_station':make_box_station,'support':make_support,'robot':make_robot,'window':make_window,'human':make_human,'range':make_range,'zone':make_zone,'placement_zone':make_zone,'charger':make_charger}
+makers={'table':make_table,'counter':make_table,'cart':make_table,'machine':make_machine,'dispenser':make_dispenser,'shelf':make_shelf,'box_station':make_box_station,'support':make_support,'robot':make_robot,'window':make_window,'customer_barrier':lambda o: make_customer_barrier(o,globals()),'human':make_human,'range':make_range,'zone':make_zone,'placement_zone':make_zone,'charger':make_charger}
 for o in C['objects']:
     if o.get('enabled',True) and o.get('visible',True):
         if o.get('layout_component'):

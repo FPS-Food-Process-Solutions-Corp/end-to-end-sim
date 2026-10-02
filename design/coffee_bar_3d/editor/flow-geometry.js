@@ -98,9 +98,11 @@ export function makeWorkflowRequest(store) {
   }
   const boundaryError = placementError(placementBounds);
   if (boundaryError) errors.push(boundaryError);
+  // A barrier footprint is an L-shaped panel envelope with an empty interior.
+  // Do not treat that bounding rectangle as a solid occupied tabletop area.
   const blockers = store.scene.objects.filter(object =>
     object.id !== zone.id && object.support === table.id &&
-    object.kind !== 'placement_zone' && store.visible(object.id) && overlaps(zone, object));
+    !['placement_zone', 'customer_barrier'].includes(object.kind) && store.visible(object.id) && overlaps(zone, object));
   if (blockers.length) errors.push('Placement rectangle overlaps: ' + blockers.map(object => object.label).join(', '));
 
   const pickup = surfacePose(store, magazine, [

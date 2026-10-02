@@ -25,7 +25,7 @@ const output = path.join(__dirname, 'output');
       request: coffeeEditor.flow.request,
       result: coffeeEditor.flow.result,
     }));
-    assert.equal(initial.scene.objects.length, 24);
+    assert.equal(initial.scene.objects.length, 25);
     assert.ok(!initial.scene.objects.some(object => object.id === 'nova5_cart' || object.id === 'me6_bag_robot'));
     for (const id of ['nova5', 'nova5_suction', 'bag_opener', 'bag_magazine']) {
       assert.equal(initial.scene.objects.find(object => object.id === id).support, 'middle_counter');
@@ -246,7 +246,7 @@ const output = path.join(__dirname, 'output');
         supports: ['nova5','nova5_suction','bag_magazine','bag_opener'].map(id => upgraded.object(id).support),
       };
     }, oldScene);
-    assert.equal(migration.revision, 6);
+    assert.equal(migration.revision, 7);
     assert.ok(migration.legacyMesh);
     near(migration.coffee, oldScene.objects.find(object => object.id === 'coffee_machine').x + .123);
     assert.deepEqual(migration.supports, Array(4).fill('middle_counter'));

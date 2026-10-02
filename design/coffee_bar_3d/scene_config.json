@@ -170,7 +170,8 @@
     "Two reach guides follow the confirmed working-radius/tool formulas. They are projected plan envelopes, not a collision or kinematic solver.",
     "Coffee equipment and Nova-2 share the 140 x 140 x 90 cm coffee table. Ice machine body is 45 cm across the front and 50 cm deep; its short face points toward Nova-2.",
     "Cup and lid dispensers each keep 70 cm overall height: 30 cm clear below the cylindrical body, 40 cm body, rear support and table-bolted baseplate. Nova-2 has curved 85 mm ID jaws with about 94 mm projection; its reach allowance remains approximately 10 cm.",
-    "Packing cell: one adjustable 105 x 180 x 80 cm table carries the bun Nova-5, a separate Nova-5 with an 80 x 80 x 100 mm four-cup tool, bag magazine and fixed opposing suction. IK checks position, orientation and six URDF joint limits; no mesh collision or vacuum/payload validation."
+    "Packing cell: one adjustable 105 x 180 x 80 cm table carries the bun Nova-5, a separate Nova-5 with an 80 x 80 x 100 mm four-cup tool, bag magazine and fixed opposing suction. IK checks position, orientation and six URDF joint limits; no mesh collision or vacuum/payload validation.",
+    "Customer barrier wraps the front and right of the coffee / pickup counter. Clear right-side opening starts at the worktop; order tablet and combined mic / speaker are embedded in the front panel. Dimensions are adjustable concept assumptions."
   ],
   "objects": [
     {
@@ -700,6 +701,49 @@
       "parentId": "area_coffee",
       "visible": true,
       "locked": false
+    },
+    {
+      "id": "customer_barrier",
+      "kind": "customer_barrier",
+      "asset_key": "customer_barrier",
+      "label": "Customer barrier / ordering & pickup",
+      "x": 0.7,
+      "y": 1.4500000000000002,
+      "width": 1.4,
+      "depth": 1.4,
+      "height": 0.7999999999999999,
+      "yaw_deg": 0,
+      "support": "coffee_station",
+      "z": 0,
+      "parentId": "area_coffee",
+      "visible": true,
+      "locked": false,
+      "barrier": {
+        "right_return": true,
+        "thickness": 0.008,
+        "frame": 0.024,
+        "opacity": 0.22,
+        "pickup_side": "right",
+        "pickup_center": 0.456,
+        "pickup_bottom": 0,
+        "pickup_width": 0.44,
+        "pickup_height": 0.42,
+        "tablet_side": "front",
+        "tablet_center": -0.16,
+        "tablet_bottom": 0.14,
+        "tablet_width": 0.3,
+        "tablet_height": 0.22,
+        "intercom_side": "front",
+        "intercom_center": -0.48,
+        "intercom_bottom": 0.23,
+        "intercom_diameter": 0.11,
+        "instructions_side": "front",
+        "instructions_center": 0.32,
+        "instructions_bottom": 0.12,
+        "instructions_width": 0.34,
+        "instructions_height": 0.4,
+        "show_instructions": true
+      }
     }
   ],
   "editor_version": 2,
@@ -817,7 +861,7 @@
       "label": "People"
     }
   ],
-  "editor_revision": 6,
+  "editor_revision": 7,
   "bag_workflow": {
     "robot_id": "nova5_suction",
     "magazine_id": "bag_magazine",

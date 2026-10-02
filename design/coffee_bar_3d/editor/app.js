@@ -1,3 +1,5 @@
+import {barrierProperties, changeBarrier, alignBarrierOpening} from './barrier-ui.js';
+import {createCustomerBarrier} from './barrier-parameters.js';
 import {BagWorkflow} from './bag-workflow.js';
 import {installComponentClipboard} from './clipboard.js';
 import {SceneStore,bounds,cleanAngle,rotate} from './store.js';
@@ -12,7 +14,7 @@ const store=new SceneStore(seed);let restored=false;
 try{const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');if(saved){store.importScene(saved);store.undoStack=[];store.selected=saved.editor_selection?.filter(id=>store.item(id))||['nova5'];restored=true;}}catch(e){console.warn('Saved layout could not be restored',e);}
 const plan=new PlanView($('plan'),store),three=new Scene3D($('scene'),store,message=>{$('model-status').textContent=message;});
 const collapsed=new Set(['area_left','area_right','area_upper','area_people']);
-const icons={robot:'◇',shelf:'▤',table:'▱',counter:'▱',cart:'▱',machine:'▣',dispenser:'○',human:'♙',charger:'▥',window:'▯'};
+const icons={customer_barrier:'▯',robot:'◇',shelf:'▤',table:'▱',counter:'▱',cart:'▱',machine:'▣',dispenser:'○',human:'♙',charger:'▥',window:'▯'};
 function renderLayers(){
   const render=(parent,level)=>store.children(parent).map(item=>{
     const group=store.isGroup(item.id),selected=store.selected.includes(item.id),hidden=!store.visible(item.id),locked=store.locked(item.id),closed=collapsed.has(item.id);
@@ -28,6 +30,7 @@ function properties(){
   $('selection-count').textContent=ids.length?String(ids.length):'';
   if(!items.length){$('properties').innerHTML=`<div class="empty-selection">Select an item in the plan, 3D scene, or layer list.<br><br>The selected robot's reach appears as circles in 2D and translucent sphere surfaces in 3D, alongside distances.</div><div class="property-section"><h3>Room size</h3><div class="field-grid">${field('room_width','Width',store.scene.room.width*f)}${field('room_depth','Depth',store.scene.room.depth*f)}</div><p class="hint">Changing the room boundary keeps equipment positions fixed.</p></div>`;return;}
   let html=`<section class="property-section"><input id="item-name" class="selection-name" aria-label="Layer name" value="${esc(one?.label||items.length+' selected items')}" ${one?'':'disabled'}><div class="type-label">${o?esc(o.kind):'Area / group'}${o?.kind==='robot'?' · actual URDF model':''}</div></section><section class="property-section"><h3>Transform <span style="float:right;color:#a1b2b8;font-weight:400">${store.options.units}</span></h3><div class="field-grid">${field('x','Centre X',bb.x*f,store.options.units,locked)}${field('y','Centre Y',(store.scene.room.depth-bb.y)*f,store.options.units,locked)}${field('width','Width',bb.width*f,store.options.units,locked)}${field('depth','Depth',bb.depth*f,store.options.units,locked||o?.kind==='robot')}${field('rotation',o?'Rotation':'Rotate by',o?cleanAngle(-(o.yaw_deg||0)):0,'°',locked)}${o&&o.height?field('height','Height',o.height*f,store.options.units,locked):''}</div><p class="hint">Centre measured from the top-left of the plan.${o?.kind==='robot'?' Resizing a robot scales its complete model and reach uniformly.':''}</p>${one?`<label class="checkline"><input id="item-visible" type="checkbox" ${one.visible!==false?'checked':''}> Visible in both views</label><label class="checkline"><input id="item-locked" type="checkbox" ${one.locked?'checked':''}> Lock transforms</label>`:''}</section>`;
+  if(o?.kind==='customer_barrier') html+=barrierProperties(o,store,field,locked);
   if(o?.kind==='shelf'){
     const l=store.shelfLayout(o),s=l.settings;
     html+=`<section class="property-section"><h3>Shelf &amp; bread</h3>
@@ -57,7 +60,7 @@ function properties(){
     const p=o.bag_parameters,base=store.seed.objects.find(v=>v.id==='bag_opener'),scaleX=o.width/base.width,scaleY=o.depth/base.depth,scaleZ=o.height/base.height;
     html+=`<section class="property-section"><h3>Bag-opening concept</h3><div class="distance-row"><span>Bag width × depth</span><b>${store.format(p.bag_width*scaleX)} × ${store.format(p.bag_depth*scaleY)}</b></div><div class="distance-row"><span>Bag height</span><b>${store.format(p.bag_height*scaleZ)}</b></div><div class="distance-row"><span>Mouth above floor</span><b>${store.format(store.z(o)+(p.bag_floor+p.bag_height)*scaleZ)}</b></div><p class="hint">The suction Nova-5 holds the front face while four fixed rear cups hold the opposing face. The tray supports the open bag. Select either Nova-5 or the magazine separately, or move the counter to move the whole station. Width/depth/height scale this fixture and bag.</p><a href="./me6-bag-station/output/overview.png" target="_blank">Close-up render ↗</a><br><a href="./me6-bag-station/" target="_blank">ME6 pickup &amp; opening animation ↗</a></section>`;
   }
-  if(o&&['robot','machine','dispenser','charger','human','placement_zone'].includes(o.kind)){
+  if(o&&['robot','machine','dispenser','charger','human','placement_zone','customer_barrier'].includes(o.kind)){
     html+=`<section class="property-section"><h3>Mount / support</h3><select id="support" aria-label="Support" ${locked?'disabled':''}><option value="">Floor</option>${store.scene.objects.filter(t=>['table','counter','cart','support'].includes(t.kind)&&t.id!==o.id).map(t=>`<option value="${esc(t.id)}" ${o.support===t.id?'selected':''}>${esc(t.label)}</option>`).join('')}</select><div class="field-grid room-field">${field('z','Offset above support',(o.z||0)*f,store.options.units,locked)}<div class="field">Mount elevation<div style="padding-top:12px;color:#557b82">${store.format(store.z(o))}</div></div><p class="hint">Moving or rotating a support carries its equipment with it. Hiding it hides its equipment.</p></section>`;
   }
   if (o?.support && store.object(o.support)) {
@@ -73,6 +76,7 @@ function properties(){
 }
 $('properties').addEventListener('change',e=>{
   const element=e.target,ids=[...store.selected],one=ids.length===1?store.item(ids[0]):null,o=one&&store.object(one.id),f=store.options.units==='px'?200:100,key=element.dataset.field;
+  if (changeBarrier(e,o,store)) return;
   if (o?.support && ['support_x','support_y'].includes(key)) {
     const support = store.object(o.support);
     const value = Number(element.value) / f;
@@ -104,6 +108,11 @@ $('properties').addEventListener('change',e=>{
   if(element.dataset.target&&o)store.transact('Changed distance targets',()=>{const ids=new Set(o.distanceTargets||[]);element.checked?ids.add(element.dataset.target):ids.delete(element.dataset.target);o.distanceTargets=[...ids];});
 });
 $('properties').addEventListener('click',e=>{
+  if(e.target.id==='align-barrier-opening') {
+    const barrier=store.object(store.selected[0]);
+    if(barrier?.kind==='customer_barrier'&&!store.locked(barrier.id)) toast(alignBarrierOpening(barrier,store)?'Opening aligned as closely as the panel allows; placement zone unchanged':'Choose a placement zone in Flow first');
+    return;
+  }
   if(e.target.id!=='apply-shelf-settings')return;
   const o=store.object(store.selected[0]);if(o?.kind!=='shelf'||store.locked(o.id))return;
   const s=store.shelfSettings(o),values=Object.fromEntries(['columns','tiers','tier_spacing','back_to_front_drop','first_tier_front_height','bread_length_1','bread_length_2','bread_height','show_buns'].map(k=>[k,s[k]]));
@@ -112,9 +121,30 @@ $('properties').addEventListener('click',e=>{
 });
 function library(){
   $('robot-library').innerHTML=Object.entries(store.scene.robot_inventory).map(([key,r])=>`<div class="robot-card" draggable="true" data-robot="${key}"><span class="robot-icon">${key==='atom_w'?'♜':'◇'}</span><div><strong>${esc(r.name)}</strong><small>R ${(r.working_radius_cm+r.tool_length_cm).toFixed(1)} / ${(r.working_radius_cm*store.scene.reach_ratio).toFixed(1)} cm</small></div><button title="Add ${esc(r.name)}" aria-label="Add ${esc(r.name)}">+</button></div>`).join('');
+  $('robot-library').insertAdjacentHTML('beforeend','<div class="property-section"><h3>Scene objects</h3><button data-add-barrier style="width:100%">+ Customer barrier</button></div>');
 }
 $('robot-library').addEventListener('dragstart',e=>{const key=e.target.closest('[data-robot]')?.dataset.robot;if(key){e.dataTransfer.setData('application/robot-key',key);e.dataTransfer.effectAllowed='copy';}});
-$('robot-library').addEventListener('click',e=>{const key=e.target.closest('[data-robot]')?.dataset.robot;if(!key)return;const selected=store.object(store.selected[0]),support=selected&&['table','cart','counter'].includes(selected.kind)?selected:null;const x=support?.x??1.8,y=support?.y??2.9;store.addRobot(key,x,y);plan.fit();toast(store.scene.robot_inventory[key].name+' added to both views');});
+$('robot-library').addEventListener('click', event => {
+  if (event.target.closest('[data-add-barrier]')) {
+    store.transact('Added customer barrier', () => {
+      const object = createCustomerBarrier(store.scene, store.unique('customer_barrier'));
+      if (!store.group(object.parentId)) {
+        store.scene.groups.push({id: object.parentId, label: 'Customer frontage'});
+      }
+      store.scene.objects.push(object);
+      store.selected = [object.id];
+    });
+    toast('Customer barrier added to both views');
+    return;
+  }
+  const key = event.target.closest('[data-robot]')?.dataset.robot;
+  if (!key) return;
+  const selected = store.object(store.selected[0]);
+  const support = selected && ['table', 'cart', 'counter'].includes(selected.kind) ? selected : null;
+  store.addRobot(key, support?.x ?? 1.8, support?.y ?? 2.9);
+  plan.fit();
+  toast(store.scene.robot_inventory[key].name + ' added to both views');
+});
 document.querySelectorAll('[data-panel]').forEach(button => button.onclick = () => {
   document.querySelectorAll('[data-panel]').forEach(tab => tab.classList.toggle('active', tab === button));
   $('layers-panel').hidden = button.dataset.panel !== 'layers';
@@ -158,7 +188,7 @@ document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportFile(b
 $('import-button').onclick=()=>$('import-file').click();
 async function importText(text,name='scene.json'){
   let value;if(name.toLowerCase().endsWith('.svg')){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror'))throw new Error('The SVG is not valid XML.');const meta=doc.querySelector('metadata#coffee-scene-data');if(!meta)throw new Error('Import an SVG exported by Layout studio, or its scene JSON.');value=JSON.parse(meta.textContent);}else value=JSON.parse(text);
-  for(const o of value.objects||[])if(o.kind==='robot'?!seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&o.kind!=='placement_zone')throw new Error('No matching 3D model for '+(o.label||o.id));
+  for(const o of value.objects||[])if(o.kind==='robot'?!seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&!['placement_zone','customer_barrier'].includes(o.kind))throw new Error('No matching 3D model for '+(o.label||o.id));
   store.importScene(value);plan.fit();library();toast('Editable scene imported');
 }
 $('import-file').onchange=async e=>{try{const file=e.target.files[0];if(file)await importText(await file.text(),file.name);}catch(error){toast('Import failed: '+error.message);}finally{e.target.value='';}};

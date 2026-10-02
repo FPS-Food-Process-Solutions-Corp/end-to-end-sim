@@ -1,3 +1,5 @@
+import {buildBarrier, disposeBarrier} from './barrier-model.js';
+import {barrierSettings} from './barrier-parameters.js';
 import {placementTemplate, poseSuctionRobot} from './suction-render.js';
 import {buildShelf,disposeShelf} from './shelf-model.js';
 import * as THREE from '../vendor/three.module.js';
@@ -55,6 +57,7 @@ export class Scene3D {
     this.ready=true;this.sync();this.overview();this.status('Models ready');
   }
   template(object) {
+    if (object.kind === 'customer_barrier') return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
     if (object.kind === 'placement_zone') return this.templates.get('placement_zone');
     const key = object.layout_component
       ? object.asset_key || object.id
@@ -70,12 +73,20 @@ export class Scene3D {
     container.add(mesh);this.physical.add(container);const topImprints=[];mesh.traverse(n=>{if(n.userData.equipment_top_label&&n.geometry){n.geometry.computeBoundingBox();topImprints.push(n);}});const record={node:container,template,mesh,topImprints};this.instances.set(o.id,record);return record;
   }
   sync(){
-    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);if(r.isProceduralShelf)disposeShelf(r.mesh);this.instances.delete(id);}
+    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);if(r.isProceduralShelf)disposeShelf(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);this.instances.delete(id);}
     for(const o of this.store.scene.objects){
       const r=this.instances.get(o.id)||this.makeInstance(o),node=r.node,base=r.template.spec;
       node.name=o.label;node.userData.editorId=o.id;node.userData.layout_id=o.id;node.userData.scene_parameters=JSON.stringify(o);
       node.position.set(o.x,this.store.z(o),-o.y);node.quaternion.setFromAxisAngle(UP,(o.yaw_deg||0)*Math.PI/180);
-      if(o.kind==='shelf'){
+      if(o.kind==='customer_barrier') {
+        const signature=JSON.stringify([o.width,o.depth,o.height,barrierSettings(o)]);
+        if(r.barrierSignature!==signature) {
+          node.remove(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);
+          r.mesh=buildBarrier(o);node.add(r.mesh);r.barrierSignature=signature;r.isProceduralBarrier=true;
+        }
+        node.scale.set(1,1,1);
+      }
+      else if(o.kind==='shelf'){
         const signature=JSON.stringify([o.width,o.depth,o.height,this.store.shelfSettings(o)]);
         if(r.shelfSignature!==signature){
           node.remove(r.mesh);if(r.isProceduralShelf)disposeShelf(r.mesh);

@@ -1,3 +1,4 @@
+import {barrierPlan} from './barrier-plan.js';
 import {bounds,rotate,rad,clone} from './store.js';
 const NS='http://www.w3.org/2000/svg';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
@@ -99,6 +100,7 @@ export class PlanView {
   }
   defs(){return `<defs><pattern id="planGrid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e8edef" stroke-width="1"/></pattern><marker id="dimArrow" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 0 0 L 7 3.5 L 0 7" fill="none" stroke="#327b82" stroke-width="1.2"/></marker></defs>`;}
   geometry(o){
+    if(o.kind==='customer_barrier')return barrierPlan(o,this.store.options.showLabels);
     const w=o.width*200,d=o.depth*200,[fill,stroke]=palette[o.kind]||palette.table;
     let out='';const rect=(extra='')=>`<rect x="${-w/2}" y="${-d/2}" width="${w}" height="${d}" rx="${o.kind==='robot'?5:1}" fill="${fill}" stroke="${stroke}" stroke-width="1.8" ${extra}/>`;
     if(o.kind==='dispenser')out=`<circle r="${w/2}" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>`;
@@ -138,7 +140,7 @@ export class PlanView {
     const [x,y]=this.toPlan([o.x,o.y]),a=-(o.yaw_deg||0),visible=this.store.visible(o.id),sel=this.store.resolve().some(v=>v.id===o.id);
     const title=(o.kind==='robot'?this.store.scene.robot_inventory[this.store.key(o)]?.name:null)||abbreviations[o.id]||o.label?.split(' / ')[0]||o.id;
     let text='';
-    if(this.store.options.showLabels){
+    if(this.store.options.showLabels&&o.kind!=='customer_barrier'){
       const short=title.length>24?title.slice(0,23)+'…':title;
       let rotateLabel=0,ty=5,size=o.kind==='robot'?18:Math.min(19,Math.max(12,o.width*200/(short.length*.55)));
       if(o.kind==='robot'&&this.store.key(o)!=='atom_w')ty=-o.depth*100-11;
@@ -151,7 +153,29 @@ export class PlanView {
     }
     return `<g id="object_${esc(o.id)}" data-object-id="${esc(o.id)}" data-name="${esc(o.label)}" transform="translate(${x} ${y}) rotate(${a})" ${!visible?'display="none"':''} class="${sel?'selected-object':''}"><title>${esc(o.label)}</title>${this.geometry(o)}${text}</g>`;
   }
-  groupMarkup(id){const group=this.store.group(id);return `<g id="area_${esc(id)}" data-group-id="${esc(id)}" data-name="${esc(group.label)}"><title>${esc(group.label)}</title>${this.store.children(id).sort((a,b)=>Number(this.store.isGroup(a.id))-Number(this.store.isGroup(b.id))).map(o=>this.store.isGroup(o.id)?this.groupMarkup(o.id):this.objectMarkup(o)).join('')}</g>`;}
+  orderedChildren(parentId) {
+    const rank = object => {
+      if (this.store.isGroup(object.id)) {
+        return Math.max(0, ...this.store.resolve([object.id]).map(rank));
+      }
+      if (object.kind === 'zone') return 0;
+      if (['table', 'counter', 'cart', 'support'].includes(object.kind)) return 1;
+      if (object.kind === 'placement_zone') return 3;
+      if (['robot', 'human'].includes(object.kind)) return 4;
+      return 2;
+    };
+    // SVG uses DOM paint order. Saved scene order and migration append order
+    // must not put supports over equipment. Preserve area groups and stable ties.
+    return this.store.children(parentId).sort((a, b) => rank(a) - rank(b) ||
+      Number(this.store.isGroup(a.id)) - Number(this.store.isGroup(b.id)));
+  }
+
+  groupMarkup(id) {
+    const group = this.store.group(id);
+    const children = this.orderedChildren(id).map(object => this.store.isGroup(object.id)
+      ? this.groupMarkup(object.id) : this.objectMarkup(object)).join('');
+    return `<g id="area_${esc(id)}" data-group-id="${esc(id)}" data-name="${esc(group.label)}"><title>${esc(group.label)}</title>${children}</g>`;
+  }
   annotationMarkup(){
     let out='<g data-name="Reach guides" pointer-events="none">';
     for(const o of this.store.relevantRobots(this.store.options.showAllReach)){
@@ -189,7 +213,7 @@ export class PlanView {
   markup(includeSelection=true){
     const s=this.store.scene,w=s.room.width*200,h=s.room.depth*200,crop=s.room.cropped_front_depth*200;
     let out=this.defs()+`<g id="Room_and_measurements" data-name="Room and measurements"><rect width="${w}" height="${h}" fill="#fff" stroke="#8d9da6" stroke-width="1.5"/><rect width="${w}" height="${h}" fill="url(#planGrid)"/><rect x="0" y="${h-crop}" width="${w}" height="${crop}" fill="#f7f7f3"/><line x1="0" y1="${h-crop}" x2="${w}" y2="${h-crop}" stroke="#b8c2c7" stroke-dasharray="6 5"/><text x="${w/2}" y="-33" text-anchor="middle" font-size="21" font-family="Inter,Segoe UI,sans-serif" fill="#536d79">${this.store.format(s.room.width)} wide</text><text x="-34" y="${h/2}" text-anchor="middle" font-size="21" font-family="Inter,Segoe UI,sans-serif" fill="#536d79" transform="rotate(-90 -34 ${h/2})">${this.store.format(s.room.depth)} deep</text><text x="${w/2}" y="${h+40}" text-anchor="middle" font-size="16" font-family="Inter,Segoe UI,sans-serif" fill="#8b999f">2 px = 1 cm · front reference strip is unconfirmed</text></g>`;
-    out+=this.store.children(null).map(o=>this.store.isGroup(o.id)?this.groupMarkup(o.id):this.objectMarkup(o)).join('');
+    out+=this.orderedChildren(null).map(o=>this.store.isGroup(o.id)?this.groupMarkup(o.id):this.objectMarkup(o)).join('');
     if (this.store.placementOverlay) {
       const placement = this.store.placementOverlay;
       const points = values => values.map(point => this.toPlan(point).join(',')).join(' ');

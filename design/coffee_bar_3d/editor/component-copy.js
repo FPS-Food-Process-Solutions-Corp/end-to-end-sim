@@ -75,7 +75,7 @@ function validateComponents(store, packet) {
     }
     const asset = assets.get(object.asset_key || object.id);
     const robot = store.scene.robot_inventory[object.model_key || object.id];
-    if (object.kind === 'robot' ? !robot : object.kind !== 'placement_zone' && asset?.kind !== object.kind) {
+    if (object.kind === 'robot' ? !robot : !['placement_zone', 'customer_barrier'].includes(object.kind) && asset?.kind !== object.kind) {
       throw new Error('No matching 3D model for ' + object.label + '.');
     }
     if (object.layout_component && asset?.layout_component !== object.layout_component) {

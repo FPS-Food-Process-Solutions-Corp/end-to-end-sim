@@ -1,3 +1,4 @@
+import {migrateCustomerBarrier,barrierSettings} from './barrier-parameters.js';
 import {migrateSuctionWorkflow} from './suction-migration.js';
 import {captureComponents, insertComponents} from './component-copy.js';
 import {migrateBagStation} from './bag-station.js';
@@ -170,16 +171,16 @@ export class SceneStore {
     }return result;
   }
   format(m,suffix=true){const value=m*(this.options.units==='px'?200:100);return value.toFixed(1).replace(/\.0$/,'')+(suffix?' '+this.options.units:'');}
-  exportScene(){const c=clone(this.scene);c.editor_options=clone(this.options);for(const o of c.objects){o.enabled=this.visible(o.id);if(o.kind==='shelf')o.shelf_overrides=this.shelfSettings(o);}return c;}
+  exportScene(){const c=clone(this.scene);c.editor_options=clone(this.options);for(const o of c.objects){o.enabled=this.visible(o.id);if(o.kind==='shelf')o.shelf_overrides=this.shelfSettings(o);if(o.kind==='customer_barrier')o.barrier=barrierSettings(o);}return c;}
   importScene(value){
     if(!value||!Array.isArray(value.objects)||!value.room)throw new Error('Expected an exported scene with objects and room dimensions.');
     if(value.objects.length>1000)throw new Error('This editor supports up to 1,000 scene objects.');
-    const allowed=new Set(['table','counter','cart','shelf','robot','machine','dispenser','human','charger','zone','support','box_station','window','placement_zone']);
+    const allowed=new Set(['table','counter','cart','shelf','robot','machine','dispenser','human','charger','zone','support','box_station','window','placement_zone','customer_barrier']);
     const ids=new Set();for(const o of [...(value.groups||[]),...value.objects]){if(typeof o.id!=='string'||ids.has(o.id))throw new Error('Layer IDs must be unique.');ids.add(o.id);}
     for(const o of value.objects){if(!allowed.has(o.kind))throw new Error('Unsupported object kind: '+o.kind);for(const k of ['x','y','width','depth'])if(!Number.isFinite(o[k]))throw new Error('Invalid '+k+' for '+o.id);if(o.width<=0||o.depth<=0)throw new Error('Dimensions must be positive.');if(o.yaw_deg!==undefined&&!Number.isFinite(o.yaw_deg))throw new Error('Invalid rotation.');}
     const entries=new Map([...(value.groups||[]),...value.objects].map(o=>[o.id,o]));
     for(const o of entries.values())for(const field of ['parentId','support']){let p=o,visited=new Set();while(p){if(visited.has(p.id))throw new Error('Layer/support cycle detected.');visited.add(p.id);p=entries.get(p[field]);}}
-    this.transact('Imported scene',()=>{this.scene={...clone(this.seed),...clone(value),groups:clone(value.groups||this.seed.groups)};for(const o of this.scene.objects){delete o.enabled;}
+    this.transact('Imported scene',()=>{this.scene={...clone(this.seed),...clone(value),editor_revision:value.editor_revision||0,groups:clone(value.groups||this.seed.groups)};for(const o of this.scene.objects){delete o.enabled;}
       if((value.editor_revision||0)<3){
         const nova=this.object('nova2');
         if(nova)nova.distanceTargets=[...new Set([...(nova.distanceTargets||[]),...['lid_machine','lid_dispenser','cup_dispenser'].filter(id=>this.object(id))])];
@@ -193,7 +194,8 @@ export class SceneStore {
       }
       if((value.editor_revision||0)<5)migrateBagStation(this.scene,this.seed);
       migrateSuctionWorkflow(this.scene,this.seed);
-      this.scene.editor_revision=6;
+      migrateCustomerBarrier(this.scene);
+      this.scene.editor_revision=7;
       if(value.editor_options)this.options={...this.options,...value.editor_options};this.selected=[];});
   }
   reset(){this.transact('Reset to source layout',()=>{this.scene=clone(this.seed);this.selected=['nova5'];});}

@@ -157,3 +157,15 @@ Copy/paste behavior is covered by test_clipboard.cjs, including nested groups, m
 Bag motion and longer-route playback are covered by test_bag_motion.cjs. The diagnostic test switches to straight transfers to preserve the original 8 cm lift failure case.
 
 Placement containment, support assignment, live boundary diagnostics and playback gating are covered by test_placement_validation.cjs, including rotated and flush-edge cases.
+
+## Customer barrier and ordering frontage
+
+Select **Customer barrier / ordering & pickup** under the coffee area. The default transparent barrier follows the front and right edges of the 140 × 140 cm counter. Its 80 cm panel height above the 90 cm worktop puts its top at 170 cm. The right-side pickup aperture is 44 × 42 cm, starting flush with the worktop and positioned alongside the existing placement rectangle. It is a real opening in the plastic mesh.
+
+Width, depth, height, support and rotation are editable. The **Customer barrier** section controls the right return, plastic thickness, frame width and opacity. Each pickup, tablet, combined mic/speaker and instructions section has independent panel and placement controls. The pickup opening also has clear width and height controls; the tablet and flyer have their own dimensions. Bottom heights are relative to the wall base. Offset zero is the panel centre; positive offsets run right along the front or toward the back along the right side. Section positions and sizes are clamped to their panel; overlapping devices are flagged in Properties. Instructions can be hidden.
+
+**Align with placement zone** moves the aperture along its selected panel as close to the active Flow placement rectangle as the frame permits. It does not move the placement rectangle or the robot's IK target. The barrier follows counter movement, rotation, height and visibility; its panel spans are separately adjustable. Copying a counter includes its barrier. Additional barriers can be added from **Library → Customer barrier**.
+
+SVG and JSON preserve the editable wall settings and named plan sections. GLB includes the current transparent geometry, open aperture, embedded tablet, mic/speaker and flyer textures. Blender source generation includes the same physical sections through customer_barrier.py. Revision 7 adds the barrier once when opening earlier saved scenes, retaining existing equipment edits. Deleting it in a revision-7 scene is respected on reload.
+
+The barrier's empty interior is excluded from the simple placement-footprint overlap check. The IK checker still does not perform mesh collision checking against the wall or other equipment. test_customer_barrier.cjs checks actual aperture raycasts, live controls, unit conversion, migration, support transforms, visibility, copy/delete/undo and SVG/GLB round trips.
