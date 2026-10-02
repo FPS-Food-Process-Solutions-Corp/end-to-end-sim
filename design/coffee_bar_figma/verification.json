@@ -1,0 +1,288 @@
+{
+  "passed": true,
+  "topGroups": [
+    "Background",
+    "Room envelope and circulation",
+    "Area / left work counter",
+    "Area / right work counter",
+    "Area / upper shelf-strip counter",
+    "Area / middle shelf-strip counter",
+    "Area / shelf 1 + Atom-W",
+    "Area / shelf 2 + Nova-5 cart",
+    "Area / coffee station",
+    "Area / charging dock",
+    "Measurements / dimensions and cart offsets",
+    "Legends / title and source notes",
+    "Robot reference library / same-scale copy sources"
+  ],
+  "robots": [
+    {
+      "name": "atom_w",
+      "reference": false,
+      "parent": "Area / shelf 1 + Atom-W",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 170.53460192778402,
+          "size": [
+            341.0692138671875,
+            341.0692138671875
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 130.03689316620293,
+          "size": [
+            260.07379150390625,
+            260.07379150390625
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        140,
+        102
+      ],
+      "cart": null
+    },
+    {
+      "name": "nova5",
+      "reference": false,
+      "parent": "Area / shelf 2 + Nova-5 cart",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 238,
+          "size": [
+            476,
+            476
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 140,
+          "size": [
+            280,
+            280
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        26,
+        26
+      ],
+      "cart": {
+        "width": 120,
+        "height": 160,
+        "topGap": 8,
+        "rightGap": 20
+      }
+    },
+    {
+      "name": "nova2",
+      "reference": false,
+      "parent": "Coffee equipment / machines, dispensers and Nova-2",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 145,
+          "size": [
+            290,
+            290
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 102.94117647058823,
+          "size": [
+            205.88235473632812,
+            205.88235473632812
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        24,
+        24
+      ],
+      "cart": null
+    },
+    {
+      "name": "nova2",
+      "reference": true,
+      "parent": "Reference / Nova-2",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 145,
+          "size": [
+            290,
+            290
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 102.94117647058823,
+          "size": [
+            205.88235473632812,
+            205.88235473632812
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        24,
+        24
+      ],
+      "cart": null
+    },
+    {
+      "name": "nova5",
+      "reference": true,
+      "parent": "Reference / Nova-5",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 238,
+          "size": [
+            476,
+            476
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 140,
+          "size": [
+            280,
+            280
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        26,
+        26
+      ],
+      "cart": {
+        "width": 120,
+        "height": 160,
+        "topGap": 8,
+        "rightGap": 20
+      }
+    },
+    {
+      "name": "me6",
+      "reference": true,
+      "parent": "Reference / ME6",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 90,
+          "size": [
+            180,
+            180
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 74.11764705882352,
+          "size": [
+            148.23529052734375,
+            148.23529052734375
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        32,
+        24
+      ],
+      "cart": null
+    },
+    {
+      "name": "mg400",
+      "reference": true,
+      "parent": "Reference / MG400",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 88,
+          "size": [
+            176,
+            176
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 72.47058823529412,
+          "size": [
+            144.94117736816406,
+            144.94117736816406
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        38,
+        38
+      ],
+      "cart": null
+    },
+    {
+      "name": "atom_w",
+      "reference": true,
+      "parent": "Reference / Atom-W",
+      "rings": [
+        {
+          "kind": "reach_effective",
+          "diameterCm": 170.53460192778402,
+          "size": [
+            341.0692138671875,
+            341.0692138671875
+          ],
+          "stroke": "#CC7133",
+          "dash": "10 7"
+        },
+        {
+          "kind": "reach_placement",
+          "diameterCm": 130.03689316620293,
+          "size": [
+            260.07379150390625,
+            260.07379150390625
+          ],
+          "stroke": "#008896",
+          "dash": null
+        }
+      ],
+      "baseSize": [
+        140,
+        102
+      ],
+      "cart": null
+    }
+  ],
+  "images": 0,
+  "overflow": []
+}

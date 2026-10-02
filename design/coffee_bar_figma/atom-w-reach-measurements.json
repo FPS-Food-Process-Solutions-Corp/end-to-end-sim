@@ -1,0 +1,38 @@
+{
+  "source_urdf": "D:\\Work\\FPS\\Robotics\\end-to-end-sim\\design\\coffee_bar_3d\\assets\\robots\\atom_w\\atom_w_p3.urdf",
+  "palm_mesh": "D:\\Work\\FPS\\Robotics\\end-to-end-sim\\design\\coffee_bar_3d\\assets\\robots\\atom_w\\meshes\\left_hand\\base_link.STL",
+  "arm_segment_lengths_cm": {
+    "left_shoulder_yaw_joint": 13.4,
+    "left_elbow_pitch_joint": 13.100000000000001,
+    "left_elbow_roll_joint": 14.530000000000001,
+    "left_wirst_pitch_joint": 5.345,
+    "left_wirst_yaw_joint": 8.5,
+    "left_rohand_base_joint": 3.4750000000000005
+  },
+  "arm_endpoint": "hand_base mounting frame; fixed wrist-to-hand adapter belongs to arm",
+  "arm_length_without_hand_cm": 58.35,
+  "shoulder_sweep_radius_about_torso_yaw_cm": 20.600970850908944,
+  "palm_mesh_bounds_m": {
+    "min": [
+      -0.12649719417095184,
+      -0.04034040495753288,
+      -0.030605528503656387
+    ],
+    "max": [
+      0.0003244738618377596,
+      0.0415964312851429,
+      0.02449999935925007
+    ]
+  },
+  "palm_midpoint_hand_frame_m": [
+    -0.06308636015455704,
+    0.0006280131638050079,
+    -0.0030527645722031593
+  ],
+  "hand_length_to_palm_midpoint_cm": 6.3163301129830876,
+  "working_radius_cm": 78.95097085090894,
+  "maximum_effective_diameter_cm": 170.53460192778408,
+  "realistic_placement_diameter_cm": 130.036893166203,
+  "method": "Sum arm segment lengths to the hand mounting frame plus shoulder sweep radius. Use palm-base mesh bounding-box midpoint, excluding separate finger meshes. Placement excludes hand length.",
+  "limitation": "Circular planning envelope for an upright torso, not a certified joint-limit or collision-free workspace."
+}

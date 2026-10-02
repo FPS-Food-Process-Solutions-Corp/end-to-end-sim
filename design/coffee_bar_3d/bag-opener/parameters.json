@@ -1,0 +1,32 @@
+{
+  "id": "bag_opener",
+  "kind": "machine",
+  "machine_type": "bag_opener",
+  "label": "Bag opener / 15 x 9 x 28 cm bag",
+  "x": 2.375,
+  "y": 3.65,
+  "width": 0.36,
+  "depth": 0.27,
+  "height": 0.33,
+  "yaw_deg": -90,
+  "support": "middle_counter",
+  "z": 0,
+  "parentId": "area_middle",
+  "visible": true,
+  "locked": false,
+  "asset_key": "bag_opener",
+  "bag_parameters": {
+    "bag_width": 0.15,
+    "bag_depth": 0.09,
+    "bag_height": 0.28,
+    "bag_floor": 0.044,
+    "cup_diameter": 0.02,
+    "cup_projection": 0.024,
+    "plate_width": 0.2,
+    "plate_height": 0.25,
+    "plate_thickness": 0.003,
+    "opening_fraction": 1,
+    "closed_gap": 0.012,
+    "show_bag": true
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "title": "ME6 bag feeding and opening station",
+  "units": "metres",
+  "table": {
+    "width": 1,
+    "depth": 0.75,
+    "height": 0.9
+  },
+  "robot": {
+    "urdf": "D:/Work/FPS/Robotics/urdf/robots/magician_e6/me6_robot.urdf",
+    "base": [
+      0,
+      -0.27,
+      0.008
+    ],
+    "tool_length": 0.08
+  },
+  "bag": {
+    "width": 0.15,
+    "depth": 0.09,
+    "height": 0.28,
+    "flat_depth": 0.004,
+    "bottom": 0.024
+  },
+  "magazine": {
+    "x": -0.23,
+    "front_y": 0.05,
+    "width": 0.205,
+    "depth": 0.15,
+    "height": 0.325,
+    "display_bags": 14
+  },
+  "station": {
+    "x": 0.2,
+    "rear_face_y": 0.08,
+    "base_width": 0.25,
+    "base_depth": 0.22
+  },
+  "tool": {
+    "cup_diameter": 0.02,
+    "cup_projection": 0.024,
+    "cup_spacing_x": 0.086,
+    "cup_spacing_z": 0.068,
+    "contact_height": 0.23
+  },
+  "motion": {
+    "fps": 24,
+    "duration": 24,
+    "lift": 0.03,
+    "retreat_y": -0.035
+  },
+  "notes": [
+    "Proposed compact station; no automatic bag replenishment, filling, sealing, or bag removal is animated.",
+    "Flattened bag depth and magazine capacity are provisional; measure actual bags.",
+    "Bag deformation is illustrative. URDF joint limits and TCP pose residuals are checked; full mesh collision, dynamics and paper/vacuum behaviour are not validated."
+  ]
+}

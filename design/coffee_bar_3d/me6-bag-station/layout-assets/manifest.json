@@ -1,0 +1,49 @@
+{
+  "me6_robot": {
+    "roots": [
+      "layout__me6_bag_robot",
+      "ME6 mounting plate"
+    ],
+    "anchor": [
+      0,
+      -0.27,
+      0.908
+    ],
+    "dimensions": [
+      0.19,
+      0.15,
+      0.6
+    ]
+  },
+  "magazine": {
+    "roots": [
+      "01 Bag magazine"
+    ],
+    "anchor": [
+      -0.23,
+      0.125,
+      0.9
+    ],
+    "dimensions": [
+      0.24,
+      0.195,
+      0.325
+    ]
+  },
+  "fixed_suction": {
+    "roots": [
+      "02 Fixed opposing suction",
+      "Handled kraft bag"
+    ],
+    "anchor": [
+      0.2,
+      0.035,
+      0.9
+    ],
+    "dimensions": [
+      0.365,
+      0.24,
+      0.304
+    ]
+  }
+}

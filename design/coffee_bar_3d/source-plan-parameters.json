@@ -1,0 +1,64 @@
+{
+  "pixels_per_cm": 2,
+  "canvas_px": [
+    1420,
+    1630
+  ],
+  "plan_origin_px": [
+    230,
+    270
+  ],
+  "main_width_cm": 315,
+  "right_counter_width_cm": 60,
+  "working_depth_cm": 360,
+  "coffee_zone_depth_cm": 140,
+  "overall_depth_annotation_cm": 575,
+  "width_chain_cm": [
+    60,
+    160,
+    35,
+    60
+  ],
+  "shelf_strip_segments_cm": [
+    60,
+    100,
+    100,
+    100
+  ],
+  "coffee_station_cm": [
+    140,
+    140,
+    90
+  ],
+  "charger_zone_start_x_cm": 200,
+  "robots": {
+    "nova5": {
+      "center_cm": [
+        185,
+        310
+      ],
+      "reach_diameter_cm": 140,
+      "marker_diameter_px": 22
+    },
+    "atom_w": {
+      "center_cm": [
+        165,
+        110
+      ],
+      "length_cm": 70,
+      "width_cm": 51,
+      "heading": "right / towards shelf 1",
+      "show_turn_envelope": true,
+      "arm_reach_diameter_cm": null
+    }
+  },
+  "assumptions": [
+    "Main width is 315 cm; the separate right countertop adds 60 cm, giving 375 cm across the displayed plan.",
+    "The crop shows a 360 cm working zone plus a 140 cm coffee zone. A further 75 cm is implied by the 575 cm dimension, but its contents and exact location are not visible. The dashed area is a dimension reference only.",
+    "Shelf strip divisions have no written lengths: 60/100/100/100 cm is a provisional reconstruction of their photographed proportions. Its total is exactly 360 cm.",
+    "The charging outline is a zone, not a measured charger body. Its left edge at 200 cm is estimated from the image.",
+    "Robot centres are proposed positions in front of the indicated shelves. No new cart or arm pose is inferred.",
+    "Nova-5 circle is the user-requested 140 cm diameter. It is a plan-view range reference, not a joint/collision validation.",
+    "Atom-W base is exactly 70 x 51 cm, with its 70 cm fore-aft axis pointing toward shelf 1. Its turning envelope assumes rotation about the rectangle centre; no arm reach is implied."
+  ]
+}

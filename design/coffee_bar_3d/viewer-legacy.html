@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coffee bar · scene viewer</title>
+  <style>
+    :root { color-scheme: dark; --bg:#101318; --panel:#171c23; --panel2:#1d242d; --line:#2a333f; --muted:#91a0b2; --text:#edf2f7; --accent:#7ce0c3; --accent2:#ffd08a; --danger:#ff9d91; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html,body { margin:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font:14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    button,input,select { font:inherit; }
+    button { color:var(--text); background:#222a34; border:1px solid #34404e; border-radius:8px; padding:8px 11px; cursor:pointer; transition:background .15s,border-color .15s,transform .15s; }
+    button:hover { background:#2b3541; border-color:#536477; }
+    button:active { transform:translateY(1px); }
+    button.primary { background:#1e4a43; border-color:#347c6f; color:#d9fff5; }
+    button.primary:hover { background:#285c53; }
+    button:disabled { opacity:.4; cursor:not-allowed; }
+    input,select { width:100%; color:var(--text); background:#10151b; border:1px solid #34404e; border-radius:7px; padding:8px 9px; outline:none; }
+    input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 2px #7ce0c322; }
+    input:disabled { opacity:.42; }
+    .app { display:grid; grid-template-rows:58px minmax(0,1fr); height:100%; }
+    header { display:flex; align-items:center; gap:16px; padding:0 18px; border-bottom:1px solid var(--line); background:#151a20; z-index:2; }
+    .brand { display:flex; align-items:center; gap:10px; min-width:230px; }
+    .brand-mark { display:grid; place-items:center; width:31px; height:31px; border-radius:9px; color:#0d221f; background:var(--accent); font-weight:900; letter-spacing:-.06em; }
+    .brand-title { font-size:14px; font-weight:700; letter-spacing:.01em; }
+    .brand-sub { color:var(--muted); font-size:11px; margin-top:1px; }
+    .header-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
+    .text-button { border-color:transparent; background:transparent; color:#bcc7d3; }
+    .main { min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 335px; }
+    .viewport { position:relative; min-width:0; min-height:0; background:radial-gradient(ellipse at 55% 38%,#27313a 0,#171c22 43%,#101318 100%); }
+    canvas { width:100%; height:100%; display:block; }
+    .view-tools { position:absolute; top:15px; left:15px; display:flex; gap:6px; padding:5px; border:1px solid #ffffff19; border-radius:11px; background:#151a20dc; backdrop-filter:blur(10px); box-shadow:0 8px 28px #0005; }
+    .view-tools button { padding:7px 10px; border-color:transparent; background:transparent; color:#c4ced8; font-size:12px; }
+    .view-tools button.active { background:#303a45; color:white; }
+    .view-tools button:hover { background:#303a45; }
+    .viewport-note { position:absolute; left:17px; bottom:13px; color:#aab6c4; font-size:11px; pointer-events:none; text-shadow:0 1px 4px #000; }
+    .loading { position:absolute; inset:0; display:grid; place-content:center; gap:10px; text-align:center; background:#101318aa; color:#b8c5d2; z-index:1; }
+    .loading[hidden] { display:none; }
+    .spinner { width:22px; height:22px; border:2px solid #ffffff25; border-top-color:var(--accent); border-radius:50%; margin:auto; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    aside { min-height:0; overflow:auto; border-left:1px solid var(--line); background:var(--panel); padding:17px 16px 24px; }
+    .section { padding-bottom:17px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+    .section:last-child { border:0; }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; margin:0 0 11px; font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:#a9b6c5; font-weight:700; }
+    .section-heading .hint { color:#718092; font-weight:500; letter-spacing:0; text-transform:none; }
+    .field { display:grid; grid-template-columns:minmax(0,1fr) 118px; align-items:center; gap:10px; margin:8px 0; }
+    .field label { color:#d0d8e1; font-size:12px; }
+    .field input { text-align:right; font-variant-numeric:tabular-nums; }
+    .object-meta { color:var(--muted); font-size:11px; margin-top:7px; display:flex; gap:7px; align-items:center; }
+    .pill { border:1px solid #394553; color:#aab9c8; border-radius:20px; padding:2px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+    .toggle-list { display:grid; gap:9px; }
+    .toggle { display:flex; align-items:center; gap:9px; color:#d6dee7; font-size:12px; cursor:pointer; }
+    .toggle input { width:15px; height:15px; margin:0; accent-color:var(--accent); }
+    .button-row { display:flex; gap:8px; }
+    .button-row > * { flex:1; }
+    .small-note { margin:9px 0 0; color:#8795a5; font-size:11px; }
+    .status { min-height:19px; color:#90a0b1; font-size:11px; }
+    .status.error { color:var(--danger); }
+    .status.good { color:var(--accent); }
+    .build-note { padding:10px 11px; border-radius:9px; background:#212832; color:#adbac8; font-size:11px; }
+    .build-note strong { color:#e9d2a8; font-weight:650; }
+    .file-input { display:none; }
+    .render-links { display:flex; gap:6px; }
+    .render-links a { text-decoration:none; color:#aab8c7; font-size:11px; padding:6px 8px; border:1px solid var(--line); border-radius:7px; }
+    .render-links a:hover { color:white; border-color:#536477; }
+    .empty { color:var(--muted); font-size:12px; padding:12px 0; }
+    @media (max-width:850px) { .main { grid-template-columns:minmax(0,1fr) 290px; } .brand { min-width:170px; } }
+    @media (max-width:640px) { .app { grid-template-rows:52px minmax(0,1fr); } header { padding:0 10px; } .brand { min-width:0; } .brand-sub,.header-actions .text-button,.render-links { display:none; } .main { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(240px,1fr) 43vh; } aside { border-left:0; border-top:1px solid var(--line); padding:13px; } .field { grid-template-columns:1fr 105px; } }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div><div class="brand-title">Coffee bar</div><div class="brand-sub">New floor plan · metres</div></div>
+      </div>
+      <div class="render-links" aria-label="Rendered views">
+        <a href="./output/overview.png" target="_blank" rel="noopener">Overview render</a>
+        <a href="./output/top.png" target="_blank" rel="noopener">Top render</a>
+        <a href="./output/dock_detail.png" target="_blank" rel="noopener">Dock detail</a>
+      </div>
+      <div class="header-actions">
+        <button id="importButton" class="text-button" type="button">Import JSON</button>
+        <button id="downloadButton" class="primary" type="button">Download JSON</button>
+      </div>
+    </header>
+    <main class="main">
+      <section class="viewport" aria-label="3D scene">
+        <canvas id="sceneCanvas"></canvas>
+        <div class="view-tools" role="toolbar" aria-label="Camera views">
+          <button id="customerView" class="active" type="button">Overview</button>
+          <button id="topView" type="button">Top</button>
+          <button id="fitView" type="button">Fit scene</button><button id="dockView" type="button">Charging dock</button><button id="coffeeView" type="button">Coffee table</button>
+        </div>
+        <div class="viewport-note">Drag to orbit · wheel to zoom · right-drag to pan · click an object to select</div>
+        <div id="loading" class="loading"><div class="spinner"></div><div id="loadingText">Loading scene…</div></div>
+      </section>
+      <aside>
+        <section class="section">
+          <h2 class="section-heading">Selected object <span class="hint" id="objectCount"></span></h2>
+          <select id="objectSelect" aria-label="Select scene object"></select>
+          <div class="object-meta"><span id="kindPill" class="pill">—</span><span id="supportText">Select an object</span></div>
+        </section>
+        <section class="section">
+          <h2 class="section-heading">Plan position <span class="hint">object centre</span></h2>
+          <div class="field"><label for="xInput">X · left to right (m)</label><input id="xInput" type="number" step="0.01"></div>
+          <div class="field"><label for="yInput">Y · front to back (m)</label><input id="yInput" type="number" step="0.01"></div>
+          <div class="field"><label for="yawInput">Yaw (degrees)</label><input id="yawInput" type="number" step="1"></div>
+          <div class="field"><label for="zInput">Height offset (m)</label><input id="zInput" type="number" step="0.01"></div>
+        </section>
+        <section class="section">
+          <h2 class="section-heading">Dimensions <span class="hint">metres</span></h2>
+          <div class="field"><label for="widthInput">Width · X</label><input id="widthInput" type="number" min="0.001" step="0.01"></div>
+          <div class="field"><label for="depthInput">Depth · Y</label><input id="depthInput" type="number" min="0.001" step="0.01"></div>
+          <div class="field"><label for="heightInput">Height · Z</label><input id="heightInput" type="number" min="0.001" step="0.01"></div>
+          <div class="field" id="bottomField" hidden><label for="bottomInput">Window bottom (m)</label><input id="bottomInput" type="number" min="0" step="0.01"></div>
+          <div class="field" id="diameterField" hidden><label for="diameterInput">Cylinder diameter (m)</label><input id="diameterInput" type="number" min="0.001" step="0.005"></div>
+          <div class="field" id="thicknessField" hidden><label for="thicknessInput">Plastic thickness (m)</label><input id="thicknessInput" type="number" min="0.001" step="0.001"></div>
+          <p id="dimensionNote" class="small-note">Edits update this scene live. Structural shelf settings are stored in JSON and need a rebuild.</p>
+        </section>
+        <section class="section">
+          <h2 class="section-heading">Visibility</h2>
+          <div class="toggle-list">
+            <label class="toggle"><input id="rangesToggle" type="checkbox" checked> Range guides</label>
+            <label class="toggle"><input id="robotsToggle" type="checkbox" checked> Robots</label>
+            <label class="toggle"><input id="equipmentToggle" type="checkbox" checked> Coffee equipment</label>
+          </div>
+        </section>
+        <section class="section">
+          <h2 class="section-heading">Scene data</h2>
+          <div id="status" class="status">Waiting for scene…</div>
+          <div class="button-row"><button id="resetButton" type="button">Reset edits</button><button id="importSideButton" type="button">Import JSON…</button></div>
+          <p class="small-note">JSON import updates the scene config and live transforms. Rebuild the GLB to change geometry generated from structural parameters.</p>
+        </section>
+        <div class="build-note"><strong>Model note.</strong> New floor plan: Nova-5 at shelf 2 and Atom-W at shelf 1. Person: 1.70 m. Nova-2 and all coffee devices are on the front 1.40 x 1.40 m coffee table. The dock follows the supplied reference, with its charging port pointing left in the plan. The pale 0.75 m front strip accounts for cropped source dimensions. Robot poses and floor range guides are illustrative.</div>
+        <input id="fileInput" class="file-input" type="file" accept="application/json,.json">
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    import * as THREE from './vendor/three.module.js';
+    import { OrbitControls } from './vendor/OrbitControls.js';
+    import { GLTFLoader } from './vendor/GLTFLoader.js';
+    import { RoomEnvironment } from './vendor/RoomEnvironment.js';
+
+    const $ = (id) => document.getElementById(id);
+    const elements = {
+      canvas: $('sceneCanvas'), loading: $('loading'), loadingText: $('loadingText'), select: $('objectSelect'),
+      x: $('xInput'), y: $('yInput'), yaw: $('yawInput'), width: $('widthInput'), depth: $('depthInput'), height: $('heightInput'),
+      z: $('zInput'), diameter: $('diameterInput'), thickness: $('thicknessInput'), bottom: $('bottomInput'), bottomField: $('bottomField'), dimensionNote: $('dimensionNote'), status: $('status'),
+      kind: $('kindPill'), support: $('supportText'), count: $('objectCount'), file: $('fileInput')
+    };
+    const up = new THREE.Vector3(0, 1, 0);
+    const renderer = new THREE.WebGLRenderer({ canvas: elements.canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const studio = new RoomEnvironment();
+    scene.environment = pmrem.fromScene(studio, 0.04).texture;
+    scene.environmentIntensity = 0.55;
+    studio.dispose(); pmrem.dispose();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.075;
+    controls.screenSpacePanning = true;
+    controls.target.set(1.9, 0.85, -1.75);
+    const ambient = new THREE.HemisphereLight(0xcbdcf2, 0x46382a, 2.0);
+    scene.add(ambient);
+    const key = new THREE.DirectionalLight(0xffe5c2, 2.7);
+    key.position.set(-3, 7, 4);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048,2048);
+    Object.assign(key.shadow.camera,{left:-5,right:5,top:5,bottom:-5,near:0.1,far:25});
+    key.shadow.bias = -0.0001;
+    key.shadow.normalBias = 0.015;
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0x8fc8ed, 1.0);
+    fill.position.set(5, 4, -5);
+    scene.add(fill);
+
+    let currentConfig = null;
+    let initialConfig = null;
+    let gltfRoot = null;
+    let selectedId = null;
+    const roots = new Map();
+    const baseTransforms = new Map();
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerStart = null;
+    let roomDecor = [];
+    let selectedOutline = null;
+
+    function cloneJson(value) { return JSON.parse(JSON.stringify(value)); }
+    function setStatus(message, tone = '') { elements.status.textContent = message; elements.status.className = `status ${tone}`.trim(); }
+    function objectById(id, config = currentConfig) { return config?.objects?.find((item) => item.id === id); }
+    function anchorHeight(object, config = currentConfig) {
+      if (object.kind === 'window') return numberOr(object.bottom, 0);
+      if (object.support) return numberOr(objectById(object.support, config)?.height, 0) + numberOr(object.z, 0);
+      return numberOr(object.z, 0);
+    }
+    function numberOr(value, fallback) { const n = Number(value); return Number.isFinite(n) ? n : fallback; }
+    function kindLabel(object) { return object.kind === 'robot' ? 'robot' : object.kind.replaceAll('_', ' '); }
+    function rootForNode(node) {
+      let current = node;
+      while (current && current !== gltfRoot) {
+        const id = current.userData?.layout_id || current.userData?.extras?.layout_id || (current.name.startsWith('layout__') ? current.name.slice(8) : null);
+        if (id) return roots.get(String(id)) || null;
+        current = current.parent;
+      }
+      return null;
+    }
+    function findRoots(root) {
+      roots.clear();
+      root.traverse((node) => {
+        const id = node.userData?.layout_id || node.userData?.extras?.layout_id || (node.name.startsWith('layout__') ? node.name.slice(8) : null);
+        if (id && !roots.has(String(id))) roots.set(String(id), node);
+      });
+      baseTransforms.clear();
+      for (const [id, node] of roots) baseTransforms.set(id, { position: node.position.clone(), quaternion: node.quaternion.clone(), scale: node.scale.clone(), visible: node.visible });
+    }
+    function makeRoomDecor() {
+      for (const node of roomDecor) { scene.remove(node); node.geometry?.dispose(); if (node.material) { if (Array.isArray(node.material)) node.material.forEach((m) => m.dispose()); else node.material.dispose(); } }
+      roomDecor = [];
+      const width = numberOr(currentConfig?.room?.width, 3.8);
+      const depth = numberOr(currentConfig?.room?.depth, 3.5);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshStandardMaterial({ color: 0x252c33, roughness: 0.92, metalness: 0.02 }));
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(width / 2, -0.012, -depth / 2);
+      floor.name = 'viewer_floor';
+      scene.add(floor); roomDecor.push(floor);
+      const grid = new THREE.GridHelper(Math.max(width, depth), Math.round(Math.max(width, depth) * 10), 0x647385, 0x37414c);
+      grid.position.set(width / 2, 0.001, -depth / 2);
+      grid.scale.set(width / Math.max(width, depth), 1, depth / Math.max(width, depth));
+      grid.material.transparent = true; grid.material.opacity = 0.34; grid.material.depthWrite = false;
+      grid.visible = false; scene.add(grid); roomDecor.push(grid);
+      const boundaryPoints = [new THREE.Vector3(0, 0.003, 0), new THREE.Vector3(width, 0.003, 0), new THREE.Vector3(width, 0.003, -depth), new THREE.Vector3(0, 0.003, -depth), new THREE.Vector3(0, 0.003, 0)];
+      const boundaryGeometry = new THREE.BufferGeometry().setFromPoints(boundaryPoints);
+      const boundary = new THREE.Line(boundaryGeometry, new THREE.LineBasicMaterial({ color: 0x98aaae, transparent: true, opacity: 0.75 }));
+      scene.add(boundary); roomDecor.push(boundary);
+    }
+    function applyConfigToScene() {
+      if (!currentConfig || !initialConfig) return;
+      const originals = new Map(initialConfig.objects.map((o) => [o.id, o]));
+      for (const object of currentConfig.objects) {
+        if (object.follow) { const followed=objectById(object.follow); if(followed) { object.x=followed.x; object.y=followed.y; } }
+        const root = roots.get(object.id);
+        const base = baseTransforms.get(object.id);
+        const original = originals.get(object.id);
+        if (!root || !base || !original) continue;
+        root.position.x = base.position.x + (numberOr(object.x, original.x) - numberOr(original.x, 0));
+        root.position.z = base.position.z - (numberOr(object.y, original.y) - numberOr(original.y, 0));
+        root.position.y = base.position.y + anchorHeight(object) - anchorHeight(original, initialConfig);
+        const yawDelta = (numberOr(object.yaw_deg, original.yaw_deg) - numberOr(original.yaw_deg, 0)) * Math.PI / 180;
+        const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(up, yawDelta);
+        root.quaternion.copy(yawQuaternion.multiply(base.quaternion));
+        if (object.kind !== 'robot') {
+          root.scale.set(
+            base.scale.x * numberOr(object.width, original.width) / Math.max(0.000001, numberOr(original.width, 1)),
+            base.scale.y * numberOr(object.height, original.height) / Math.max(0.000001, numberOr(original.height, 1)),
+            base.scale.z * (object.kind === 'window' ? numberOr(object.thickness, original.thickness) / original.thickness : numberOr(object.depth, original.depth) / Math.max(0.000001, numberOr(original.depth, 1)))
+          );
+        } else root.scale.copy(base.scale);
+      }
+      const windowsVisible = $('rangesToggle').checked;
+      const robotsVisible = $('robotsToggle').checked;
+      const equipmentVisible = $('equipmentToggle').checked;
+      for (const object of currentConfig.objects) {
+        if (object.follow) { const followed=objectById(object.follow); if(followed) { object.x=followed.x; object.y=followed.y; } }
+        const root = roots.get(object.id);
+        if (!root) continue;
+        root.visible = object.kind === 'range' ? windowsVisible : object.kind === 'robot' ? robotsVisible : object.equipment_group === 'coffee' ? equipmentVisible : (baseTransforms.get(object.id)?.visible ?? true);
+      }
+      makeRoomDecor();
+      updateSelectionOutline();
+      renderControls();
+    }
+    function updateSelectionOutline() {
+      if (selectedOutline) { scene.remove(selectedOutline); selectedOutline.geometry.dispose(); selectedOutline.material.dispose(); selectedOutline = null; }
+      const root = roots.get(selectedId);
+      if (!root || !root.visible) return;
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (bounds.isEmpty()) return;
+      const helper = new THREE.Box3Helper(bounds, 0x7ce0c3);
+      helper.material.depthTest = false; helper.material.transparent = true; helper.material.opacity = 0.9; helper.renderOrder = 999;
+      scene.add(helper); selectedOutline = helper;
+    }
+    function populateSelect() {
+      const objects = currentConfig?.objects || [];
+      elements.select.replaceChildren();
+      for (const object of objects) {
+        const option = document.createElement('option');
+        option.value = object.id; option.textContent = `${object.label || object.id} · ${kindLabel(object)}`;
+        elements.select.append(option);
+      }
+      elements.count.textContent = `${objects.length} objects`;
+      if (!objectById(selectedId)) selectedId = objects[0]?.id || null;
+      elements.select.value = selectedId || '';
+    }
+    function renderControls() {
+      populateSelect();
+      const object = objectById(selectedId);
+      const disabled = !object;
+      for (const input of [elements.x, elements.y, elements.yaw, elements.width, elements.depth, elements.height, elements.bottom, elements.z, elements.diameter, elements.thickness]) input.disabled = disabled;
+      if (!object) { elements.kind.textContent = '—'; elements.support.textContent = 'No object selected'; return; }
+      elements.kind.textContent = kindLabel(object);
+      const support = object.support ? objectById(object.support)?.label || object.support : 'floor / room';
+      elements.support.textContent = object.support ? `on ${support}` : support;
+      elements.x.value = numberOr(object.x, 0).toFixed(3);
+      elements.y.value = numberOr(object.y, 0).toFixed(3);
+      elements.yaw.value = numberOr(object.yaw_deg, 0).toFixed(1);
+      elements.z.value = numberOr(object.z, 0).toFixed(3);
+      elements.z.disabled = object.kind === 'window';
+      const isRobot = object.kind === 'robot';
+      elements.width.value = numberOr(object.width, 0).toFixed(3);
+      elements.depth.value = numberOr(object.depth, 0).toFixed(3);
+      elements.height.value = isRobot ? '' : numberOr(object.height, 0).toFixed(3);
+      elements.height.placeholder = isRobot ? 'URDF size' : '';
+      elements.width.disabled = isRobot; elements.depth.disabled = isRobot; elements.height.disabled = isRobot;
+      if (object.kind === 'dispenser') { elements.width.disabled = true; elements.depth.disabled = true; }
+      if (object.kind === 'window') elements.depth.disabled = true;
+      elements.dimensionNote.textContent = isRobot ? 'Robot footprint dimensions describe the plan symbol; the imported robot model keeps its original scale.' : 'Size edits show a scaled preview. Rebuild to preserve sheet thickness, shelf pitch and detailed parts.';
+      elements.bottomField.hidden = object.kind !== 'window';
+      $('diameterField').hidden = object.kind !== 'dispenser';
+      $('thicknessField').hidden = object.kind !== 'window';
+      elements.diameter.value = numberOr(object.diameter, 0).toFixed(3);
+      elements.thickness.value = numberOr(object.thickness, 0).toFixed(3);
+      if (object.kind === 'window') elements.bottom.value = numberOr(object.bottom, 0).toFixed(3);
+      updateSelectionOutline();
+    }
+    function modifySelected(property, rawValue) {
+      const object = objectById(selectedId);
+      if (!object) return;
+      const value = Number(rawValue);
+      if (!Number.isFinite(value)) return;
+      if (['width', 'depth', 'height'].includes(property) && object.kind === 'robot') return;
+      if (['width', 'depth', 'height'].includes(property) && value <= 0) return;
+      object[property] = value;
+      if (property === 'diameter') { object.width = value; object.depth = value; }
+      applyConfigToScene();
+      setStatus(`${object.label || object.id} updated`, 'good');
+    }
+    function resetCamera(mode = 'customer') {
+      const width = numberOr(currentConfig?.room?.width, 3.8);
+      const depth = numberOr(currentConfig?.room?.depth, 3.5);
+      const target = new THREE.Vector3(width / 2, 0.8, -depth / 2);
+      controls.target.copy(target);
+      if (mode === 'top') camera.position.set(width / 2, Math.max(width, depth) * 1.9, -depth / 2 + 0.01);
+      else camera.position.set(-4.0, 6.8, 5.3);
+      camera.up.copy(up); camera.lookAt(target); controls.update();
+      $('customerView').classList.toggle('active', mode === 'customer');
+      $('topView').classList.toggle('active', mode === 'top');
+    }
+    function fitScene() {
+      const width = numberOr(currentConfig?.room?.width, 3.8), depth = numberOr(currentConfig?.room?.depth, 3.5);
+      controls.target.set(width / 2, 0.85, -depth / 2);
+      camera.position.set(-4.0, 6.8, 5.3);
+      camera.lookAt(controls.target); controls.update();
+      $('customerView').classList.remove('active'); $('topView').classList.remove('active');
+    }
+    function downloadConfig() {
+      const blob = new Blob([JSON.stringify(currentConfig, null, 2) + '\n'], { type: 'application/json' });
+      const url = URL.createObjectURL(blob); const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = 'scene_config.json'; anchor.click(); URL.revokeObjectURL(url);
+    }
+    async function importConfig(file) {
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (!parsed || !Array.isArray(parsed.objects) || !parsed.room) throw new Error('Expected a scene config with room and objects fields.');
+        currentConfig = parsed;
+        selectedId = currentConfig.objects[0]?.id || null;
+        $('rangesToggle').checked = true; $('robotsToggle').checked = true; $('equipmentToggle').checked = true;
+        applyConfigToScene();
+        setStatus('Imported config. Rebuild for generated structural changes.', 'good');
+      } catch (error) { setStatus(`Could not import JSON: ${error.message}`, 'error'); }
+      elements.file.value = '';
+    }
+    function handleCanvasClick(event) {
+      if (!gltfRoot) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObject(gltfRoot, true);
+      for (const hit of hits) {
+        const root = rootForNode(hit.object);
+        if (root) { selectedId = root.userData?.layout_id || root.userData?.extras?.layout_id || root.name.slice(8); elements.select.value = selectedId; renderControls(); return; }
+      }
+    }
+    function resize() {
+      const width = elements.canvas.clientWidth, height = elements.canvas.clientHeight;
+      if (!width || !height) return;
+      renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix();
+    }
+    function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+
+    elements.select.addEventListener('change', () => { selectedId = elements.select.value; renderControls(); });
+    for (const [input, property] of [[elements.x,'x'],[elements.y,'y'],[elements.yaw,'yaw_deg'],[elements.z,'z'],[elements.diameter,'diameter'],[elements.thickness,'thickness'],[elements.width,'width'],[elements.depth,'depth'],[elements.height,'height'],[elements.bottom,'bottom']]) {
+      input.addEventListener('change', () => modifySelected(property, input.value));
+      input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { modifySelected(property, input.value); input.blur(); } });
+    }
+    $('rangesToggle').addEventListener('change', applyConfigToScene);
+    $('robotsToggle').addEventListener('change', applyConfigToScene);
+    $('equipmentToggle').addEventListener('change', applyConfigToScene);
+    $('downloadButton').addEventListener('click', downloadConfig);
+    $('importButton').addEventListener('click', () => elements.file.click());
+    $('importSideButton').addEventListener('click', () => elements.file.click());
+    elements.file.addEventListener('change', () => { if (elements.file.files?.[0]) importConfig(elements.file.files[0]); });
+    $('resetButton').addEventListener('click', () => { currentConfig = cloneJson(initialConfig); selectedId = currentConfig.objects[0]?.id || null; $('rangesToggle').checked = true; $('robotsToggle').checked = true; $('equipmentToggle').checked = true; applyConfigToScene(); setStatus('Edits reset to the loaded config.', 'good'); });
+    $('customerView').addEventListener('click', () => resetCamera('customer'));
+    $('topView').addEventListener('click', () => resetCamera('top'));
+    $('fitView').addEventListener('click', fitScene);
+    $('coffeeView').addEventListener('click', () => {
+      const table = objectById('coffee_station');
+      selectedId = 'nova2'; renderControls();
+      controls.target.set(table.x, table.height + .30, -table.y);
+      camera.position.set(table.x + 2.3, table.height + 2.25, -table.y + 2.3);
+      camera.up.copy(up); camera.lookAt(controls.target); controls.update();
+      $('customerView').classList.remove('active'); $('topView').classList.remove('active');
+    });
+    $('dockView').addEventListener('click', () => {
+      const dock = objectById('charger');
+      selectedId = 'charger'; renderControls();
+      controls.target.set(dock.x, dock.height / 2, -dock.y);
+      camera.position.set(dock.x - 1.0, .86, -dock.y + .73);
+      camera.up.copy(up); camera.lookAt(controls.target); controls.update();
+      $('customerView').classList.remove('active'); $('topView').classList.remove('active');
+    });
+    renderer.domElement.addEventListener('pointerdown', (event) => { pointerStart = { x:event.clientX, y:event.clientY }; });
+    renderer.domElement.addEventListener('pointerup', (event) => { if (pointerStart && Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y) < 5) handleCanvasClick(event); pointerStart = null; });
+    window.addEventListener('resize', resize);
+
+    async function start() {
+      try {
+        const response = await fetch('./scene_config.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`scene_config.json returned ${response.status}`);
+        currentConfig = await response.json();
+        const snapshot = await fetch('./output/built_config.json', {cache:'no-store'});
+        initialConfig = snapshot.ok ? await snapshot.json() : cloneJson(currentConfig);
+        currentConfig = cloneJson(initialConfig);
+        makeRoomDecor();
+        const loader = new GLTFLoader();
+        loader.load('./output/coffee_bar.glb', (gltf) => {
+          gltfRoot = gltf.scene;
+          gltfRoot.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; if (node.material?.transmission > 0) node.castShadow = false; } });
+          scene.add(gltfRoot); findRoots(gltfRoot); applyConfigToScene();
+          const missing = currentConfig.objects.filter((object) => !roots.has(object.id)).map((object) => object.id);
+          const found = roots.size;
+          elements.loading.hidden = true;
+          if (missing.length) setStatus(`${found} roots loaded; missing: ${missing.join(', ')}`, 'error');
+          else setStatus(`${found} editable objects loaded`, 'good');
+          resetCamera('customer'); resize();
+        }, (progress) => {
+          if (progress.total) elements.loadingText.textContent = `Loading scene… ${Math.round(progress.loaded / progress.total * 100)}%`;
+        }, (error) => {
+          elements.loading.hidden = true;
+          elements.loadingText.textContent = 'Scene GLB not found. Build the scene, then reload this page.';
+          setStatus(`Could not load output/coffee_bar.glb: ${error.message || 'file not found'}`, 'error');
+        });
+      } catch (error) {
+        elements.loadingText.textContent = 'Could not load scene_config.json.';
+        setStatus(`Viewer could not start: ${error.message}`, 'error');
+      }
+    }
+    window.bakeryViewer = { getConfig: () => cloneJson(currentConfig), getTransform: id => { const r=roots.get(id); return r ? { position:r.position.toArray(), scale:r.scale.toArray(), quaternion:r.quaternion.toArray(), visible:r.visible } : null; } };
+    resize(); animate(); start();
+  </script>
+</body>
+</html>

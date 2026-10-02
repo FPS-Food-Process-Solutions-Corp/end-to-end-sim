@@ -1,0 +1,27 @@
+{
+  "max_tcp_error_mm": 0.059771705569120884,
+  "max_orientation_matrix_error": 0.0002345634273810202,
+  "max_joint_step_deg": 4.526326638514456,
+  "max_sampled_joint_speed_deg_s": 108.63183932434694,
+  "joint_limits_checked": true,
+  "collision_check": "Not a full mesh collision simulation",
+  "duration_seconds": 24,
+  "fps": 24,
+  "poses": 577,
+  "start_joint_degrees": [
+    -26.46,
+    4.61,
+    75.4,
+    99.99,
+    63.54,
+    0.0
+  ],
+  "end_joint_degrees": [
+    -77.35,
+    20.33,
+    77.24,
+    82.43,
+    12.65,
+    -0.0
+  ]
+}

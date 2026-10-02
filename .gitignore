@@ -223,3 +223,4 @@ runtime/
 !/docs/verification/operator-recovery-2026-09-25/pytest-operator-fixture-live-liveness.xml
 !/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.txt
 !/docs/verification/operator-recovery-2026-09-25/pytest-operator-cli-json-fix.xml
+/tmp
