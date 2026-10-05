@@ -1,3 +1,5 @@
+import {createSearchBudget,tryDetour,retimeDetours} from './motion-search.js';
+import {WorldCollisionChecker} from './collision-core.js';
 import {Matrix4, Vector3, Quaternion, Euler} from '../vendor/three.module.js';
 import {MOTION_DEFAULTS, routeCandidates, interpolateMotion, inspectHeldInterval,
   bagTiltDegrees, jointTravel} from './bag-motion.js';
@@ -39,6 +41,7 @@ function rotationError(current, target) {
 export class SuctionArm {
   constructor(definition, robot, mountingHeight) {
     this.definition = definition;
+    this.tolerance = definition.tolerance || IK_TOLERANCE;
     this.joints = definition.joints;
     this.scale = robot.robot_scale || 1;
     this.base = new Matrix4().makeRotationZ(radians(robot.yaw_deg || 0));
@@ -91,8 +94,8 @@ export class SuctionArm {
         q: [...angles],
         positionError: positionResidual,
         orientationError: orientationResidual,
-        ok: positionResidual <= IK_TOLERANCE.position &&
-          orientationResidual <= radians(IK_TOLERANCE.orientationDegrees),
+        ok: positionResidual <= this.tolerance.position &&
+          orientationResidual <= radians(this.tolerance.orientationDegrees),
         tcp: pose.position.toArray(),
         tcpQuaternion: pose.quaternion.toArray(),
         links: pose.links,
@@ -122,7 +125,8 @@ export class SuctionArm {
 
   solveMultiple(target, preferred = this.initial, attempts = 20) {
     let best = this.solve(target, preferred);
-    if (best.ok) return {...best, attempts: 1};
+    let reachable = best.ok ? best : null;
+    if (best.ok && (!this.poseAllowed || this.poseAllowed(best.q))) return {...best, attempts: 1};
     for (let attempt = 0; attempt < attempts; attempt++) {
       // Deterministic restarts make repeated layout checks reproducible.
       const seed = this.joints.map((joint, index) => {
@@ -131,10 +135,11 @@ export class SuctionArm {
         return clamp((fraction * 2 - 1) * limit, joint.lower + .01, joint.upper - .01);
       });
       const candidate = this.solve(target, seed);
-      if (candidate.ok) return {...candidate, attempts: attempt + 2};
+      if (candidate.ok && (!reachable || candidate.score < reachable.score)) reachable = candidate;
+      if (candidate.ok && (!this.poseAllowed || this.poseAllowed(candidate.q))) return {...candidate, attempts: attempt + 2};
       if (candidate.score < best.score) best = candidate;
     }
-    return {...best, attempts: attempts + 1};
+    return {...(reachable || best), attempts: attempts + 1};
   }
 }
 
@@ -158,7 +163,7 @@ function jointDiagnostics(arm, result, seed) {
   }));
 }
 
-function pathFailure(arm, target, result, previous, context) {
+export function pathFailure(arm, target, result, previous, context) {
   const joints = jointDiagnostics(arm, result, previous?.q);
   const largestStep = previous
     ? joints.reduce((largest, joint) => Math.abs(joint.delta) > Math.abs(largest.delta) ? joint : largest)
@@ -178,8 +183,8 @@ function pathFailure(arm, target, result, previous, context) {
     previous: previous ? {time: previous.time, q: [...previous.q], target: previous.target} : null,
     positionDelta: target.position.map((value, index) => value - result.tcp[index]),
     failedTolerances: [
-      ...(result.positionError > IK_TOLERANCE.position ? ['position'] : []),
-      ...(result.orientationError > radians(IK_TOLERANCE.orientationDegrees) ? ['orientation'] : []),
+      ...(result.positionError > arm.tolerance.position ? ['position'] : []),
+      ...(result.orientationError > radians(arm.tolerance.orientationDegrees) ? ['orientation'] : []),
     ],
     joints,
     nearLimits: joints.filter(joint => joint.limitDistance <= radians(1)),
@@ -191,7 +196,7 @@ function pathFailure(arm, target, result, previous, context) {
       maxStep: Math.max(...alternative.q.map((angle, index) => Math.abs(angle - previous.q[index]))),
     } : null,
     search: previous ? 'Continuation from the previous joint pose' : 'Independent multi-start search',
-    tolerance: {...IK_TOLERANCE},
+    tolerance: {...arm.tolerance},
     interpretation: context.interpretation || (alternative?.ok
       ? 'An independent IK search found this pose, but the sampled path could not continue from the previous posture.'
       : result.ok
@@ -207,7 +212,7 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
   let maxOrientationError = 0;
   let maxBagTiltDegrees = 0;
   let maxTiltBoundDegrees = 0;
-  const transfers = [];
+  const transfers = [],searches=[];
   const start = arm.solveMultiple(route.knots[0], preferred);
   if (!start.ok) {
     failure = pathFailure(arm, route.knots[0], start, null, {
@@ -215,6 +220,9 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
     });
     return {frames, failure, pathOK: false, motion: {transfers}};
   }
+  const startFrame = {...route.knots[0], q: start.q, target: route.knots[0]};
+  const blockedStart = arm.collision.failure(arm, null, startFrame);
+  if (blockedStart) return {frames, failure: blockedStart, pathOK: false, motion: {transfers}};
   let seed = start.q;
   frames.push({...route.knots[0], q: seed, target: route.knots[0]});
   for (let index = 1; index < route.knots.length; index++) {
@@ -252,6 +260,27 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
         loaded: fraction < 1 ? a.loaded : b.loaded,
         transfer: b.transfer,
       };
+      const blocked = arm.collision.failure(arm, previous, frame);
+      if (blocked) {
+        const free=(b.clearance||b.transfer||b.alignmentFor)&&!a.fixedVacuum&&!b.fixedVacuum&&a.bagState===b.bagState;
+        const detour=free?tryDetour(arm,frames[segmentStart],b,{
+          budget:arm.searchBudget,tiltLimit:held?settings.max_bag_tilt_deg:null,
+          minimumJ1Share:held&&settings.prefer_j1?settings.min_j1_share:0,
+        }):{ok:false,status:'protected_motion',method:'RRT-Connect',phase:b.phase,nodes:0};
+        const report={...detour,frames:undefined,path:undefined};searches.push(report);
+        if(detour.ok) {
+          frames.splice(segmentStart+1);frames.push(...detour.frames);seed=frames.at(-1).q;
+          const transferred=frames.slice(segmentStart);
+          if(b.transfer)transfers.push({id:b.transfer,phase:b.phase,route:'searched detour',...jointTravel(transferred)});
+          if(held)for(let i=1;i<transferred.length;i++) {
+            const tilt=inspectHeldInterval(arm,transferred[i-1],transferred[i],settings.max_bag_tilt_deg);
+            maxBagTiltDegrees=Math.max(maxBagTiltDegrees,tilt.peakDegrees);
+            maxTiltBoundDegrees=Math.max(maxTiltBoundDegrees,tilt.upperBoundDegrees);
+            transferred[i].bagTiltDegrees=bagTiltDegrees(arm.forward(transferred[i].q).quaternion);
+          }
+        } else {failure=blocked;failure.search=report;failure.segment=context.segment;}
+        break;
+      }
       if (held || (frame.bagState === 'carried' && frame.robotVacuum)) {
         const tilt = inspectHeldInterval(arm, held ? previous : frame, frame, settings.max_bag_tilt_deg);
         maxBagTiltDegrees = Math.max(maxBagTiltDegrees, tilt.peakDegrees);
@@ -287,7 +316,7 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
     if (failure) break;
   }
   return {
-    frames, failure, pathOK: !failure, maxPositionError, maxOrientationError,
+    frames, failure, pathOK: !failure, maxPositionError, maxOrientationError,searches,
     motion: {
       transfers, maxBagTiltDegrees, maxTiltBoundDegrees,
       tiltLimitDegrees: settings.max_bag_tilt_deg,
@@ -298,6 +327,9 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
 
 export function checkWorkflow(definition, request, progress = () => {}) {
   const arm = new SuctionArm(definition, request.robot, request.mountingHeight);
+  arm.collision = new WorldCollisionChecker(request.collision);
+  arm.searchBudget=createSearchBudget(request.collision);
+  if (arm.collision.enabled) arm.poseAllowed = q => !arm.collision.pose(q);
   const settings = {...MOTION_DEFAULTS, ...request.settings};
   const endpoints = [];
   let seed = arm.initial;
@@ -309,9 +341,9 @@ export function checkWorkflow(definition, request, progress = () => {}) {
   });
   const samples = request.zoneSamples.map(target => ({...target, ...arm.solveMultiple(target, seed, 14)}));
   const common = {
-    endpoints, zoneSamples: samples,
+    endpoints, zoneSamples: samples, collision: arm.collision.summary(),
     tolerance: {...IK_TOLERANCE},
-    checks: 'Six URDF joint limits and full tool orientation; path solved at 12 Hz, with additional held-bag tilt checks and an angular bound between samples. No collision or payload simulation.',
+    checks: 'Six URDF joint limits and full tool orientation; path solved at 12 Hz, with additional held-bag tilt checks and an angular bound between samples. Optional world-proxy collision checks include interpolated arm/tool motion; robot-to-robot, self collision are excluded. Held bags are included.',
   };
   if (endpoints.some(result => !result.ok)) return {
     ...common, frames: [], failure: null, pathOK: false, routeSearch: {attempts: []},
@@ -349,9 +381,10 @@ export function checkWorkflow(definition, request, progress = () => {}) {
       }
     }
   }
+  const timed=retimeDetours(selected.result,selected.route.knots);
   return {
-    ...common, ...selected.result,
-    route: {...selected.route, branch: selected.attempt.branch},
+    ...common, ...timed.result,
+    route: {...selected.route,knots:timed.knots,duration:timed.duration, branch: selected.attempt.branch},
     routeSearch: {attempts, passed: attempts.filter(attempt => attempt.ok).length},
     motion: {...selected.result.motion, preferJ1: settings.prefer_j1, minimumJ1Share: settings.min_j1_share},
   };

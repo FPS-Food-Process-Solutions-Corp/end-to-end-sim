@@ -22,7 +22,8 @@ export function setupSuctionJoints(record) {
         node, rest: node.quaternion.clone(),
       };
     }
-    if (node.userData.role === 'suction_tcp') record.tcp = node;
+    if (node.userData.role === 'stamp_tcp') record.stampTcp = node;
+    if (['suction_tcp','bread_tcp','cup_tcp'].includes(node.userData.role)) record.tcp = node;
   });
   return record.joints;
 }

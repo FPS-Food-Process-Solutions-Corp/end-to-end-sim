@@ -40,7 +40,13 @@
       "jaw_thickness": 0.012,
       "cup_center_offset": 0.07,
       "front_opening_deg": 120,
-      "back_gap_deg": 4
+      "back_gap_deg": 4,
+      "stamp_length": 0.085,
+      "stamp_face_diameter": 0.088,
+      "stamp_socket_diameter": 0.073,
+      "stamp_socket_depth": 0.022,
+      "stamp_root_diameter": 0.079,
+      "stamp_wrist_mount_y": -0.045
     },
     "me6": {
       "type": "suction",
@@ -64,7 +70,7 @@
       ],
       "target": [
         1.875,
-        3.0,
+        3,
         0.65
       ],
       "ortho": 7.8
@@ -74,7 +80,7 @@
       "location": [
         1.95,
         -4.6,
-        3.0
+        3
       ],
       "target": [
         1.875,
@@ -106,7 +112,7 @@
       ],
       "target": [
         1.875,
-        3.0,
+        3,
         0.65
       ],
       "ortho": 7.6
@@ -171,7 +177,8 @@
     "Coffee equipment and Nova-2 share the 140 x 140 x 90 cm coffee table. Ice machine body is 45 cm across the front and 50 cm deep; its short face points toward Nova-2.",
     "Cup and lid dispensers each keep 70 cm overall height: 30 cm clear below the cylindrical body, 40 cm body, rear support and table-bolted baseplate. Nova-2 has curved 85 mm ID jaws with about 94 mm projection; its reach allowance remains approximately 10 cm.",
     "Packing cell: one adjustable 105 x 180 x 80 cm table carries the bun Nova-5, a separate Nova-5 with an 80 x 80 x 100 mm four-cup tool, bag magazine and fixed opposing suction. IK checks position, orientation and six URDF joint limits; no mesh collision or vacuum/payload validation.",
-    "Customer barrier wraps the front and right of the coffee / pickup counter. Clear right-side opening starts at the worktop; order tablet and combined mic / speaker are embedded in the front panel. Dimensions are adjustable concept assumptions."
+    "The ordering barrier is supported on the Left work counter, facing customers toward Atom-W. Pickup stays by the coffee robot in its previous location. Both barriers have separately adjustable panels and sections.",
+    "The ordering tablet and combined mic/speaker share a projecting inclined console: initially 30 cm projection, 40 degrees above horizontal. The instructions flyer stays on the vertical wall."
   ],
   "objects": [
     {
@@ -197,7 +204,7 @@
       "x": 3.45,
       "y": 3.25,
       "width": 0.6,
-      "depth": 5.0,
+      "depth": 5,
       "yaw_deg": 0,
       "height": 0.9,
       "top_thickness": 0.035,
@@ -261,7 +268,8 @@
       "parentId": "area_coffee",
       "visible": true,
       "locked": false,
-      "asset_key": "coffee_station"
+      "asset_key": "coffee_station",
+      "ordering_terminal": false
     },
     {
       "id": "shelf_1",
@@ -273,7 +281,7 @@
       "depth": 0.35,
       "yaw_deg": -90,
       "height": 1.8,
-      "bay_length": 1.0,
+      "bay_length": 1,
       "parentId": "area_shelf1",
       "visible": true,
       "locked": false,
@@ -289,7 +297,7 @@
       "depth": 0.35,
       "yaw_deg": -90,
       "height": 1.8,
-      "bay_length": 1.0,
+      "bay_length": 1,
       "parentId": "area_shelf2",
       "visible": true,
       "locked": false,
@@ -393,7 +401,10 @@
         "tea_machine",
         "lid_machine",
         "lid_dispenser",
-        "cup_dispenser"
+        "cup_dispenser",
+        "plastic_cup_dispenser",
+        "cup_stamping_rest",
+        "beverage_pickup_zone"
       ],
       "asset_key": "nova2"
     },
@@ -491,7 +502,7 @@
     {
       "id": "cup_dispenser",
       "kind": "dispenser",
-      "label": "Cup dispenser",
+      "label": "Paper cup dispenser",
       "x": 1.32,
       "y": 1.6,
       "width": 0.1,
@@ -579,18 +590,19 @@
     {
       "id": "human",
       "kind": "human",
-      "label": "Person / 1.70 m",
-      "x": 0.7,
-      "y": 0.41,
+      "label": "Customer at ordering / 1.70 m",
+      "x": -0.4199999999999999,
+      "y": 4.65,
       "width": 0.48,
       "depth": 0.3,
-      "yaw_deg": 0,
+      "yaw_deg": 270,
       "height": 1.7,
       "z": 0,
       "parentId": "area_people",
       "visible": true,
       "locked": false,
-      "asset_key": "human"
+      "asset_key": "human",
+      "support": null
     },
     {
       "id": "bag_opener",
@@ -706,7 +718,7 @@
       "id": "customer_barrier",
       "kind": "customer_barrier",
       "asset_key": "customer_barrier",
-      "label": "Customer barrier / ordering & pickup",
+      "label": "Pickup barrier / coffee table",
       "x": 0.7,
       "y": 1.4500000000000002,
       "width": 1.4,
@@ -719,31 +731,155 @@
       "visible": true,
       "locked": false,
       "barrier": {
+        "front_panel": false,
         "right_return": true,
+        "show_pickup": true,
+        "show_tablet": false,
+        "show_intercom": false,
+        "console_enabled": true,
+        "console_projection": 0.3,
+        "console_incline_deg": 40,
+        "console_base": 0,
+        "console_lip_height": 0.045,
         "thickness": 0.008,
         "frame": 0.024,
         "opacity": 0.22,
         "pickup_side": "right",
-        "pickup_center": 0.456,
+        "pickup_center": 0.45599999999999996,
         "pickup_bottom": 0,
         "pickup_width": 0.44,
         "pickup_height": 0.42,
-        "tablet_side": "front",
+        "tablet_side": "right",
         "tablet_center": -0.16,
         "tablet_bottom": 0.14,
         "tablet_width": 0.3,
         "tablet_height": 0.22,
-        "intercom_side": "front",
+        "intercom_side": "right",
         "intercom_center": -0.48,
         "intercom_bottom": 0.23,
         "intercom_diameter": 0.11,
-        "instructions_side": "front",
+        "instructions_side": "right",
         "instructions_center": 0.32,
+        "instructions_bottom": 0.12,
+        "instructions_width": 0.34,
+        "instructions_height": 0.4,
+        "show_instructions": false
+      },
+      "barrier_role": "pickup"
+    },
+    {
+      "id": "ordering_barrier",
+      "kind": "customer_barrier",
+      "asset_key": "customer_barrier",
+      "barrier_role": "ordering",
+      "label": "Ordering barrier / Left work counter",
+      "x": 0.3,
+      "y": 3.95,
+      "width": 0.6,
+      "depth": 3.6,
+      "height": 0.7999999999999999,
+      "yaw_deg": 180,
+      "support": "left_counter",
+      "z": 0,
+      "parentId": "area_left",
+      "visible": true,
+      "locked": false,
+      "barrier": {
+        "front_panel": false,
+        "right_return": true,
+        "show_pickup": false,
+        "show_tablet": true,
+        "show_intercom": true,
+        "console_enabled": true,
+        "console_projection": 0.3,
+        "console_incline_deg": 40,
+        "console_base": 0,
+        "console_lip_height": 0.045,
+        "thickness": 0.008,
+        "frame": 0.024,
+        "opacity": 0.22,
+        "pickup_side": "right",
+        "pickup_center": 0.45599999999999996,
+        "pickup_bottom": 0,
+        "pickup_width": 0.44,
+        "pickup_height": 0.42,
+        "tablet_side": "right",
+        "tablet_center": -0.7000000000000003,
+        "tablet_bottom": 0.14,
+        "tablet_width": 0.3,
+        "tablet_height": 0.22,
+        "intercom_side": "right",
+        "intercom_center": -0.9650000000000003,
+        "intercom_bottom": 0.23,
+        "intercom_diameter": 0.11,
+        "instructions_side": "right",
+        "instructions_center": -0.3200000000000003,
         "instructions_bottom": 0.12,
         "instructions_width": 0.34,
         "instructions_height": 0.4,
         "show_instructions": true
       }
+    },
+    {
+      "id": "plastic_cup_dispenser",
+      "kind": "dispenser",
+      "label": "Plastic cup dispenser",
+      "x": 1.3199999999999998,
+      "y": 1.2000000000000002,
+      "width": 0.1,
+      "depth": 0.1,
+      "yaw_deg": 0,
+      "height": 0.7,
+      "support": "coffee_station",
+      "diameter": 0.1,
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "cup_dispenser",
+      "bottom_clearance": 0.3,
+      "base_plate_width": 0.14,
+      "base_plate_depth": 0.16,
+      "base_plate_thickness": 0.006,
+      "rear_support_size": 0.02,
+      "rear_support_offset": 0.079,
+      "cup_material": "plastic"
+    },
+    {
+      "id": "cup_stamping_rest",
+      "kind": "placement_zone",
+      "asset_key": "placement_zone",
+      "label": "Cup stamping rest",
+      "role": "cup_rest",
+      "x": 0.72,
+      "y": 0.9800000000000002,
+      "width": 0.105,
+      "depth": 0.105,
+      "height": 0.012,
+      "z": 0,
+      "support": "coffee_station",
+      "yaw_deg": 0,
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "beverage_pickup_zone",
+      "kind": "placement_zone",
+      "asset_key": "placement_zone",
+      "label": "Beverage pickup",
+      "role": "beverage_pickup",
+      "x": 1.31,
+      "y": 1.7400000000000002,
+      "width": 0.11,
+      "depth": 0.11,
+      "height": 0.003,
+      "z": 0.002,
+      "support": "coffee_station",
+      "yaw_deg": 0,
+      "parentId": "area_coffee",
+      "visible": true,
+      "locked": false
     }
   ],
   "editor_version": 2,
@@ -756,7 +892,7 @@
       "base_width_cm": 12,
       "base_depth_cm": 12,
       "tool": "Cup tongs ~10 cm",
-      "effective_diameter_cm": 145.0,
+      "effective_diameter_cm": 145,
       "placement_diameter_cm": 102.94117647058823
     },
     "nova5": {
@@ -767,7 +903,7 @@
       "base_depth_cm": 13,
       "tool": "Lebai tongs 34 cm",
       "effective_diameter_cm": 238,
-      "placement_diameter_cm": 140.0
+      "placement_diameter_cm": 140
     },
     "me6": {
       "name": "ME6",
@@ -861,7 +997,7 @@
       "label": "People"
     }
   ],
-  "editor_revision": 7,
+  "editor_revision": 8,
   "bag_workflow": {
     "robot_id": "nova5_suction",
     "magazine_id": "bag_magazine",
@@ -876,5 +1012,12 @@
     "max_bag_tilt_deg": 5,
     "min_j1_share": 0.5,
     "extra_lift_search": 0.2
+  },
+  "coffee_flow_revision": 1,
+  "coffee_workflow": {
+    "plastic_cup_id": "plastic_cup_dispenser",
+    "stamp_rest_id": "cup_stamping_rest",
+    "pickup_id": "beverage_pickup_zone",
+    "max_tcp_speed": 1.5
   }
 }

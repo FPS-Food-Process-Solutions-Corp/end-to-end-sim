@@ -33,7 +33,7 @@ const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6,
     await page.evaluate(() => coffeeEditor.store.transact('Move original', () =>
       coffeeEditor.store.move(['nova5_suction'], .25, .1)));
     await page.keyboard.press('Control+v');
-    await page.waitForFunction(() => coffeeEditor.store.scene.objects.length === 26);
+    await page.waitForFunction(() => coffeeEditor.store.scene.objects.length === 30);
     let current = await state();
     const firstId = current.selected[0];
     const first = current.scene.objects.find(object => object.id === firstId);
@@ -50,15 +50,15 @@ const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6,
     }, firstId);
     assert.equal(cups, 4);
     await page.keyboard.press('Control+v');
-    await page.waitForFunction(() => coffeeEditor.store.scene.objects.length === 27);
+    await page.waitForFunction(() => coffeeEditor.store.scene.objects.length === 31);
     current = await state();
     const second = current.scene.objects.find(object => object.id === current.selected[0]);
     near(second.x, original.x + .3);
     assert.notEqual(firstId, second.id);
     await page.keyboard.press('Control+z');
-    assert.equal((await state()).scene.objects.length, 26);
+    assert.equal((await state()).scene.objects.length, 30);
     await page.keyboard.press('Control+Shift+z');
-    assert.equal((await state()).scene.objects.length, 27);
+    assert.equal((await state()).scene.objects.length, 31);
     passed.push('Native Ctrl+C/V copies a frozen component snapshot with its custom Nova-5 suction model; repeat paste, undo and redo work.');
 
     await page.evaluate(() => coffeeEditor.store.reset());
@@ -69,7 +69,7 @@ const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-6,
     const groupId = current.selected[0];
     const station = current.scene.objects.filter(object => object.parentId === groupId);
     assert.equal(station.length, 5);
-    assert.equal(current.scene.objects.length, 30);
+    assert.equal(current.scene.objects.length, 34);
     const counter = station.find(object => object.kind === 'table');
     const robot = station.find(object => object.model_key === 'nova5_suction');
     const bag = station.find(object => object.layout_component === 'fixed_suction');

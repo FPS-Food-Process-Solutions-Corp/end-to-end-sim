@@ -1,0 +1,141 @@
+{
+  "source": "D:\\Work\\FPS\\Robotics\\end-to-end-sim\\design\\coffee_bar_3d\\assets\\robots\\nova5\\nova5_lebai_tongs.urdf",
+  "base_link": "base_link",
+  "joints": [
+    {
+      "name": "joint1",
+      "child": "Link1",
+      "xyz": [
+        0.0,
+        0.0,
+        0.240000000000178
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        0.999999999999855
+      ],
+      "lower": -6.28,
+      "upper": 6.28
+    },
+    {
+      "name": "joint2",
+      "child": "Link2",
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        -1.57080287682252,
+        1.53586622836832,
+        3.14159265358979
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lower": -3.14,
+      "upper": 3.14
+    },
+    {
+      "name": "joint3",
+      "child": "Link3",
+      "xyz": [
+        -0.399756009268664,
+        -0.0139690033141953,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lower": -2.79,
+      "upper": 2.79
+    },
+    {
+      "name": "joint4",
+      "child": "Link4",
+      "xyz": [
+        -0.329798707647103,
+        -0.0115244277211674,
+        0.134999532858734
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        -1.53586622840712
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lower": -6.28,
+      "upper": 6.28
+    },
+    {
+      "name": "joint5",
+      "child": "Link5",
+      "xyz": [
+        0.0,
+        -0.12,
+        0.0
+      ],
+      "rpy": [
+        1.5708,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lower": -6.28,
+      "upper": 6.28
+    },
+    {
+      "name": "joint6",
+      "child": "Link6",
+      "xyz": [
+        0.0,
+        0.088328,
+        0.0
+      ],
+      "rpy": [
+        -1.5708,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "lower": -6.28,
+      "upper": 6.28
+    }
+  ],
+  "tool_length": 0.2983,
+  "note": "TCP is 30 mm behind the URDF lebai_ee open tip plane; jaw contact is a geometric preview, not force simulation.",
+  "grip_limits": [
+    0.231302,
+    1.0471975511965976
+  ],
+  "maximum_aperture": 0.06849854812026024,
+  "tip_length": 0.3283,
+  "grasp_inset": 0.03
+}

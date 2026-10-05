@@ -1,3 +1,6 @@
+import {resizeAnchored, resizeMode} from './resize-geometry.js';
+import {zoneSettings, zoneLabelLayout} from './zone-parameters.js';
+import {addSceneAsset} from './asset-library.js';
 import {barrierPlan} from './barrier-plan.js';
 import {bounds,rotate,rad,clone} from './store.js';
 const NS='http://www.w3.org/2000/svg';
@@ -13,7 +16,13 @@ export class PlanView {
     svg.addEventListener('wheel',e=>this.wheel(e),{passive:false});
     svg.addEventListener('contextmenu',e=>e.preventDefault());
     svg.addEventListener('dragover',e=>e.preventDefault());
-    svg.addEventListener('drop',e=>{e.preventDefault();const key=e.dataTransfer.getData('application/robot-key');if(store.scene.robot_inventory[key]){const p=this.point(e);store.addRobot(key,p.x/200,store.scene.room.depth-p.y/200);}});
+    svg.addEventListener('drop',e=>{
+      e.preventDefault();
+      const p=this.point(e),point={x:p.x/200,y:store.scene.room.depth-p.y/200};
+      const robot=e.dataTransfer.getData('application/robot-key');
+      if(store.scene.robot_inventory[robot])store.addRobot(robot,point.x,point.y);
+      else addSceneAsset(store,e.dataTransfer.getData('application/scene-asset-key'),point);
+    });
     window.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)){this.space=true;e.preventDefault();}});
     window.addEventListener('keyup',e=>{if(e.code==='Space')this.space=false;});
     this.fit();store.on(()=>this.render());
@@ -37,13 +46,26 @@ export class PlanView {
       return;
     }
     if(e.button!==0||this.space){this.drag={mode:'pan',client:[e.clientX,e.clientY],view:{...this.view}};e.preventDefault();return;}
-    const handle=e.target.closest('[data-handle]')?.dataset.handle;
+    const handleElement=e.target.closest('[data-handle]');
+    const handle=handleElement?.dataset.handle;
     const hit=e.target.closest('[data-object-id]')?.dataset.objectId;
     if(!handle&&!hit){this.store.select(null);this.drag={mode:'pan',client:[e.clientX,e.clientY],view:{...this.view}};return;}
     if(hit&&!handle){if(e.shiftKey){this.store.select(hit,true);return;}if(!this.store.resolve().some(o=>o.id===hit))this.store.select(hit);}
     const ids=[...this.store.selected];const items=this.store.resolve();if(!items.length||items.some(o=>this.store.locked(o.id)))return;
     const one=ids.length===1&&this.store.object(ids[0]);const bb=this.store.selectionBounds();const centre=this.toPlan([bb.x,bb.y]);
-    this.drag={mode:handle==='rotate'?'rotate':handle?'resize':'move',p,ids,one:one?clone(one):null,bb,centre,startAngle:Math.atan2(p.y-centre[1],p.x-centre[0]),moved:false};this.store.begin();e.preventDefault();
+    const resizeAxis = handleElement?.dataset.resizeAxis;
+    const side = Number(handleElement?.dataset.resizeSide) || 0;
+    const resizeX = resizeAxis ? (resizeAxis === 'width' ? side : 0) : Number(handleElement?.dataset.resizeX) || 0;
+    const resizeY = resizeAxis ? (resizeAxis === 'depth' ? side : 0) : Number(handleElement?.dataset.resizeY) || 0;
+    const mode = resizeMode(this.store.options);
+    this.drag = {
+      mode: handle === 'rotate' ? 'rotate' : handle ? 'resize' : 'move',
+      resizeAxis, resizeX, resizeY, resizeMode: mode,
+      resizeAnchor: mode === 'center' ? [0, 0] : [-resizeX, -resizeY],
+      p, ids, one: one ? clone(one) : null, bb, centre,
+      startAngle: Math.atan2(p.y - centre[1], p.x - centre[0]), moved: false,
+    };
+    this.store.begin();e.preventDefault();
   }
   move(e){
     const d=this.drag;if(!d)return;
@@ -72,11 +94,30 @@ export class PlanView {
         let degrees=-(Math.atan2(p.y-d.centre[1],p.x-d.centre[0])-d.startAngle)*180/Math.PI;
         if(e.shiftKey)degrees=Math.round(degrees/15)*15;this.store.rotateSelection(d.ids,degrees,d.bb);
       }else{
-        const dx=(p.x-d.centre[0])/200,dy=-(p.y-d.centre[1])/200;
-        if(d.one){const q=rotate(dx,dy,-(d.one.yaw_deg||0));let w=Math.max(.02,2*Math.abs(q[0])),dep=Math.max(.02,2*Math.abs(q[1]));if(this.store.options.snap&&!e.altKey){w=Math.round(w/.01)*.01;dep=Math.round(dep/.01)*.01;}if(e.shiftKey){const factor=Math.max(w/d.one.width,dep/d.one.depth);w=d.one.width*factor;dep=d.one.depth*factor;}this.store.resize(d.one.id,w,dep);}
-        else{let sx=Math.max(.05,Math.abs(dx)*2/d.bb.width),sy=Math.max(.05,Math.abs(dy)*2/d.bb.depth);if(e.shiftKey)sx=sy=Math.max(sx,sy);this.store.resizeGroup(d.ids,sx,sy);}
+        this.resizeFromHandle(d,p,e);
       }
     });
+  }
+  resizeFromHandle(drag, pointer, event) {
+    const original = drag.one || drag.bb;
+    const yaw = drag.one?.yaw_deg || 0;
+    const delta = rotate((pointer.x - drag.p.x) / 200, -(pointer.y - drag.p.y) / 200, -yaw);
+    const multiplier = drag.resizeMode === 'center' ? 2 : 1;
+    let width = original.width + drag.resizeX * delta[0] * multiplier;
+    let depth = original.depth + drag.resizeY * delta[1] * multiplier;
+    if (this.store.options.snap && !event.altKey) {
+      if (drag.resizeX) width = Math.round(width / .01) * .01;
+      if (drag.resizeY) depth = Math.round(depth / .01) * .01;
+    }
+    if (!drag.resizeAxis && (event.shiftKey || ['robot', 'dispenser'].includes(drag.one?.kind))) {
+      // Follow the dominant change, allowing both growth and shrinkage.
+      const sx = width / original.width, sy = depth / original.depth;
+      const factor = Math.max(.02 / original.width, .02 / original.depth,
+        Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy);
+      width = original.width * factor;
+      depth = original.depth * factor;
+    }
+    resizeAnchored(this.store, drag.ids, width, depth, drag.resizeAnchor);
   }
   up() {
     if (!this.drag) return;
@@ -95,15 +136,17 @@ export class PlanView {
       });
       return;
     }
-    if (this.drag.mode !== 'pan') this.store.commit('Layout transformed');
+    const transformed = this.drag.mode !== 'pan';
     this.drag = null;
+    if (transformed) this.store.commit('Layout transformed');
   }
   defs(){return `<defs><pattern id="planGrid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e8edef" stroke-width="1"/></pattern><marker id="dimArrow" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 0 0 L 7 3.5 L 0 7" fill="none" stroke="#327b82" stroke-width="1.2"/></marker></defs>`;}
   geometry(o){
     if(o.kind==='customer_barrier')return barrierPlan(o,this.store.options.showLabels);
     const w=o.width*200,d=o.depth*200,[fill,stroke]=palette[o.kind]||palette.table;
     let out='';const rect=(extra='')=>`<rect x="${-w/2}" y="${-d/2}" width="${w}" height="${d}" rx="${o.kind==='robot'?5:1}" fill="${fill}" stroke="${stroke}" stroke-width="1.8" ${extra}/>`;
-    if(o.kind==='dispenser')out=`<circle r="${w/2}" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>`;
+    if(o.kind==='zone')out=rect('stroke-dasharray="7 5"'+(zoneSettings(o).show_outline?'':' stroke-opacity="0"'));
+    else if(o.kind==='dispenser')out=`<circle r="${w/2}" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>`;
     else if(o.kind==='human')out=`<ellipse rx="${w/2}" ry="${d/2}" fill="${fill}" stroke="${stroke}"/><circle r="12" cy="-3" fill="#dbcab9" stroke="${stroke}"/>`;
     else out=rect(['zone','placement_zone'].includes(o.kind)?'stroke-dasharray="7 5"':'');
     if(o.kind==='placement_zone')out+=`<path d="M -7 0 H 7 M 0 -7 V 7" stroke="#279c83" stroke-width="2"/>`;
@@ -140,7 +183,11 @@ export class PlanView {
     const [x,y]=this.toPlan([o.x,o.y]),a=-(o.yaw_deg||0),visible=this.store.visible(o.id),sel=this.store.resolve().some(v=>v.id===o.id);
     const title=(o.kind==='robot'?this.store.scene.robot_inventory[this.store.key(o)]?.name:null)||abbreviations[o.id]||o.label?.split(' / ')[0]||o.id;
     let text='';
-    if(this.store.options.showLabels&&o.kind!=='customer_barrier'){
+    if(this.store.options.showLabels&&o.kind==='zone') {
+      const {settings,fontSize}=zoneLabelLayout(o);
+      if(settings.show_text)text=`<text data-zone-text="true" x="0" y="0" dominant-baseline="central" text-anchor="middle" font-family="Segoe UI,sans-serif" font-weight="500" font-size="${fontSize*200}" fill="#498d88" pointer-events="none">${esc(settings.text)}</text>`;
+    }
+    else if(this.store.options.showLabels&&o.kind!=='customer_barrier'){
       const short=title.length>24?title.slice(0,23)+'…':title;
       let rotateLabel=0,ty=5,size=o.kind==='robot'?18:Math.min(19,Math.max(12,o.width*200/(short.length*.55)));
       if(o.kind==='robot'&&this.store.key(o)!=='atom_w')ty=-o.depth*100-11;
@@ -206,8 +253,29 @@ export class PlanView {
     const one=this.store.selected.length===1&&this.store.object(this.store.selected[0]);const box=one||bounds(items),p=this.toPlan([box.x,box.y]),a=one?-(one.yaw_deg||0):0,w=box.width*200,h=box.depth*200;
     let out=`<g data-selection-overlay="true" transform="translate(${p[0]} ${p[1]}) rotate(${a})"><rect x="${-w/2-3}" y="${-h/2-3}" width="${w+6}" height="${h+6}" fill="none" stroke="#1469b4" stroke-width="1.6" pointer-events="none"/>`;
     if(!items.some(o=>this.store.locked(o.id))){
-      for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])out+=`<rect data-handle="resize" x="${sx*w/2-5}" y="${sy*h/2-5}" width="10" height="10" rx="1" fill="#fff" stroke="#1469b4" stroke-width="1.5" style="cursor:nwse-resize"/>`;
-      out+=`<line x1="0" y1="${-h/2}" x2="0" y2="${-h/2-29}" stroke="#1469b4"/><circle data-handle="rotate" cx="0" cy="${-h/2-35}" r="7" fill="#fff" stroke="#1469b4" stroke-width="1.5" style="cursor:grab"/>`;
+      const cursor = angle => ['ew-resize','nwse-resize','ns-resize','nesw-resize'][
+        Math.round(((angle % 180 + 180) % 180) / 45) % 4];
+      for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]) {
+        out += `<rect data-handle="resize" data-resize-x="${sx}" data-resize-y="${-sy}" x="${sx*w/2-5}" y="${sy*h/2-5}" width="10" height="10" rx="1" fill="#fff" stroke="#1469b4" stroke-width="1.5" aria-label="Resize width and depth" style="cursor:${cursor(a + Math.atan2(sy,sx)*180/Math.PI)}"><title>Resize width and depth · ${resizeMode(this.store.options) === 'opposite' ? 'opposite corner stays fixed' : 'centre stays fixed'} · Shift keeps proportions</title></rect>`;
+      }
+      // Physical robot models and circular dispensers retain proportional scaling.
+      if (!one || !['robot','dispenser'].includes(one.kind)) {
+        for (const axis of ['width','depth']) for (const side of [-1,1]) {
+          const horizontal = axis === 'width';
+          const x = horizontal ? side*w/2 : 0;
+          const y = horizontal ? 0 : -side*h/2;
+          out += `<g data-handle="resize" data-resize-axis="${axis}" data-resize-side="${side}" aria-label="Resize ${axis} only" style="cursor:${cursor(a + (horizontal?0:90))}">
+            <title>Resize ${axis} only · ${resizeMode(this.store.options) === 'opposite' ? 'opposite edge stays fixed' : 'centre stays fixed'}</title>
+            <rect x="${x-9}" y="${y-9}" width="18" height="18" fill="transparent"/>
+            <rect x="${x-(horizontal?4:8)}" y="${y-(horizontal?8:4)}" width="${horizontal?8:16}" height="${horizontal?16:8}" rx="2" fill="#fff" stroke="#1469b4" stroke-width="1.5" pointer-events="none"/>
+          </g>`;
+        }
+      }
+      if (this.drag?.mode === 'resize') {
+        const [ax, ay] = this.drag.resizeAnchor;
+        out += `<circle data-resize-anchor="true" cx="${ax*w/2}" cy="${-ay*h/2}" r="5" fill="#d49631" stroke="#fff" stroke-width="1.5" pointer-events="none"><title>Fixed resize anchor</title></circle>`;
+      }
+      out+=`<line x1="0" y1="${-h/2}" x2="0" y2="${-h/2-29}" stroke="#1469b4" pointer-events="none"/><circle data-handle="rotate" cx="0" cy="${-h/2-35}" r="7" fill="#fff" stroke="#1469b4" stroke-width="1.5" style="cursor:grab"/>`;
     }return out+'</g>';
   }
   markup(includeSelection=true){

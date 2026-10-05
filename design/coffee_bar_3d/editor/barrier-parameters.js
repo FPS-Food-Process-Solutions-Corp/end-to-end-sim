@@ -1,6 +1,15 @@
 export const BARRIER_KIND = 'customer_barrier';
 export const BARRIER_DEFAULTS = {
+  front_panel: true,
   right_return: true,
+  show_pickup: true,
+  show_tablet: true,
+  show_intercom: true,
+  console_enabled: true,
+  console_projection: .30,
+  console_incline_deg: 40,
+  console_base: 0,
+  console_lip_height: .045,
   thickness: .008,
   frame: .024,
   opacity: .22,
@@ -31,30 +40,42 @@ const numeric = (value, fallback) => Number.isFinite(value) ? value : fallback;
 export function barrierSettings(object) {
   const p = {...BARRIER_DEFAULTS, ...object.barrier};
   p.right_return = !!p.right_return;
+  p.front_panel = !!p.front_panel || !p.right_return;
+  for (const key of ['show_pickup', 'show_tablet', 'show_intercom']) p[key] = !!p[key];
   p.show_instructions = !!p.show_instructions;
   p.frame = clamp(numeric(p.frame, .024), .005, Math.min(object.width, object.depth, object.height) / 8);
   p.thickness = clamp(numeric(p.thickness, .008), .002, .04);
   p.opacity = clamp(numeric(p.opacity, .22), .05, .75);
+  p.console_enabled = !!p.console_enabled;
+  p.console_incline_deg = clamp(numeric(p.console_incline_deg, 40), 15, 65);
+  p.console_base = clamp(numeric(p.console_base, 0), 0, Math.max(0, object.height - .15));
+  p.console_lip_height = clamp(numeric(p.console_lip_height, .045), .025, Math.min(.12, object.height - p.console_base - .08));
+  const incline = p.console_incline_deg * Math.PI / 180;
+  const maximumProjection = Math.max(.04, (object.height - p.frame - p.console_base - p.console_lip_height) / Math.tan(incline));
+  p.console_projection = clamp(numeric(p.console_projection, .30), Math.min(.08, maximumProjection), Math.min(.60, maximumProjection));
+  const faceLength = p.console_projection / Math.cos(incline);
   for (const section of ['pickup', 'tablet', 'intercom', 'instructions']) {
-    const side = p[section + '_side'] === 'right' && p.right_return ? 'right' : 'front';
+    const side = !p.front_panel || p[section + '_side'] === 'right' && p.right_return ? 'right' : 'front';
     p[section + '_side'] = side;
     const span = side === 'right' ? object.depth : object.width;
     const widthKey = section === 'intercom' ? 'intercom_diameter' : section + '_width';
     const heightKey = section === 'intercom' ? 'intercom_diameter' : section + '_height';
     p[widthKey] = clamp(numeric(p[widthKey], BARRIER_DEFAULTS[widthKey]), .04,
       Math.max(.04, Math.min(span - 4 * p.frame, section === 'intercom' ? object.height - 3 * p.frame : Infinity)));
-    p[heightKey] = clamp(numeric(p[heightKey], BARRIER_DEFAULTS[heightKey]), .04, object.height - 2 * p.frame);
+    const onConsole = p.console_enabled && ['tablet', 'intercom'].includes(section);
+    const limit = Math.max(.01, onConsole ? faceLength - .05 : object.height - 2 * p.frame);
+    p[heightKey] = clamp(numeric(p[heightKey], BARRIER_DEFAULTS[heightKey]), Math.min(.04, limit), limit);
     p[section + '_center'] = clamp(numeric(p[section + '_center'], 0),
       -span / 2 + p.frame + p[widthKey] / 2, span / 2 - p.frame - p[widthKey] / 2);
-    p[section + '_bottom'] = clamp(numeric(p[section + '_bottom'], 0), 0,
-      object.height - p.frame - p[heightKey]);
+    p[section + '_bottom'] = clamp(numeric(p[section + '_bottom'], 0), onConsole ? .025 : 0,
+      (onConsole ? faceLength - .025 : object.height - p.frame) - p[heightKey]);
   }
   return p;
 }
 
 export function barrierSections(object) {
   const p = barrierSettings(object);
-  return ['pickup', 'tablet', 'intercom', ...(p.show_instructions ? ['instructions'] : [])].map(kind => ({
+  return ['pickup', 'tablet', 'intercom', 'instructions'].filter(kind => p['show_' + kind]).map(kind => ({
     kind, side: p[kind + '_side'], center: p[kind + '_center'], bottom: p[kind + '_bottom'],
     width: p[kind === 'intercom' ? 'intercom_diameter' : kind + '_width'],
     height: p[kind === 'intercom' ? 'intercom_diameter' : kind + '_height'],
@@ -149,4 +170,9 @@ export function pickupWorld(object, mountingHeight) {
       mountingHeight + p.pickup_bottom + p.pickup_height / 2],
     width: p.pickup_width, height: p.pickup_height,
   };
+}
+
+export function barrierPanels(object) {
+  const p = barrierSettings(object);
+  return [...(p.front_panel ? ['front'] : []), ...(p.right_return ? ['right'] : [])];
 }

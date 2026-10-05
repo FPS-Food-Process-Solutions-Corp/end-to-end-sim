@@ -6,11 +6,11 @@ export function barrierProperties(object, store, field, locked) {
   const factor = store.options.units === 'px' ? 200 : 100;
   const disabled = locked ? 'disabled' : '';
   const check = (key, text) => `<label class="checkline"><input data-barrier="${key}" type="checkbox" ${p[key] ? 'checked' : ''} ${disabled}> ${text}</label>`;
-  const side = key => `<label class="field">Panel<select data-barrier="${key}_side" aria-label="${key} panel" ${disabled}><option value="front" ${p[key + '_side'] === 'front' ? 'selected' : ''}>Front</option><option value="right" ${p[key + '_side'] === 'right' ? 'selected' : ''} ${p.right_return ? '' : 'disabled'}>Right side</option></select></label>`;
+  const side = key => `<label class="field">Panel<select data-barrier="${key}_side" aria-label="${key} panel" ${disabled}><option value="front" ${p.front_panel ? '' : 'disabled'} ${p[key + '_side'] === 'front' ? 'selected' : ''}>Front (local)</option><option value="right" ${p[key + '_side'] === 'right' ? 'selected' : ''} ${p.right_return ? '' : 'disabled'}>Right (local)</option></select></label>`;
   const dimension = (key, title) => field('barrier_' + key, title, p[key] * factor, store.options.units, locked);
   const section = (key, title) => `<section class="property-section"><h3>${title}</h3><div class="field-grid">
     ${side(key)}${dimension(key + '_center', 'Offset along panel')}
-    ${dimension(key + '_bottom', 'Bottom above wall base')}
+    ${dimension(key + '_bottom', p.console_enabled && ['tablet','intercom'].includes(key) ? 'Offset up console face' : 'Bottom above wall base')}
     ${key === 'intercom' ? dimension('intercom_diameter', 'Diameter') :
       dimension(key + '_width', key === 'pickup' ? 'Clear opening width' : 'Section width') +
       dimension(key + '_height', key === 'pickup' ? 'Clear opening height' : 'Section height')}
@@ -19,16 +19,31 @@ export function barrierProperties(object, store, field, locked) {
   const warnings = barrierWarnings(object);
   return `<section class="property-section"><h3>Customer barrier</h3>
     <div class="distance-row"><span>Top above floor</span><b>${store.format(store.z(object) + object.height)}</b></div>
+    ${check('front_panel', 'Include front panel')}
     ${check('right_return', 'Include right side panel')}
     <div class="field-grid">
       ${dimension('thickness', 'Plastic thickness')}${dimension('frame', 'Frame width')}
       ${field('barrier_opacity', 'Plastic opacity', p.opacity * 100, '%', locked, 'min="5" max="75"')}
     </div>
-    <p class="hint">Width sets the front span; depth sets the right return. Height starts at the mounting surface. Offset 0 is the panel centre; positive runs right on the front, toward the back on the right side. Openings and devices stay inside their panel when resized.</p>
+    <p class="hint">Panel names use the wall’s local axes. Width sets the front span; depth sets the right return. Height starts at the mounting surface. Offset 0 is the panel centre; positive runs right on the front, toward the back on the right side. Openings and devices stay inside their panel when resized.</p>
     </section>
-    ${section('pickup', 'Pickup opening')}
-    ${section('tablet', 'Embedded ordering tablet')}
-    ${section('intercom', 'Combined mic / speaker')}
+    <section class="property-section"><h3>Sections in this wall</h3>
+      ${check('show_pickup', 'Include pickup opening')}
+      ${check('show_tablet', 'Include ordering tablet')}
+      ${check('show_intercom', 'Include mic / speaker')}
+    </section>
+    ${p.show_tablet || p.show_intercom ? `<section class="property-section"><h3>Sloped ordering console</h3>
+      ${check('console_enabled', 'Project controls toward customer')}
+      ${p.console_enabled ? `<div class="field-grid">
+        ${dimension('console_projection', 'Projection from wall')}
+        ${field('barrier_console_incline_deg', 'Incline above horizontal', p.console_incline_deg, '°', locked, 'min="15" max="65"')}
+        ${dimension('console_base', 'Console bottom height')}
+        ${dimension('console_lip_height', 'Front lip height')}
+      </div><p class="hint">One shared housing carries the tablet and mic/speaker. Projection is horizontal; device offsets run up the sloping face. Controls are kept within the face when its size changes.</p>` : ''}
+    </section>` : ''}
+    ${p.show_pickup ? section('pickup', 'Pickup opening') : ''}
+    ${p.show_tablet ? section('tablet', 'Ordering tablet') : ''}
+    ${p.show_intercom ? section('intercom', 'Combined mic / speaker') : ''}
     <section class="property-section">${check('show_instructions', 'Show instructions / flyer')}</section>
     ${p.show_instructions ? section('instructions', 'Instructions panel') : ''}
     ${warnings.length ? '<section class="property-section"><p class="hint" style="color:#ae764c">' + warnings.join('<br>') + '</p></section>' : ''}`;
@@ -43,7 +58,7 @@ export function changeBarrier(event, object, store) {
   const factor = store.options.units === 'px' ? 200 : 100;
   const value = element.type === 'checkbox' ? element.checked :
     element.tagName === 'SELECT' ? element.value :
-    Number(element.value) / (key === 'opacity' ? 100 : factor);
+    Number(element.value) / (key === 'opacity' ? 100 : key === 'console_incline_deg' ? 1 : factor);
   if (typeof value === 'number' && !Number.isFinite(value)) return true;
   store.transact('Changed customer barrier', () => {
     object.barrier = barrierSettings({...object, barrier: {...barrierSettings(object), [key]: value}});

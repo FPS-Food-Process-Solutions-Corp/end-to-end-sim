@@ -1,0 +1,880 @@
+{
+  "schema_version": 1,
+  "title": "Coffee bar / new floor plan",
+  "units": "metres; angles in degrees",
+  "coordinate_system": "Origin: front-left floor corner; X right, Y towards the rear, Z up. Source-plan y is measured downward from the top; world y = 5.75 - source_y_cm / 100.",
+  "source_plan": "source-plan.png",
+  "robot_library": "assets/robots",
+  "room": {
+    "width": 3.75,
+    "depth": 5.75,
+    "wall_height": 2.35,
+    "wall_thickness": 0.08,
+    "show_rear_wall": false,
+    "cropped_front_depth": 0.75
+  },
+  "shelves": {
+    "tiers": 4,
+    "tier_spacing": 0.4,
+    "first_tier_front_height": 0.35,
+    "back_to_front_drop": 0.1,
+    "columns": 6,
+    "post_width": 0.025,
+    "sheet_thickness": 0.002,
+    "divider_height": 0.06,
+    "front_lip_height": 0.025,
+    "show_buns": true,
+    "bread_length_1": 0.102,
+    "bread_length_2": 0.094,
+    "bread_height": 0.062,
+    "bread_gap": 0.015
+  },
+  "tools": {
+    "nova2": {
+      "type": "curved_cup_tongs",
+      "length": 0.09425,
+      "finger_spacing": 0.072,
+      "finger_width": 0.012,
+      "inner_diameter": 0.085,
+      "jaw_wall": 0.006,
+      "jaw_thickness": 0.012,
+      "cup_center_offset": 0.07,
+      "front_opening_deg": 120,
+      "back_gap_deg": 4
+    },
+    "me6": {
+      "type": "suction",
+      "length": 0.09,
+      "cup_diameter": 0.03
+    }
+  },
+  "render": {
+    "resolution_x": 1800,
+    "resolution_y": 1600,
+    "samples": 48,
+    "engine": "CYCLES"
+  },
+  "cameras": {
+    "overview": {
+      "name": "Overview",
+      "location": [
+        -4.9,
+        -6.2,
+        7.1
+      ],
+      "target": [
+        1.875,
+        3,
+        0.65
+      ],
+      "ortho": 7.8
+    },
+    "customer": {
+      "name": "Customer view",
+      "location": [
+        1.95,
+        -4.6,
+        3
+      ],
+      "target": [
+        1.875,
+        3.15,
+        0.9
+      ],
+      "lens": 34
+    },
+    "top": {
+      "name": "Top / source plan",
+      "location": [
+        1.875,
+        2.875,
+        10
+      ],
+      "target": [
+        1.875,
+        2.875,
+        0
+      ],
+      "ortho": 6.3
+    },
+    "rear": {
+      "name": "Rear working view",
+      "location": [
+        -4.2,
+        8.9,
+        6.2
+      ],
+      "target": [
+        1.875,
+        3,
+        0.65
+      ],
+      "ortho": 7.6
+    },
+    "dock_detail": {
+      "name": "Charging dock / connector faces plan left",
+      "location": [
+        1.88,
+        0.78,
+        0.88
+      ],
+      "target": [
+        2.84,
+        1.45,
+        0.14
+      ],
+      "ortho": 1.03
+    },
+    "coffee_detail": {
+      "name": "Coffee table / Nova-2 and devices",
+      "location": [
+        3.3,
+        -0.9,
+        3.4
+      ],
+      "target": [
+        0.68,
+        1.46,
+        1.18
+      ],
+      "ortho": 2.9
+    },
+    "bag_station": {
+      "name": "Bag-opening concept between shelves",
+      "location": [
+        0.5,
+        1.35,
+        2.6
+      ],
+      "target": [
+        2.375,
+        3.65,
+        1.05
+      ],
+      "ortho": 2.9
+    }
+  },
+  "assumptions": [
+    "This scene follows the NEW supplied architectural screenshot and its Figma reconstruction, not the earlier 3.8 x 3.5 m draw.io layout.",
+    "Width: 3.15 m main area plus separate 0.60 m right counter = 3.75 m. Visible depth: 3.60 + 1.40 = 5.00 m.",
+    "The source says 5.75 m overall depth but crops the remaining 0.75 m. A pale front reference strip accommodates that discrepancy; its location/content is not confirmed. The human stands there for scale.",
+    "Source counter annotations specify 0.90 m high. Nova-5 retains the previously specified 0.80 m high cart.",
+    "The shelf strip uses approximate 0.60 / 1.00 / 1.00 / 1.00 m bays. Physical shelves retain 0.95 x 0.35 m size, centred in the two 1.00 m bays.",
+    "Shelves: four provisional tiers, front heights 0.35/0.75/1.15/1.55 m, 0.40 m pitch, 0.10 m rear-to-front drop, six columns and five dividers. Continuous stainless sheet bases.",
+    "The actual Nova-5 Lebai tongs and Atom-W URDF meshes are used. Atom-W is labelled at the requested nominal 70 x 51 cm; the unscaled CAD chassis is approximately 71 x 51.4 cm.",
+    "Person is a 1.70 m neutral scale mannequin. Arm poses are illustrative; no mesh-collision or task-motion validation is claimed.",
+    "Charging dock follows the supplied reference: overall 545 x 572 x 280 mm, main housing 490 x 400 x 216 mm, port axis 147.5 mm above floor. Small control/vent/foot details are visual approximations.",
+    "Dock local front is -Y and yaw is -90 degrees: the mating connector points world -X, LEFT in the source floor plan. Its rightmost edge is 20 mm inside the charging-zone boundary.",
+    "Nova-2 uses the original URDF meshes and the previously specified static two-finger cup prong. Its base is supported by the coffee table and follows table height changes.",
+    "The new drawing gives no ME6/MG400 or plastic-window locations; those older positions have not been transferred.",
+    "Two reach guides follow the confirmed working-radius/tool formulas. They are projected plan envelopes, not a collision or kinematic solver.",
+    "Coffee equipment and Nova-2 share the 140 x 140 x 90 cm coffee table. Ice machine body is 45 cm across the front and 50 cm deep; its short face points toward Nova-2.",
+    "Cup and lid dispensers each keep 70 cm overall height: 30 cm clear below the cylindrical body, 40 cm body, rear support and table-bolted baseplate. Nova-2 has curved 85 mm ID jaws with about 94 mm projection; its reach allowance remains approximately 10 cm.",
+    "Packing cell: one adjustable 105 x 180 x 80 cm table carries the bun Nova-5, a separate Nova-5 with an 80 x 80 x 100 mm four-cup tool, bag magazine and fixed opposing suction. IK checks position, orientation and six URDF joint limits; no mesh collision or vacuum/payload validation.",
+    "Customer barrier wraps the front and right of the coffee / pickup counter. Clear right-side opening starts at the worktop; order tablet and combined mic / speaker are embedded in the front panel. Dimensions are adjustable concept assumptions."
+  ],
+  "objects": [
+    {
+      "id": "left_counter",
+      "kind": "table",
+      "label": "Left work counter / 60 x 360 cm",
+      "x": 0.3,
+      "y": 3.95,
+      "width": 0.6,
+      "depth": 3.6,
+      "yaw_deg": 0,
+      "height": 0.9,
+      "top_thickness": 0.035,
+      "parentId": "area_left",
+      "visible": true,
+      "locked": false,
+      "asset_key": "left_counter"
+    },
+    {
+      "id": "right_counter",
+      "kind": "table",
+      "label": "Right counter / 60 cm wide",
+      "x": 3.45,
+      "y": 3.25,
+      "width": 0.6,
+      "depth": 5,
+      "yaw_deg": 0,
+      "height": 0.9,
+      "top_thickness": 0.035,
+      "parentId": "area_right",
+      "visible": true,
+      "locked": false,
+      "asset_key": "right_counter"
+    },
+    {
+      "id": "upper_counter",
+      "kind": "table",
+      "label": "Upper shelf-strip counter",
+      "x": 2.375,
+      "y": 5.45,
+      "width": 0.35,
+      "depth": 0.6,
+      "yaw_deg": 0,
+      "height": 0.9,
+      "top_thickness": 0.025,
+      "parentId": "area_upper",
+      "visible": true,
+      "locked": false,
+      "asset_key": "upper_counter"
+    },
+    {
+      "id": "middle_counter",
+      "kind": "table",
+      "label": "Shared packing table / both Nova-5s",
+      "x": 1.625,
+      "y": 3.05,
+      "width": 1.05,
+      "depth": 1.8,
+      "yaw_deg": 0,
+      "height": 0.8,
+      "top_thickness": 0.025,
+      "parentId": "area_middle",
+      "visible": true,
+      "locked": false,
+      "asset_key": "middle_counter"
+    },
+    {
+      "id": "coffee_station",
+      "kind": "counter",
+      "label": "Robot coffee and pickup table / 140 x 140 cm",
+      "x": 0.7,
+      "y": 1.4500000000000002,
+      "width": 1.4,
+      "depth": 1.4,
+      "yaw_deg": 0,
+      "height": 0.9,
+      "top_thickness": 0.04,
+      "sign_text": "COFFEE / PICKUP",
+      "handoff_pads": [
+        {
+          "x": 0.49,
+          "y": -0.54,
+          "width": 0.28,
+          "depth": 0.24
+        }
+      ],
+      "parentId": "area_coffee",
+      "visible": true,
+      "locked": false,
+      "asset_key": "coffee_station"
+    },
+    {
+      "id": "shelf_1",
+      "kind": "shelf",
+      "label": "Shelf 1",
+      "x": 2.375,
+      "y": 4.65,
+      "width": 0.95,
+      "depth": 0.35,
+      "yaw_deg": -90,
+      "height": 1.8,
+      "bay_length": 1,
+      "parentId": "area_shelf1",
+      "visible": true,
+      "locked": false,
+      "asset_key": "shelf_1"
+    },
+    {
+      "id": "shelf_2",
+      "kind": "shelf",
+      "label": "Shelf 2",
+      "x": 2.375,
+      "y": 2.65,
+      "width": 0.95,
+      "depth": 0.35,
+      "yaw_deg": -90,
+      "height": 1.8,
+      "bay_length": 1,
+      "parentId": "area_shelf2",
+      "visible": true,
+      "locked": false,
+      "asset_key": "shelf_2"
+    },
+    {
+      "id": "nova5",
+      "kind": "robot",
+      "label": "Nova-5 + Lebai tongs",
+      "x": 1.85,
+      "y": 2.65,
+      "width": 0.13,
+      "depth": 0.13,
+      "yaw_deg": 180,
+      "package": "nova5",
+      "urdf": "nova5_lebai_tongs.urdf",
+      "support": "middle_counter",
+      "z": 0,
+      "joints_deg": {
+        "joint1": 8.84,
+        "joint2": -20.15,
+        "joint3": 88.62,
+        "joint4": 21.53,
+        "joint5": -90,
+        "joint6": 0,
+        "gripper_r_joint1": 31.5
+      },
+      "parentId": "area_middle",
+      "visible": true,
+      "locked": false,
+      "model_key": "nova5",
+      "robot_scale": 1,
+      "distanceTargets": [
+        "shelf_2",
+        "bag_opener"
+      ],
+      "asset_key": "nova5"
+    },
+    {
+      "id": "atom_w",
+      "kind": "robot",
+      "label": "Atom-W",
+      "x": 1.65,
+      "y": 4.65,
+      "width": 0.7,
+      "depth": 0.51,
+      "yaw_deg": 0,
+      "package": "atom_w",
+      "urdf": "atom_w_p3.urdf",
+      "support": null,
+      "z": 0,
+      "joints_deg": {
+        "left_shoulder_pitch_joint": -45.8,
+        "left_shoulder_roll_joint": 5.7,
+        "left_elbow_pitch_joint": 85.9,
+        "right_shoulder_pitch_joint": -45.8,
+        "right_shoulder_roll_joint": -5.7,
+        "right_elbow_pitch_joint": 85.9
+      },
+      "parentId": "area_shelf1",
+      "visible": true,
+      "locked": false,
+      "model_key": "atom_w",
+      "robot_scale": 1,
+      "distanceTargets": [
+        "shelf_1",
+        "charger",
+        "bag_opener"
+      ],
+      "asset_key": "atom_w"
+    },
+    {
+      "id": "nova2",
+      "kind": "robot",
+      "label": "Nova-2 + curved cup tongs",
+      "x": 0.94,
+      "y": 1.32,
+      "width": 0.12,
+      "depth": 0.12,
+      "yaw_deg": 0,
+      "package": "nova2",
+      "urdf": "nova2_robot.urdf",
+      "support": "coffee_station",
+      "z": 0,
+      "joints_deg": {
+        "joint1": 0,
+        "joint2": 40,
+        "joint3": -69,
+        "joint4": 0,
+        "joint5": 29,
+        "joint6": 0
+      },
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "model_key": "nova2",
+      "robot_scale": 1,
+      "distanceTargets": [
+        "coffee_machine",
+        "ice_machine",
+        "tea_machine",
+        "lid_machine",
+        "lid_dispenser",
+        "cup_dispenser"
+      ],
+      "asset_key": "nova2"
+    },
+    {
+      "id": "ice_machine",
+      "kind": "machine",
+      "label": "Ice machine",
+      "x": 0.99,
+      "y": 1.87,
+      "width": 0.45,
+      "depth": 0.5,
+      "yaw_deg": 0,
+      "height": 0.58,
+      "support": "coffee_station",
+      "style": "ice",
+      "equipment_group": "coffee",
+      "front_side": "short",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "ice_machine"
+    },
+    {
+      "id": "tea_machine",
+      "kind": "machine",
+      "label": "Tea machine",
+      "x": 0.27,
+      "y": 1.88,
+      "width": 0.3,
+      "depth": 0.5,
+      "yaw_deg": 90,
+      "height": 0.58,
+      "support": "coffee_station",
+      "style": "tea",
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "tea_machine"
+    },
+    {
+      "id": "coffee_machine",
+      "kind": "machine",
+      "label": "Coffee machine",
+      "x": 0.27,
+      "y": 1.3,
+      "width": 0.3,
+      "depth": 0.5,
+      "yaw_deg": 90,
+      "height": 0.58,
+      "support": "coffee_station",
+      "style": "coffee",
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "coffee_machine"
+    },
+    {
+      "id": "milk_fridge",
+      "kind": "machine",
+      "label": "Milk fridge",
+      "x": 0.27,
+      "y": 1.58,
+      "width": 0.21,
+      "depth": 0.5,
+      "yaw_deg": 90,
+      "height": 0.58,
+      "support": "coffee_station",
+      "style": "fridge",
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "milk_fridge"
+    },
+    {
+      "id": "lid_machine",
+      "kind": "machine",
+      "label": "Lid press",
+      "x": 0.25,
+      "y": 0.975,
+      "width": 0.21,
+      "depth": 0.4,
+      "yaw_deg": 90,
+      "height": 0.58,
+      "support": "coffee_station",
+      "style": "lid_press",
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "lid_machine"
+    },
+    {
+      "id": "cup_dispenser",
+      "kind": "dispenser",
+      "label": "Cup dispenser",
+      "x": 1.32,
+      "y": 1.6,
+      "width": 0.1,
+      "depth": 0.1,
+      "yaw_deg": 0,
+      "height": 0.7,
+      "support": "coffee_station",
+      "diameter": 0.1,
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "cup_dispenser",
+      "bottom_clearance": 0.3,
+      "base_plate_width": 0.14,
+      "base_plate_depth": 0.16,
+      "base_plate_thickness": 0.006,
+      "rear_support_size": 0.02,
+      "rear_support_offset": 0.079
+    },
+    {
+      "id": "lid_dispenser",
+      "kind": "dispenser",
+      "label": "Lid dispenser",
+      "x": 1.32,
+      "y": 1.4,
+      "width": 0.1,
+      "depth": 0.1,
+      "yaw_deg": 0,
+      "height": 0.7,
+      "support": "coffee_station",
+      "diameter": 0.1,
+      "equipment_group": "coffee",
+      "parentId": "coffee_equipment",
+      "visible": true,
+      "locked": false,
+      "asset_key": "lid_dispenser",
+      "bottom_clearance": 0.3,
+      "base_plate_width": 0.14,
+      "base_plate_depth": 0.16,
+      "base_plate_thickness": 0.006,
+      "rear_support_size": 0.02,
+      "rear_support_offset": 0.079
+    },
+    {
+      "id": "charging_zone",
+      "kind": "zone",
+      "label": "Charging zone / inferred outline",
+      "x": 2.575,
+      "y": 1.4500000000000002,
+      "width": 1.15,
+      "depth": 1.4,
+      "yaw_deg": 0,
+      "height": 0.005,
+      "color": "teal",
+      "parentId": "area_charge",
+      "visible": true,
+      "locked": false,
+      "asset_key": "charging_zone"
+    },
+    {
+      "id": "charger",
+      "kind": "charger",
+      "label": "Charging dock / reference model / port faces left",
+      "x": 2.844,
+      "y": 1.45,
+      "width": 0.545,
+      "depth": 0.572,
+      "yaw_deg": -90,
+      "height": 0.28,
+      "reference_dimensions_m": {
+        "body_width": 0.49,
+        "body_depth": 0.4,
+        "body_height": 0.216,
+        "overall_width": 0.545,
+        "overall_depth": 0.572,
+        "overall_height": 0.28,
+        "port_center_height": 0.1475
+      },
+      "parentId": "area_charge",
+      "visible": true,
+      "locked": false,
+      "asset_key": "charger"
+    },
+    {
+      "id": "human",
+      "kind": "human",
+      "label": "Person / 1.70 m",
+      "x": 0.7,
+      "y": 0.41,
+      "width": 0.48,
+      "depth": 0.3,
+      "yaw_deg": 0,
+      "height": 1.7,
+      "z": 0,
+      "parentId": "area_people",
+      "visible": true,
+      "locked": false,
+      "asset_key": "human"
+    },
+    {
+      "id": "bag_opener",
+      "kind": "machine",
+      "machine_type": "me6_bag_opener",
+      "label": "Fixed suction + open bag",
+      "x": 1.93,
+      "y": 2.98,
+      "width": 0.365,
+      "depth": 0.24,
+      "height": 0.304,
+      "yaw_deg": -90,
+      "support": "middle_counter",
+      "z": 0,
+      "parentId": "area_middle",
+      "visible": true,
+      "locked": false,
+      "asset_key": "bag_opener",
+      "bag_parameters": {
+        "bag_width": 0.15,
+        "bag_depth": 0.09,
+        "bag_height": 0.28,
+        "bag_floor": 0.024,
+        "cup_diameter": 0.02,
+        "cup_projection": 0.024,
+        "plate_width": 0.2,
+        "plate_height": 0.26,
+        "plate_thickness": 0.003,
+        "opening_fraction": 1,
+        "closed_gap": 0.004,
+        "show_bag": true
+      },
+      "layout_component": "fixed_suction",
+      "station_offset": [
+        0.2,
+        0.035
+      ]
+    },
+    {
+      "support": "middle_counter",
+      "parentId": "area_middle",
+      "visible": true,
+      "locked": false,
+      "yaw_deg": -90,
+      "id": "bag_magazine",
+      "kind": "machine",
+      "machine_type": "bag_magazine",
+      "label": "Bag magazine / 14 flat bags",
+      "x": 1.9,
+      "y": 3.4,
+      "z": 0,
+      "width": 0.24,
+      "depth": 0.195,
+      "height": 0.325,
+      "asset_key": "bag_magazine",
+      "layout_component": "magazine",
+      "station_offset": [
+        -0.23,
+        0.125
+      ]
+    },
+    {
+      "id": "nova5_suction",
+      "kind": "robot",
+      "label": "Nova-5 / four-cup suction",
+      "model_key": "nova5_suction",
+      "asset_key": "nova5_suction",
+      "package": "nova5",
+      "urdf": "nova5_lebai_tongs.urdf",
+      "x": 1.3,
+      "y": 2.8,
+      "z": 0,
+      "width": 0.13,
+      "depth": 0.13,
+      "yaw_deg": 0,
+      "support": "middle_counter",
+      "parentId": "area_middle",
+      "visible": true,
+      "locked": false,
+      "robot_scale": 1,
+      "joints_deg": {
+        "joint1": -173.66963,
+        "joint2": 60.92488,
+        "joint3": 107.83337,
+        "joint4": -168.75727,
+        "joint5": -96.33212,
+        "joint6": -0.00011
+      },
+      "distanceTargets": [
+        "bag_magazine",
+        "bag_opener",
+        "placement_zone"
+      ]
+    },
+    {
+      "id": "placement_zone",
+      "kind": "placement_zone",
+      "label": "Bag placement zone",
+      "asset_key": "placement_zone",
+      "x": 1.31,
+      "y": 1.96,
+      "z": 0.002,
+      "width": 0.16,
+      "depth": 0.24,
+      "height": 0.003,
+      "yaw_deg": 180,
+      "support": "coffee_station",
+      "parentId": "area_coffee",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "customer_barrier",
+      "kind": "customer_barrier",
+      "asset_key": "customer_barrier",
+      "label": "Customer barrier / ordering & pickup",
+      "x": 0.7,
+      "y": 1.4500000000000002,
+      "width": 1.4,
+      "depth": 1.4,
+      "height": 0.7999999999999999,
+      "yaw_deg": 0,
+      "support": "coffee_station",
+      "z": 0,
+      "parentId": "area_coffee",
+      "visible": true,
+      "locked": false,
+      "barrier": {
+        "right_return": true,
+        "thickness": 0.008,
+        "frame": 0.024,
+        "opacity": 0.22,
+        "pickup_side": "right",
+        "pickup_center": 0.456,
+        "pickup_bottom": 0,
+        "pickup_width": 0.44,
+        "pickup_height": 0.42,
+        "tablet_side": "front",
+        "tablet_center": -0.16,
+        "tablet_bottom": 0.14,
+        "tablet_width": 0.3,
+        "tablet_height": 0.22,
+        "intercom_side": "front",
+        "intercom_center": -0.48,
+        "intercom_bottom": 0.23,
+        "intercom_diameter": 0.11,
+        "instructions_side": "front",
+        "instructions_center": 0.32,
+        "instructions_bottom": 0.12,
+        "instructions_width": 0.34,
+        "instructions_height": 0.4,
+        "show_instructions": true
+      }
+    }
+  ],
+  "editor_version": 2,
+  "pixels_per_cm": 2,
+  "robot_inventory": {
+    "nova2": {
+      "name": "Nova-2",
+      "working_radius_cm": 62.5,
+      "tool_length_cm": 10,
+      "base_width_cm": 12,
+      "base_depth_cm": 12,
+      "tool": "Cup tongs ~10 cm",
+      "effective_diameter_cm": 145,
+      "placement_diameter_cm": 102.94117647058823
+    },
+    "nova5": {
+      "name": "Nova-5",
+      "working_radius_cm": 85,
+      "tool_length_cm": 34,
+      "base_width_cm": 13,
+      "base_depth_cm": 13,
+      "tool": "Lebai tongs 34 cm",
+      "effective_diameter_cm": 238,
+      "placement_diameter_cm": 140
+    },
+    "me6": {
+      "name": "ME6",
+      "working_radius_cm": 45,
+      "tool_length_cm": 0,
+      "base_width_cm": 16,
+      "base_depth_cm": 12,
+      "tool": "No extra tool length in reach",
+      "effective_diameter_cm": 90,
+      "placement_diameter_cm": 74.11764705882352
+    },
+    "mg400": {
+      "name": "MG400",
+      "working_radius_cm": 44,
+      "tool_length_cm": 0,
+      "base_width_cm": 19,
+      "base_depth_cm": 19,
+      "tool": "No extra tool length in reach",
+      "base_note": "Nominal base symbol; reach is dimensioned",
+      "effective_diameter_cm": 88,
+      "placement_diameter_cm": 72.47058823529412
+    },
+    "atom_w": {
+      "name": "Atom-W",
+      "working_radius_cm": 78.95097085090893,
+      "tool_length_cm": 6.316330112983086,
+      "base_width_cm": 70,
+      "base_depth_cm": 51,
+      "tool": "To palm midpoint; no fingertips",
+      "torso_axis_offset_cm": [
+        -2.5,
+        0
+      ],
+      "torso_sweep_radius_cm": 20.600970850908944,
+      "arm_to_hand_mount_cm": 58.35,
+      "effective_diameter_cm": 170.53460192778402,
+      "placement_diameter_cm": 130.03689316620293
+    },
+    "nova5_suction": {
+      "name": "Nova-5 suction",
+      "working_radius_cm": 85,
+      "tool_length_cm": 10,
+      "base_width_cm": 13,
+      "base_depth_cm": 13,
+      "tool": "80 x 80 mm face / four cups / 100 mm flange-to-contact",
+      "effective_diameter_cm": 190,
+      "placement_diameter_cm": 140
+    }
+  },
+  "reach_ratio": 0.8235294117647058,
+  "groups": [
+    {
+      "id": "area_left",
+      "label": "Left work counter"
+    },
+    {
+      "id": "area_right",
+      "label": "Right work counter"
+    },
+    {
+      "id": "area_upper",
+      "label": "Upper counter"
+    },
+    {
+      "id": "area_shelf1",
+      "label": "Shelf 1 / Atom-W"
+    },
+    {
+      "id": "area_middle",
+      "label": "Packing cell / shared table"
+    },
+    {
+      "id": "area_shelf2",
+      "label": "Shelf 2"
+    },
+    {
+      "id": "area_coffee",
+      "label": "Coffee station"
+    },
+    {
+      "id": "coffee_equipment",
+      "label": "Coffee equipment",
+      "parentId": "area_coffee"
+    },
+    {
+      "id": "area_charge",
+      "label": "Charging area"
+    },
+    {
+      "id": "area_people",
+      "label": "People"
+    }
+  ],
+  "editor_revision": 7,
+  "bag_workflow": {
+    "robot_id": "nova5_suction",
+    "magazine_id": "bag_magazine",
+    "fixture_id": "bag_opener",
+    "placement_zone_id": "placement_zone",
+    "shared_table_id": "middle_counter",
+    "pullback": 0.086,
+    "approach": 0.08,
+    "lift": 0.25,
+    "auto_check": true,
+    "prefer_j1": true,
+    "max_bag_tilt_deg": 5,
+    "min_j1_share": 0.5,
+    "extra_lift_search": 0.2
+  }
+}

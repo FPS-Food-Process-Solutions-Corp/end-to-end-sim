@@ -19,6 +19,7 @@ from shelf_parameters import shelf_layout
 from bag_opener import make_bag_opener
 from me6_station import make_me6_station_component
 from nova_suction import make_nova_suction_tool
+from nova2_tool import make_cup_stamp
 from customer_barrier import make_customer_barrier
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 parser = argparse.ArgumentParser()
@@ -206,11 +207,12 @@ def make_table(o):
         for sx in [-1, 1]:
             box('Front counter seam', (sx*w*.24, -d/2+.012, h*.46), (.004, .005, h*.77), TEAL, r, 0)
         text_obj('Order pickup sign', o.get('sign_text','ORDER / PICKUP'), (0, -d/2-.002, h*.66), .045, WHITE, r, (math.pi/2, 0, 0))
-        terminal = box('Ordering terminal', (0, (-d/2+.16), h+.16), (.22, .034, .22), DARK, r, .012)
-        terminal.rotation_euler.x = math.radians(15)
-        display = box('Order terminal screen', (0, (-d/2+.16)-.022, h+.16), (.188, .005, .175), SCREEN, r, .004)
-        display.rotation_euler.x = math.radians(15)
-        rod('Terminal stand', (0, (-d/2+.18), h), (0, (-d/2+.16), h+.10), .025, STEEL, r)
+        if o.get('ordering_terminal', True):
+            terminal = box('Ordering terminal', (0, (-d/2+.16), h+.16), (.22, .034, .22), DARK, r, .012)
+            terminal.rotation_euler.x = math.radians(15)
+            display = box('Order terminal screen', (0, (-d/2+.16)-.022, h+.16), (.188, .005, .175), SCREEN, r, .004)
+            display.rotation_euler.x = math.radians(15)
+            rod('Terminal stand', (0, (-d/2+.18), h), (0, (-d/2+.16), h+.10), .025, STEEL, r)
         pads = o.get('handoff_pads', [{'x': x, 'y': d*.18, 'width': w*.28, 'depth': d*.3} for x in [-w*.29, w*.29]])
         for pad in pads:
             box('Handoff mat', (pad['x'], pad['y'], h+.002), (pad['width'], pad['depth'], .004), DARK, r, .01)
@@ -513,7 +515,7 @@ def make_robot(o):
             mesh=geom.find('mesh')
             local_origin=origin_matrix(v.find('origin'))
             mat=ROBOT_WHITE
-            if model_key in {'nova2','nova5','nova5_suction'}:
+            if model_key in {'nova2','nova5','nova5_suction','nova5_coffee'}:
                 mat=BLUE if name in {'Link1','Link3','Link5'} else ROBOT_WHITE
             if model_key=='me6':
                 mat=WHITE if name not in {'Link1','Link3','Link5'} else DARK
@@ -548,7 +550,7 @@ def make_robot(o):
                     continue
                 ob.matrix_basis=local_origin @ ob.matrix_basis
                 count+=1
-        if model_key == 'nova5_suction' and name == 'Link6':
+        if model_key in {'nova5_suction','nova5_coffee'} and name == 'Link6':
             return
         for j in children.get(name,[]):
             child=j.find('child').get('link')
@@ -570,11 +572,11 @@ def make_robot(o):
     add_link(link_roots,r)
     if model_key == 'nova5_suction':
         make_nova_suction_tool(link_objects['Link6'], globals())
-    if model_key in {'nova2','me6'}:
+    if model_key in {'nova2','me6','nova5_coffee'}:
         mount=link_objects.get('Link6') or link_objects.get('link6')
         if mount is None:
             mount=next(reversed(link_objects.values()))
-        tool=C['tools'][model_key]
+        tool=C['tools'].get(model_key,C['tools']['nova2'])
         if model_key=='me6':
             length,diam=tool['length'],tool['cup_diameter']
             cyl('ME6 suction stem',(0,0,length*.42),.01,length*.84,STEEL,mount)
@@ -591,6 +593,7 @@ def make_robot(o):
             split=math.radians(tool.get('back_gap_deg',4))/2
             curved_cup_jaw('Left curved cup tong / 85 mm ID',math.pi/2+opening/2,3*math.pi/2-split,inner,wall,thickness,centre,mount)
             curved_cup_jaw('Right curved cup tong / 85 mm ID',3*math.pi/2+split,5*math.pi/2-opening/2,inner,wall,thickness,centre,mount)
+            make_cup_stamp(globals(), mount, link_objects["Link5"], tool, "Nova-5" if model_key == "nova5_coffee" else "Nova-2")
     REPORT['robot_imports'].append(dict(id=o['id'],urdf=str(path),root=link_roots,visual_count=count,joints_deg=o.get('joints_deg',{})))
     print('ROBOT IMPORTED',o['id'],count,'visuals',flush=True)
 
@@ -671,9 +674,12 @@ def make_range(o):
 def make_zone(o):
     r=root(o,COL['Annotations'])
     w,d=o['width'],o['depth']
+    if o['kind'] == 'placement_zone' and o.get('role') == 'cup_rest':
+        cyl('Cup stamping rest', (0,0,.006), .0525, .012, STEEL,r)
+        return r
     if o['kind'] == 'placement_zone':
         box('Placement rectangle', (0,0,.0015), (w,d,.003), TEAL,r,.001)
-        text_obj('Placement label','PLACE BAG',(0,0,.004),min(.035,w/5),WHITE,r)
+        text_obj('Placement label','DRINK' if o.get('role') == 'beverage_pickup' else 'PLACE BAG',(0,0,.004),min(.035,w/5),WHITE,r)
         return r
     for a,b in [((-w/2,-d/2,.008),(w/2,-d/2,.008)),((w/2,-d/2,.008),(w/2,d/2,.008)),((w/2,d/2,.008),(-w/2,d/2,.008)),((-w/2,d/2,.008),(-w/2,-d/2,.008))]:
         dashed_segment('Charging zone boundary',a,b,TEAL,r)

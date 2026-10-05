@@ -1,5 +1,6 @@
+import {orderingConsoleLayout} from './ordering-console.js';
 import * as THREE from '../vendor/three.module.js';
-import {barrierSettings, barrierSections, panelCells} from './barrier-parameters.js';
+import {barrierSettings, barrierPanels, barrierSections, panelCells} from './barrier-parameters.js';
 
 function faceTexture(kind) {
   const canvas = document.createElement('canvas');
@@ -45,6 +46,24 @@ function label(text, width, height = .038) {
     new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide}));
 }
 
+function consoleHousing(layout, material) {
+  const {left:l, right:r, base:b, frontHeight:f, backHeight:h, depth:d} = layout;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    l,b,0, r,b,0, r,b,d, l,b,d, l,h,0, r,h,0, r,f,d, l,f,d,
+  ], 3));
+  geometry.setIndex([0,1,2,0,2,3, 0,4,5,0,5,1, 3,2,6,3,6,7,
+    0,3,7,0,7,4, 1,5,6,1,6,2, 4,7,6,4,6,5]);
+  const faces = geometry.toNonIndexed();
+  geometry.dispose();
+  faces.computeVertexNormals();
+  const mesh = new THREE.Mesh(faces, material);
+  mesh.name = 'Projecting sloped ordering console';
+  mesh.userData.barrierRole = 'ordering-console';
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+
 export function buildBarrier(object) {
   const p = barrierSettings(object);
   const sections = barrierSections(object);
@@ -65,16 +84,28 @@ export function buildBarrier(object) {
     mesh.castShadow = material !== clear; mesh.receiveShadow = true;
     parent.add(mesh); return mesh;
   };
-  for (const side of ['front', ...(p.right_return ? ['right'] : [])]) {
+  for (const side of barrierPanels(object)) {
     const panel = new THREE.Group();
-    panel.name = side === 'front' ? 'Front ordering panel' : 'Right pickup panel';
+    panel.name = side === 'front' ? 'Front barrier panel' : 'Side barrier panel';
     panel.userData.barrierPanel = side;
     if (side === 'front') panel.position.z = object.depth / 2;
     else { panel.position.x = object.width / 2; panel.rotation.y = Math.PI / 2; }
     model.add(panel);
     const span = side === 'front' ? object.width : object.depth;
     const features = sections.filter(section => section.side === side);
-    const holes = features.filter(section => section.kind !== 'instructions');
+    const consoleLayout = orderingConsoleLayout(p, features);
+    let consoleSurface;
+    if (consoleLayout) {
+      panel.add(consoleHousing(consoleLayout, white));
+      consoleSurface = new THREE.Group();
+      consoleSurface.name = 'Inclined control surface';
+      consoleSurface.userData = {barrierRole:'console-surface', inclineDegrees:p.console_incline_deg};
+      consoleSurface.position.set(0, consoleLayout.frontHeight, consoleLayout.depth);
+      consoleSurface.rotation.x = consoleLayout.rotationX;
+      panel.add(consoleSurface);
+    }
+    const holes = features.filter(section => section.kind !== 'instructions' &&
+      !(consoleLayout && ['tablet', 'intercom'].includes(section.kind)));
     for (const cell of panelCells(span, object.height, holes)) {
       box(panel, 'Clear plastic pane', cell.center, cell.middle, 0,
         cell.width, cell.height, p.thickness, clear, 'plastic');
@@ -111,30 +142,32 @@ export function buildBarrier(object) {
         aperture.userData = {barrierRole: 'pickup-opening', clearWidth: width, clearHeight: height, bottom};
         panel.add(aperture);
       } else if (kind === 'tablet') {
-        box(panel, 'Embedded tablet bezel', center, bottom + height / 2, 0, width + .014, height + .014, .035, dark, 'tablet');
+        const mount = consoleSurface || panel;
+        box(mount, 'Tablet bezel', center, bottom + height / 2, 0, width + .014, height + .014, .035, dark, 'tablet');
         const screen = new THREE.Mesh(new THREE.PlaneGeometry(width - .018, height - .018),
           new THREE.MeshBasicMaterial({map: faceTexture('tablet')}));
         screen.name = 'Ordering touchscreen'; screen.position.set(center, bottom + height / 2, .018);
-        panel.add(screen);
+        mount.add(screen);
       } else if (kind === 'intercom') {
-        box(panel, 'Embedded intercom mounting plate', center, bottom + height / 2, 0,
+        const mount = consoleSurface || panel;
+        box(mount, 'Intercom mounting plate', center, bottom + height / 2, 0,
           width + .018, height + .018, .028, white, 'intercom');
         const speaker = new THREE.Mesh(new THREE.CylinderGeometry(width * .45, width * .45, .014, 40), dark);
         speaker.rotation.x = Math.PI / 2;
         speaker.position.set(center, bottom + height / 2, .02);
         speaker.name = 'Combined microphone and speaker';
-        panel.add(speaker);
+        mount.add(speaker);
         for (let row = -3; row <= 3; row++) for (let column = -3; column <= 3; column++) {
           if (row * row + column * column > 10) continue;
           const dot = new THREE.Mesh(new THREE.CircleGeometry(width * .015, 8), steel);
           dot.position.set(center + column * width * .10, bottom + height / 2 + row * width * .10, .028);
-          dot.name = 'Intercom grille perforation'; panel.add(dot);
+          dot.name = 'Intercom grille perforation'; mount.add(dot);
         }
         const indicator = new THREE.Mesh(new THREE.CircleGeometry(.003, 12), teal);
-        indicator.position.set(center, bottom + .008, .029); panel.add(indicator);
+        indicator.position.set(center, bottom + .008, .029); mount.add(indicator);
         const sign = label('MIC + SPEAKER', .17, .028);
         sign.position.set(center, Math.max(.035, bottom - .035), .02);
-        panel.add(sign);
+        mount.add(sign);
       } else {
         box(panel, 'Instruction flyer holder', center, bottom + height / 2, p.thickness / 2 + .005,
           width + .012, height + .012, .010, white, 'instructions');

@@ -1,5 +1,16 @@
+import {installResizeSettings} from './resize-settings.js';
+import {resizeDimension} from './resize-geometry.js';
+import {resizeControls, changeResizeControl} from './resize-ui.js';
+import {floorTeaProperties} from './floor-machine-fit.js';
+import {FLOOR_TEA_KEY} from './floor-tea-machine.js';
+import {zoneProperties, changeZone} from './zone-ui.js';
+import {installFullscreenView} from './fullscreen-view.js';
+import {CollisionControls} from './collision-ui.js';
 import {barrierProperties, changeBarrier, alignBarrierOpening} from './barrier-ui.js';
-import {createCustomerBarrier} from './barrier-parameters.js';
+import {ComponentLibrary} from './component-library.js';
+import {CoffeeWorkflow} from './coffee-workflow.js';
+import {OrderWorkflow} from './order-workflow.js';
+import {SceneSnapshots} from './scene-snapshots.js';
 import {BagWorkflow} from './bag-workflow.js';
 import {installComponentClipboard} from './clipboard.js';
 import {SceneStore,bounds,cleanAngle,rotate} from './store.js';
@@ -13,6 +24,8 @@ const seed=await fetch('./scene_config.json').then(r=>{if(!r.ok)throw new Error(
 const store=new SceneStore(seed);let restored=false;
 try{const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');if(saved){store.importScene(saved);store.undoStack=[];store.selected=saved.editor_selection?.filter(id=>store.item(id))||['nova5'];restored=true;}}catch(e){console.warn('Saved layout could not be restored',e);}
 const plan=new PlanView($('plan'),store),three=new Scene3D($('scene'),store,message=>{$('model-status').textContent=message;});
+installResizeSettings(store);
+installFullscreenView($('studio-view'), $('fullscreen-view'));
 const collapsed=new Set(['area_left','area_right','area_upper','area_people']);
 const icons={customer_barrier:'▯',robot:'◇',shelf:'▤',table:'▱',counter:'▱',cart:'▱',machine:'▣',dispenser:'○',human:'♙',charger:'▥',window:'▯'};
 function renderLayers(){
@@ -27,10 +40,12 @@ $('collapse-all').onclick=()=>{if(collapsed.size)collapsed.clear();else store.sc
 function field(key,label,value,suffix=store.options.units,disabled=false,limits=''){return `<label class="field">${label}<span class="input-wrap"><input data-field="${key}" aria-label="${label}" type="number" step="${suffix==='°'||['shelf_columns','shelf_tiers'].includes(key)?1:.1}" ${limits||(key==='shelf_columns'?'min="1" max="24"':'')} value="${Number(value.toFixed(3))}" ${disabled?'disabled':''}><span class="suffix">${suffix}</span></span></label>`;}
 function properties(){
   const ids=store.selected,items=store.resolve(),one=ids.length===1?store.item(ids[0]):null,o=one&&store.object(one.id),bb=o||bounds(items),f=store.options.units==='px'?200:100,locked=ids.some(id=>store.locked(id));
-  $('selection-count').textContent=ids.length?String(ids.length):'';
+  $('selection-count').textContent=ids.length?ids.length+' selected':'';
   if(!items.length){$('properties').innerHTML=`<div class="empty-selection">Select an item in the plan, 3D scene, or layer list.<br><br>The selected robot's reach appears as circles in 2D and translucent sphere surfaces in 3D, alongside distances.</div><div class="property-section"><h3>Room size</h3><div class="field-grid">${field('room_width','Width',store.scene.room.width*f)}${field('room_depth','Depth',store.scene.room.depth*f)}</div><p class="hint">Changing the room boundary keeps equipment positions fixed.</p></div>`;return;}
-  let html=`<section class="property-section"><input id="item-name" class="selection-name" aria-label="Layer name" value="${esc(one?.label||items.length+' selected items')}" ${one?'':'disabled'}><div class="type-label">${o?esc(o.kind):'Area / group'}${o?.kind==='robot'?' · actual URDF model':''}</div></section><section class="property-section"><h3>Transform <span style="float:right;color:#a1b2b8;font-weight:400">${store.options.units}</span></h3><div class="field-grid">${field('x','Centre X',bb.x*f,store.options.units,locked)}${field('y','Centre Y',(store.scene.room.depth-bb.y)*f,store.options.units,locked)}${field('width','Width',bb.width*f,store.options.units,locked)}${field('depth','Depth',bb.depth*f,store.options.units,locked||o?.kind==='robot')}${field('rotation',o?'Rotation':'Rotate by',o?cleanAngle(-(o.yaw_deg||0)):0,'°',locked)}${o&&o.height?field('height','Height',o.height*f,store.options.units,locked):''}</div><p class="hint">Centre measured from the top-left of the plan.${o?.kind==='robot'?' Resizing a robot scales its complete model and reach uniformly.':''}</p>${one?`<label class="checkline"><input id="item-visible" type="checkbox" ${one.visible!==false?'checked':''}> Visible in both views</label><label class="checkline"><input id="item-locked" type="checkbox" ${one.locked?'checked':''}> Lock transforms</label>`:''}</section>`;
+  let html=`<section class="property-section"><input id="item-name" class="selection-name" aria-label="Layer name" value="${esc(one?.label||items.length+' selected items')}" ${one?'':'disabled'}><div class="type-label">${o?esc(o.kind):'Area / group'}${o?.kind==='robot'?' · actual URDF model':''}</div></section><section class="property-section"><h3>Resize settings</h3>${resizeControls(store)}</section><section class="property-section"><h3>Transform <span style="float:right;color:#a1b2b8;font-weight:400">${store.options.units}</span></h3><div class="field-grid">${field('x','Centre X',bb.x*f,store.options.units,locked)}${field('y','Centre Y',(store.scene.room.depth-bb.y)*f,store.options.units,locked)}${field('width','Width',bb.width*f,store.options.units,locked)}${field('depth','Depth',bb.depth*f,store.options.units,locked||o?.kind==='robot')}${field('rotation',o?'Rotation':'Rotate by',o?cleanAngle(-(o.yaw_deg||0)):0,'°',locked)}${o&&o.height?field('height','Height',o.height*f,store.options.units,locked):''}</div><p class="hint">Centre measured from the top-left of the plan.${o?.kind==='robot'?' Resizing a robot scales its complete model and reach uniformly.':''}</p>${one?`<label class="checkline"><input id="item-visible" type="checkbox" ${one.visible!==false?'checked':''}> Visible in both views</label><label class="checkline"><input id="item-locked" type="checkbox" ${one.locked?'checked':''}> Lock transforms</label>`:''}</section>`;
   if(o?.kind==='customer_barrier') html+=barrierProperties(o,store,field,locked);
+  if(o?.kind==='zone') html+=zoneProperties(o,store,field,locked);
+  if(o) html+=floorTeaProperties(o,store);
   if(o?.kind==='shelf'){
     const l=store.shelfLayout(o),s=l.settings;
     html+=`<section class="property-section"><h3>Shelf &amp; bread</h3>
@@ -76,7 +91,7 @@ function properties(){
 }
 $('properties').addEventListener('change',e=>{
   const element=e.target,ids=[...store.selected],one=ids.length===1?store.item(ids[0]):null,o=one&&store.object(one.id),f=store.options.units==='px'?200:100,key=element.dataset.field;
-  if (changeBarrier(e,o,store)) return;
+  if (changeResizeControl(e,store) || changeBarrier(e,o,store) || changeZone(e,o,store)) return;
   if (o?.support && ['support_x','support_y'].includes(key)) {
     const support = store.object(o.support);
     const value = Number(element.value) / f;
@@ -98,8 +113,9 @@ $('properties').addEventListener('change',e=>{
   if(key){const number=Number(element.value);if(!Number.isFinite(number)){properties();return;}const value=number/f;store.transact('Updated '+key,()=>{
     if(key.startsWith('room_')){store.scene.room[key.slice(5)]=Math.max(.5,value);return;}
     if(key==='rotation'){if(o)store.patch(o.id,{yaw_deg:-number});else store.rotateSelection(ids,-number);return;}
-    if(o){if(key==='width'||key==='depth'){store.resize(o.id,key==='width'?value:o.width,key==='depth'?value:o.depth);}else store.patch(o.id,{[key]:key==='y'?store.scene.room.depth-value:key==='height'?Math.max(.01,value):value});}
-    else {const bb=store.selectionBounds();if(key==='x'||key==='y')store.move(ids,key==='x'?value-bb.x:0,key==='y'?store.scene.room.depth-value-bb.y:0);else if(key==='width'||key==='depth')store.resizeGroup(ids,key==='width'?Math.max(.02,value)/bb.width:1,key==='depth'?Math.max(.02,value)/bb.depth:1);}
+    if(key==='width'||key==='depth'){resizeDimension(store,ids,key,value);return;}
+    if(o) store.patch(o.id,{[key]:key==='y'?store.scene.room.depth-value:key==='height'?Math.max(.01,value):value});
+    else {const bb=store.selectionBounds();if(key==='x'||key==='y')store.move(ids,key==='x'?value-bb.x:0,key==='y'?store.scene.room.depth-value-bb.y:0);}
   });return;}
   if(element.id==='item-name'&&one)store.transact('Renamed layer',()=>one.label=element.value.trim()||one.label);
   if(element.id==='item-visible'&&one)store.toggleVisibility(one.id);
@@ -119,38 +135,16 @@ $('properties').addEventListener('click',e=>{
   store.transact('Applied settings to all shelves',()=>{for(const shelf of store.scene.objects)if(shelf.kind==='shelf'&&!store.locked(shelf.id)){shelf.shelf_overrides={...shelf.shelf_overrides,...values};shelf.shelf_overrides=store.shelfSettings(shelf);}});
   toast('Shelf and bread settings applied to all unlocked shelves');
 });
-function library(){
-  $('robot-library').innerHTML=Object.entries(store.scene.robot_inventory).map(([key,r])=>`<div class="robot-card" draggable="true" data-robot="${key}"><span class="robot-icon">${key==='atom_w'?'♜':'◇'}</span><div><strong>${esc(r.name)}</strong><small>R ${(r.working_radius_cm+r.tool_length_cm).toFixed(1)} / ${(r.working_radius_cm*store.scene.reach_ratio).toFixed(1)} cm</small></div><button title="Add ${esc(r.name)}" aria-label="Add ${esc(r.name)}">+</button></div>`).join('');
-  $('robot-library').insertAdjacentHTML('beforeend','<div class="property-section"><h3>Scene objects</h3><button data-add-barrier style="width:100%">+ Customer barrier</button></div>');
-}
-$('robot-library').addEventListener('dragstart',e=>{const key=e.target.closest('[data-robot]')?.dataset.robot;if(key){e.dataTransfer.setData('application/robot-key',key);e.dataTransfer.effectAllowed='copy';}});
-$('robot-library').addEventListener('click', event => {
-  if (event.target.closest('[data-add-barrier]')) {
-    store.transact('Added customer barrier', () => {
-      const object = createCustomerBarrier(store.scene, store.unique('customer_barrier'));
-      if (!store.group(object.parentId)) {
-        store.scene.groups.push({id: object.parentId, label: 'Customer frontage'});
-      }
-      store.scene.objects.push(object);
-      store.selected = [object.id];
-    });
-    toast('Customer barrier added to both views');
-    return;
-  }
-  const key = event.target.closest('[data-robot]')?.dataset.robot;
-  if (!key) return;
-  const selected = store.object(store.selected[0]);
-  const support = selected && ['table', 'cart', 'counter'].includes(selected.kind) ? selected : null;
-  store.addRobot(key, support?.x ?? 1.8, support?.y ?? 2.9);
-  plan.fit();
-  toast(store.scene.robot_inventory[key].name + ' added to both views');
-});
+const componentLibrary = new ComponentLibrary(store,plan,toast);
+function library(){componentLibrary.render();}
 document.querySelectorAll('[data-panel]').forEach(button => button.onclick = () => {
   document.querySelectorAll('[data-panel]').forEach(tab => tab.classList.toggle('active', tab === button));
   $('layers-panel').hidden = button.dataset.panel !== 'layers';
   $('library-panel').hidden = button.dataset.panel !== 'library';
-  $('flow-panel').hidden = button.dataset.panel !== 'flow';
-  flow.setActive(button.dataset.panel === 'flow');
+  $('workflow-panels').hidden = button.dataset.panel !== 'flow';
+  order.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'order');
+  flow.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'bag');
+  coffee.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'coffee');
 });
 function applyOptions(){
   for(const [id,key] of [['show-distances','showAllDistances'],['show-reach','showAllReach'],['snap','snap'],['labels','showLabels']])$(id).checked=store.options[key];
@@ -188,7 +182,7 @@ document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportFile(b
 $('import-button').onclick=()=>$('import-file').click();
 async function importText(text,name='scene.json'){
   let value;if(name.toLowerCase().endsWith('.svg')){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror'))throw new Error('The SVG is not valid XML.');const meta=doc.querySelector('metadata#coffee-scene-data');if(!meta)throw new Error('Import an SVG exported by Layout studio, or its scene JSON.');value=JSON.parse(meta.textContent);}else value=JSON.parse(text);
-  for(const o of value.objects||[])if(o.kind==='robot'?!seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&!['placement_zone','customer_barrier'].includes(o.kind))throw new Error('No matching 3D model for '+(o.label||o.id));
+  for(const o of value.objects||[])if(o.kind==='robot'?!store.seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&o.asset_key!==FLOOR_TEA_KEY&&!['placement_zone','customer_barrier'].includes(o.kind))throw new Error('No matching 3D model for '+(o.label||o.id));
   store.importScene(value);plan.fit();library();toast('Editable scene imported');
 }
 $('import-file').onchange=async e=>{try{const file=e.target.files[0];if(file)await importText(await file.text(),file.name);}catch(error){toast('Import failed: '+error.message);}finally{e.target.value='';}};
@@ -204,6 +198,22 @@ installComponentClipboard(store, {
   pasteButton: $('paste'),
   toast,
 });
+let activeWorkflow='bag';
 const flow = new BagWorkflow(store,plan,three,$('flow-panel'),toast);
-window.coffeeEditor={flow,store,plan,three,importText,exportFile,getState:()=>store.exportScene(),ready:false};
-try{await three.load();window.coffeeEditor.ready=true;flow.start();if(new URLSearchParams(location.search).has('workflow')){document.querySelector('[data-panel="flow"]').click();flow.frame();}if(restored)toast('Your saved layout has been restored');}catch(e){$('model-status').textContent='Model loading failed';toast(e.message);console.error(e);}
+const coffee = new CoffeeWorkflow(store,plan,three,$('coffee-flow-panel'),toast);
+const order = new OrderWorkflow(store,three,flow,coffee,$('order-flow-panel'),toast);
+document.querySelectorAll('[data-workflow]').forEach(button=>button.onclick=()=>{
+  activeWorkflow=button.dataset.workflow;
+  document.querySelectorAll('[data-workflow]').forEach(b=>b.classList.toggle('active',b===button));
+  $('flow-panel').hidden=activeWorkflow!=='bag';
+  $('coffee-flow-panel').hidden=activeWorkflow!=='coffee';
+  $('order-flow-panel').hidden=activeWorkflow!=='order';
+  order.setActive(activeWorkflow==='order');
+  flow.player.stop();coffee.player.stop();
+  flow.setActive(activeWorkflow==='bag');coffee.setActive(activeWorkflow==='coffee');
+});
+const collisions=new CollisionControls(store,three,toast,()=>order.active?{...flow.settings(),...order.breadSettings()}:flow.settings());
+const snapshots=new SceneSnapshots(store,three,{toast,getWorkflow:()=>activeWorkflow,setWorkflow:value=>document.querySelector('[data-workflow="'+value+'"]').click()});
+$('snapshots-button').onclick=()=>snapshots.open();
+window.coffeeEditor={collisions,snapshots,order,coffee,flow,store,plan,three,importText,exportFile,getState:()=>store.exportScene(),ready:false};
+try{await three.load();window.coffeeEditor.ready=true;collisions.checkPoses();flow.start();if(new URLSearchParams(location.search).has('workflow')){document.querySelector('[data-panel="flow"]').click();if(new URLSearchParams(location.search).get('workflow')==='order'){document.querySelector('[data-workflow="order"]').click();if(store.scene.order_camera)order.restoreCamera();else order.frame();}else if(new URLSearchParams(location.search).get('workflow')==='coffee'){document.querySelector('[data-workflow="coffee"]').click();coffee.frame();}else flow.frame();}if(restored)toast('Your saved layout has been restored');}catch(e){$('model-status').textContent='Model loading failed';toast(e.message);console.error(e);}

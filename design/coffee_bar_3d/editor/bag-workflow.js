@@ -1,6 +1,11 @@
+import {attachCollisions} from './collision-scene.js';
+import {packingCollisionMarkup,pairCollisionMarkup} from './collision-ui.js';
+import {collisionText} from './collision-core.js';
+import {breadControls,handleBreadPoseAction} from './bread-ui.js';
 import * as THREE from '../vendor/three.module.js';
 import {FLOW_DEFAULTS, makeWorkflowRequest} from './flow-geometry.js';
 import {FlowPlayer} from './flow-player.js';
+import {packingDiagnostic} from './failure-preview.js';
 import {failureMarkup} from './flow-diagnostics.js';
 import {motionControls, motionSummary} from './bag-motion-ui.js';
 import {placementAssessment, placementMarkup, SUPPORT_KINDS} from './placement-validation.js';
@@ -30,11 +35,12 @@ export class BagWorkflow {
     panel.addEventListener('input', event => {
       if (event.target.id === 'flow-scrub') {
         this.player.playing = false;
-        this.player.seek(Number(event.target.value));
+        if(this.result?.pathOK)this.player.seek(Number(event.target.value));
+        else this.player.seekDiagnostic(Number(event.target.value));
       }
     });
     store.on(type => {
-      if (['selection', 'option', 'workflow'].includes(type)) return;
+      if (['selection', 'option', 'workflow', 'camera'].includes(type)) return;
       this.invalidate(type !== 'preview');
     });
     this.render();
@@ -42,6 +48,13 @@ export class BagWorkflow {
 
   setActive(active) {
     this.active = active;
+    if (!active) {
+      this.guideGroup.visible = false;
+      this.store.workflowOverlay = null;
+      this.store.placementOverlay = null;
+      this.store.emit('workflow');
+      return;
+    }
     this.drawGuides();
   }
 
@@ -71,13 +84,13 @@ export class BagWorkflow {
     this.drawGuides();
     if (schedule) {
       this.render();
-      if (this.settings().auto_check) this.timer = setTimeout(() => this.check(), 450);
+      if (this.settings().auto_check && !this.suspended) this.timer = setTimeout(() => this.check(), 450);
     }
   }
 
   check() {
     clearTimeout(this.timer);
-    if (!this.view.ready) return;
+    if (!this.view.ready || this.suspended) return;
     this.worker?.terminate();
     this.player.stop();
     this.result = null;
@@ -91,14 +104,21 @@ export class BagWorkflow {
       this.render();
       return;
     }
-    this.message = 'Checking joint limits and tool orientation…';
+    try { attachCollisions(this.view, this.request); } catch (error) { this.message=error.message;this.render();return; }
+    this.message = 'Checking joint limits, tool orientation and selected collision policy…';
     this.render();
     this.worker = new Worker(new URL('./ik-worker.js', import.meta.url), {type: 'module'});
     this.worker.onmessage = event => {
       if (event.data.id !== this.runId) return;
       if (event.data.progress) {
         const progress = event.data.progress;
-        this.setStatus(progress.phase === 'routes'
+        this.setStatus(progress.phase === 'nova-pair-recovery'
+          ? 'Searching a detour around the bread Nova-5 · attempt '+(progress.completed+1)
+          : progress.phase === 'nova-pair'
+          ? 'Checking Nova-5 ↔ Nova-5 motion '+progress.completed+' / '+progress.total
+          : progress.phase === 'bread'
+          ? 'Checking bread pickup routes ' + (progress.completed + 1) + ' / ' + progress.total
+          : progress.phase === 'routes'
           ? 'Searching upright routes ' + (progress.completed + 1) + ' / ' + progress.total
           : progress.phase === 'path'
           ? 'Checking transfer path ' + progress.completed + ' / ' + progress.total
@@ -112,9 +132,13 @@ export class BagWorkflow {
         this.player.configure(this.request, this.result);
         const endpointsOK = this.result.endpoints.every(target => target.ok);
         this.message = this.request.errors.length ? 'Adjust the highlighted layout issues'
+          : this.result.pathOK && this.result.bread ? 'Both robot paths found — bag opens, bread loads, filled bag is placed'
           : this.result.pathOK ? this.result.motion?.preferJ1
             ? 'Upright J1-sweep path found for the full sequence'
             : 'Upright IK path found for the full sequence'
+          : this.result.bread?.errors?.length ? this.result.bread.errors[0]
+          : this.result.bread && !this.result.bread.pathOK ? (collisionText(this.result.bread.failure)||'Bread Nova path failed — see the bread phase and target below')
+          : ['world_collision','robot_collision'].includes(this.result.failure?.reason) ? collisionText(this.result.failure)
           : this.result.failure?.reason === 'bag_tilt_exceeded' ? 'Tested routes exceed the bag tilt constraint'
           : this.result.failure?.reason === 'j1_share_too_low' ? 'Tested sweeps do not meet the J1 motion requirement'
           : endpointsOK ? this.result.failure?.reason === 'joint_step_exceeded'
@@ -156,12 +180,14 @@ export class BagWorkflow {
       Number((value * 100).toFixed(2)) + '"><span>cm</span></div></label>';
     const table = this.store.object(settings.shared_table_id);
     const canPlay = this.result?.pathOK && !this.request?.errors.length;
+    const diagnostic=packingDiagnostic(this.request,this.result);
     const placementZone = this.store.object(settings.placement_zone_id);
     const previewReason = canPlay ? '' : this.request?.errors.length
-      ? 'Preview unavailable: ' + this.request.errors[0]
-      : !this.request ? 'Preview unavailable: ' + this.message
-      : !this.result ? 'Preview unavailable until the current layout passes Check IK.'
-      : 'Preview unavailable: the path has not passed the motion checks. See the failure details above.';
+      ? 'Full preview unavailable: ' + this.request.errors[0]
+      : this.result?.bread?.errors?.length ? 'Full preview unavailable: ' + this.result.bread.errors[0]
+      : !this.request ? 'Full preview unavailable: ' + this.message
+      : !this.result ? 'Full preview unavailable until the current layout passes Check IK.'
+      : 'Full preview unavailable: the path has not passed the motion checks. See the failure details above.';
     const endpointRows = (this.result?.endpoints || []).map(target =>
       '<button class="flow-target ' + (target.ok ? 'ok' : 'failed') + '" data-flow-pose="' +
       escape(target.id) + '" ' + (target.ok ? '' : 'disabled') + '><span class="flow-dot"></span><span>' +
@@ -173,11 +199,11 @@ export class BagWorkflow {
       '<button class="' + (sample.ok ? 'ok' : 'failed') + '" data-flow-sample="' + index +
       '" title="' + escape(sample.name) + ': ' + (sample.ok ? 'IK found' : 'No solution') + '" ' +
       (sample.ok ? '' : 'disabled') + '>' + (sample.ok ? '✓' : '×') + '</button>').join('');
-    const issues = [...(this.request?.errors || []), ...(this.request?.warnings || [])]
+    const issues = [...(this.request?.errors || []), ...(this.result?.bread?.errors || []), ...(this.request?.warnings || [])]
       .map(message => '<p class="flow-warning">' + escape(message) + '</p>').join('');
     this.panel.innerHTML = `
       <div class="flow-heading"><span class="live-dot"></span>BAG PACKING FLOW</div>
-      <h2>Pick. Open. Place.</h2>
+      <h2>Pick. Open. Load. Place.</h2>
       <p class="flow-intro">Two Nova-5s share one table. The suction arm opens the bag and carries it to the front counter.</p>
       <button class="flow-wide" data-flow-action="table">Select shared table</button>
       <p class="flow-meta">${table ? this.store.format(table.width) + ' × ' + this.store.format(table.depth) +
@@ -185,17 +211,23 @@ export class BagWorkflow {
       <div class="flow-actions"><button data-flow-action="zone">Select zone</button><button data-flow-action="draw">Draw new zone</button></div>
       <p class="flow-hint">Draw a rectangle on its intended table. Move, resize or rotate it in either view.</p>
       ${placementMarkup(this.store, placementZone)}
+      ${breadControls(this.store,settings,this.result,this.request,number)}
       <div class="flow-status ${this.result && (!this.result.pathOK || this.request?.errors.length) ? 'failed' : ''}" id="flow-status">${escape(this.message)}</div>
       <div class="flow-actions"><button class="primary" data-flow-action="check">Check IK</button><button data-flow-action="frame">View flow</button></div>
       <div class="flow-targets">${endpointRows}</div>
       ${samples.length ? '<div class="flow-sampling"><div class="flow-grid">' + sampleMarkup +
         '</div><p><b>' + samples.filter(sample => sample.ok).length + ' / 9</b> placement samples<br><small>Bag centres inset from the rectangle edges. Sampled points, not proof of the entire area.</small></p></div>' : ''}
+      ${pairCollisionMarkup(this.request,this.result)}
+      ${packingCollisionMarkup(this.request,this.result)}
       ${failureMarkup(this.result?.failure)}
+      ${failureMarkup(this.result?.bread?.failure, 'bread')}
       ${motionSummary(this.result)}
+      ${this.result?.searches?.some(s=>s.ok)?'<p class="flow-meta">Obstacle detour found; longer route timing is included.</p>':''}
+      ${diagnostic?'<p class="flow-hint">Diagnostic preview only · shows calculated motion up to the last accepted pose. Full order playback remains blocked.</p><button id="flow-partial-play" data-flow-action="partial">▶ Preview to failure</button>':''}
       <div class="flow-player">
         <p id="flow-preview-reason" class="flow-hint" ${canPlay ? 'hidden' : ''}>${escape(previewReason)}</p>
         <div class="flow-actions"><button id="flow-play" data-flow-action="play" aria-describedby="flow-preview-reason" ${canPlay ? '' : 'disabled'}>▶ Preview flow</button><button data-flow-action="stop">Reset</button></div>
-        <input id="flow-scrub" aria-label="Bag workflow timeline" type="range" min="0" max="${this.result?.route?.duration || this.request?.duration || 24}" step=".02" value="0" ${canPlay ? '' : 'disabled'}>
+        <input id="flow-scrub" aria-label="Bag workflow timeline" type="range" min="0" max="${diagnostic?.end || this.result?.route?.duration || this.request?.duration || 24}" step=".02" value="0" ${canPlay || diagnostic ? '' : 'disabled'}>
         <div class="flow-time"><span id="flow-phase">Sequence preview</span><span id="flow-time">0.0 s</span></div>
         <div class="flow-vacuum"><span id="flow-robot-vac">Robot vacuum</span><span id="flow-fixed-vac">Fixed vacuum</span></div>
       </div>
@@ -212,14 +244,15 @@ export class BagWorkflow {
         ${selector('magazine_id', 'Bag magazine', object => object.layout_component === 'magazine')}
         ${selector('fixture_id', 'Fixed suction', object => object.layout_component === 'fixed_suction')}
         ${selector('placement_zone_id', 'Placement rectangle', object => object.kind === 'placement_zone')}
-        ${selector('bread_shelf_id', 'Bread reference shelf', object => object.kind === 'shelf')}
       </details>
-      <p class="flow-hint">IK checks position, tool orientation and all six URDF joint limits. Preview paths are solved at 12 Hz, with additional checks on held-bag tilt between samples; collisions, vacuum strength and payload are not checked. Bun loading is an illustrative pause.</p>
+      <p class="flow-hint">IK checks position, tool orientation and all six URDF joint limits. Preview paths are solved at 12 Hz, with additional checks on held-bag tilt between samples; optional world collision checks cover arm and tool motion. Held bread and bags are included; vacuum strength is not checked. Nova bread pickup follows the tong URDF; geometric contact counts as a grasp. Cameras, grip forces, bag deformation, self collision and robot-to-robot contacts are not simulated.</p>
       <button class="flow-wide" data-flow-action="report" ${this.result ? '' : 'disabled'}>Export IK report</button>
     `;
   }
 
   click(event) {
+    if(event.target.closest('[data-bread-action]'))this.player.playing=false;
+    if(handleBreadPoseAction(event,this.store,this.view,this.settings(),this.toast,patch=>this.store.transact('Changed bread pre-pick pose',()=>{this.store.scene.bag_workflow={...this.settings(),...patch};})))return;
     const button = event.target.closest('button');
     if (!button) return;
     const action = button.dataset.flowAction;
@@ -244,6 +277,7 @@ export class BagWorkflow {
       this.plan.beginPlacementZone(rectangle => this.addZone(rectangle));
       this.toast('Drag a placement rectangle on the intended table');
     }
+    if (action === 'partial') {this.frame();this.player.playPartial();}
     if (action === 'play') {
       this.player.play();
       this.updatePlayback(this.player.time, null);
@@ -251,6 +285,7 @@ export class BagWorkflow {
     if (action === 'stop') this.player.stop();
     if (action === 'frame') this.frame();
     if (action === 'failure') this.locateFailure();
+    if (action === 'bread-failure') this.locateFailure('bread');
     if (action === 'report' && this.result) {
       const report = {layout: this.store.exportScene(), request: this.request, result: this.result};
       const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
@@ -283,10 +318,11 @@ export class BagWorkflow {
     let value = element.type === 'checkbox' ? element.checked :
       element.type === 'number' ? Number(element.value) / (element.dataset.flowUnit === '°' ? 1 : 100) : element.value;
     const allowZero = ['min_j1_share', 'extra_lift_search'].includes(key);
+    const signed=key.startsWith('bread_pre_pick_');
     const maximum = element.max === '' ? Infinity :
       Number(element.max) / (element.dataset.flowUnit === '°' ? 1 : 100);
     if (element.type === 'number' && (!Number.isFinite(value) ||
-        (allowZero ? value < 0 : value <= 0) || value > maximum)) {
+        (!signed && (allowZero ? value < 0 : value <= 0)) || value > maximum)) {
       this.render();
       return;
     }
@@ -337,7 +373,9 @@ export class BagWorkflow {
     set('flow-time', time.toFixed(1) + ' s');
     if (state) set('flow-phase', state.phase);
     else if (!time) set('flow-phase', 'Sequence preview');
-    set('flow-play', this.player?.playing ? 'Ⅱ Pause' : '▶ Preview flow');
+    set('flow-play', this.player?.playing&&!this.player.diagnostic ? 'Ⅱ Pause' : '▶ Preview flow');
+    set('flow-partial-play',this.player?.playing&&this.player.diagnostic&&time<this.player.playbackEnd?'Ⅱ Pause inspection':'▶ Preview to failure');
+    if(this.player.diagnostic&&time>=this.player.playbackEnd-1e-6)set('flow-phase','Stopped at last accepted pose · inspect rejected position');
     for (const [id, active] of [['flow-robot-vac', state?.robotVacuum], ['flow-fixed-vac', state?.fixedVacuum]]) {
       this.panel.querySelector('#' + id)?.classList.toggle('on', !!active);
     }
@@ -351,6 +389,7 @@ export class BagWorkflow {
     });
     this.guideGroup.clear();
     this.guideGroup.visible = this.active;
+    if (!this.active) return;
     this.store.workflowOverlay = null;
     this.store.placementOverlay = null;
     const zone = this.store.object(this.settings().placement_zone_id);
@@ -364,7 +403,9 @@ export class BagWorkflow {
         ...this.result.endpoints.map(target => ({...target, position: target.position})),
         ...this.result.zoneSamples.map(target => ({...target, position: target.center})),
       ];
-      const failure = this.result.failure;
+      const failure = (this.failureKind === 'bread' ? this.result.bread?.failure : this.result.failure) || this.result.bread?.failure || this.result.failure;
+      const breadResult = this.result.bread;
+      if (breadResult) samples.push(...breadResult.knots.map(k => ({...k,name:k.phase,ok:breadResult.pathOK,role:'bread-target'})));
       if (failure) {
         samples.push({
           name: 'Failed target · ' + failure.phase + ' · ' + failure.time.toFixed(2) + ' s',
@@ -391,6 +432,11 @@ export class BagWorkflow {
         const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),
           new THREE.LineBasicMaterial({color: 0x58b8b0, transparent: true, opacity: .45}));
         this.guideGroup.add(line);
+      }
+      if (breadResult?.frames.length > 1) {
+        const points = breadResult.frames.map(f => new THREE.Vector3(f.target.position[0],f.target.position[2],-f.target.position[1]));
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xe0a554,transparent:true,opacity:.6}));
+        line.name='Bread tong path'; this.guideGroup.add(line);
       }
       if (failure) this.drawFailureGuide(failure);
     }
@@ -485,10 +531,12 @@ export class BagWorkflow {
       gap.renderOrder = 100;
       this.guideGroup.add(gap);
     }
-    const direction = point(failure.toolDirection).normalize();
-    const arrow = new THREE.ArrowHelper(direction, target, .12, 0xd64942, .025, .014);
-    arrow.name = 'Requested tool-face normal';
-    this.guideGroup.add(arrow);
+    if(failure.reason!=='robot_collision') {
+      const direction = point(failure.toolDirection).normalize();
+      const arrow = new THREE.ArrowHelper(direction, target, .12, 0xd64942, .025, .014);
+      arrow.name = 'Requested tool-face normal';
+      this.guideGroup.add(arrow);
+    }
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 80;
@@ -498,7 +546,7 @@ export class BagWorkflow {
     context.fillStyle = '#a32f2a';
     context.font = 'bold 28px Segoe UI, sans-serif';
     context.textAlign = 'center';
-    context.fillText('Failed target · ' + failure.time.toFixed(2) + ' s', 256, 49);
+    context.fillText((failure.reason==='robot_collision'?'Collision point · ':'Failed target · ') + failure.time.toFixed(2) + ' s', 256, 49);
     const label = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(canvas), depthTest: false,
     }));
@@ -509,23 +557,26 @@ export class BagWorkflow {
     this.guideGroup.add(label);
   }
 
-  locateFailure() {
-    const failure = this.result?.failure;
+  locateFailure(kind = 'bag') {
+    const failure = kind === 'bread' ? this.result?.bread?.failure : this.result?.failure;
     if (!failure) return;
+    if (['world_collision','robot_collision'].includes(failure.reason)) { this.player.stop(); this.view.collisions.locate(failure); return; }
+    this.failureKind = kind;
+    this.drawGuides();
     this.store.select(null);
     this.store.setOption('view', 'split');
     this.player.stop();
     if (failure.previous) {
       this.player.showPose({
-        ...failure.previous,
+        ...failure.previous, robotId: failure.robotId,
         name: 'Last valid pose · ' + failure.previous.time.toFixed(2) + ' s',
       });
     }
-    const robot = this.request.robot;
+    const robot = kind === 'bread' ? this.request.breadTask.robot : this.request.robot;
     const position = failure.target.position;
     const centre = new THREE.Vector3(
       (robot.x + position[0]) / 2,
-      (this.request.mountingHeight + position[2]) / 2,
+      (this.store.z(robot) + position[2]) / 2,
       -(robot.y + position[1]) / 2,
     );
     const distance = Math.max(1.1, Math.hypot(position[0] - robot.x, position[1] - robot.y));

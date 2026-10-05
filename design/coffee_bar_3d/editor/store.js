@@ -1,3 +1,5 @@
+import {migrateCoffeeWorkflow} from './coffee-migration.js';
+import {migrateCustomerFrontage} from './customer-frontage.js';
 import {migrateCustomerBarrier,barrierSettings} from './barrier-parameters.js';
 import {migrateSuctionWorkflow} from './suction-migration.js';
 import {captureComponents, insertComponents} from './component-copy.js';
@@ -51,8 +53,8 @@ export function edgeGap(a,b){
 
 export class SceneStore {
   constructor(seed){
-    this.seed=clone(seed);this.scene=clone(seed);this.selected=['nova5'];this.undoStack=[];this.redoStack=[];this.listeners=new Set();this.gesture=null;
-    this.options={units:'cm',showAllDistances:false,showAllReach:false,distanceMode:'center',snap:true,view:'split',showLabels:true};
+    this.seed=clone(seed);migrateCoffeeWorkflow(this.seed);this.scene=clone(this.seed);this.selected=['nova5'];this.undoStack=[];this.redoStack=[];this.listeners=new Set();this.gesture=null;
+    this.options={units:'cm',showAllDistances:false,showAllReach:false,distanceMode:'center',snap:true,view:'split',showLabels:true,resizeMode:'opposite',resizeAnchorX:'left',resizeAnchorY:'top',resizeKeepChildren:true};
     this.lastAction='Ready';
   }
   on(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);}
@@ -129,7 +131,7 @@ export class SceneStore {
     this.transact('Added '+this.scene.robot_inventory[key].name,()=>{
       const inv=this.scene.robot_inventory[key];const id=this.unique(key);let support=this.supportAt(x,y);let parentId=support?.parentId;
       const source=this.seed.objects.find(o=>o.model_key===key||o.id===key);
-      const packages={nova2:['nova2','nova2_robot.urdf'],nova5:['nova5','nova5_lebai_tongs.urdf'],nova5_suction:['nova5','nova5_lebai_tongs.urdf'],atom_w:['atom_w','atom_w_p3.urdf'],me6:['magician_e6','me6_robot.urdf'],mg400:['mg400','mg400_description.urdf']};
+      const packages={nova2:['nova2','nova2_robot.urdf'],nova5:['nova5','nova5_lebai_tongs.urdf'],nova5_suction:['nova5','nova5_lebai_tongs.urdf'],nova5_coffee:['nova5','nova5_lebai_tongs.urdf'],atom_w:['atom_w','atom_w_p3.urdf'],me6:['magician_e6','me6_robot.urdf'],mg400:['mg400','mg400_description.urdf']};
       const o={...(source?clone(source):{}),id,label:inv.name,kind:'robot',model_key:key,asset_key:key,x,y,width:inv.base_width_cm/100,depth:inv.base_depth_cm/100,robot_scale:1,yaw_deg:key==='nova5'?180:0,package:packages[key][0],urdf:packages[key][1],support:key==='atom_w'?null:support?.id||null,z:0,visible:true,locked:false,parentId:parentId||'area_added',distanceTargets:[]};
       delete o.layout_component;
       delete o.station_offset;
@@ -180,7 +182,7 @@ export class SceneStore {
     for(const o of value.objects){if(!allowed.has(o.kind))throw new Error('Unsupported object kind: '+o.kind);for(const k of ['x','y','width','depth'])if(!Number.isFinite(o[k]))throw new Error('Invalid '+k+' for '+o.id);if(o.width<=0||o.depth<=0)throw new Error('Dimensions must be positive.');if(o.yaw_deg!==undefined&&!Number.isFinite(o.yaw_deg))throw new Error('Invalid rotation.');}
     const entries=new Map([...(value.groups||[]),...value.objects].map(o=>[o.id,o]));
     for(const o of entries.values())for(const field of ['parentId','support']){let p=o,visited=new Set();while(p){if(visited.has(p.id))throw new Error('Layer/support cycle detected.');visited.add(p.id);p=entries.get(p[field]);}}
-    this.transact('Imported scene',()=>{this.scene={...clone(this.seed),...clone(value),editor_revision:value.editor_revision||0,groups:clone(value.groups||this.seed.groups)};for(const o of this.scene.objects){delete o.enabled;}
+    this.transact('Imported scene',()=>{this.scene={...clone(this.seed),...clone(value),editor_revision:value.editor_revision||0,coffee_flow_revision:value.coffee_flow_revision||0,coffee_workflow:clone(value.coffee_workflow||{}),groups:clone(value.groups||this.seed.groups)};for(const o of this.scene.objects){delete o.enabled;}
       if((value.editor_revision||0)<3){
         const nova=this.object('nova2');
         if(nova)nova.distanceTargets=[...new Set([...(nova.distanceTargets||[]),...['lid_machine','lid_dispenser','cup_dispenser'].filter(id=>this.object(id))])];
@@ -195,7 +197,9 @@ export class SceneStore {
       if((value.editor_revision||0)<5)migrateBagStation(this.scene,this.seed);
       migrateSuctionWorkflow(this.scene,this.seed);
       migrateCustomerBarrier(this.scene);
-      this.scene.editor_revision=7;
+      migrateCustomerFrontage(this.scene);
+      migrateCoffeeWorkflow(this.scene);
+      this.scene.editor_revision=8;
       if(value.editor_options)this.options={...this.options,...value.editor_options};this.selected=[];});
   }
   reset(){this.transact('Reset to source layout',()=>{this.scene=clone(this.seed);this.selected=['nova5'];});}

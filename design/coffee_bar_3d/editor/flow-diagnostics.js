@@ -1,3 +1,4 @@
+import {collisionFailureMarkup} from './collision-ui.js';
 const escape = value => String(value ?? '').replace(/[&<>"']/g,
   character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
 const degrees = value => value * 180 / Math.PI;
@@ -5,8 +6,9 @@ const cm = values => values.map(value => (value * 100).toFixed(2)).join(', ');
 const errorText = result => (result.positionError * 1000).toFixed(2) + ' mm / ' +
   degrees(result.orientationError).toFixed(2) + '°';
 
-export function failureMarkup(failure) {
+export function failureMarkup(failure, kind = 'bag') {
   if (!failure) return '';
+  if (['world_collision','robot_collision'].includes(failure.reason)) return collisionFailureMarkup(failure, kind);
   const stepFailure = failure.reason === 'joint_step_exceeded';
   const tiltFailure = failure.reason === 'bag_tilt_exceeded';
   const shareFailure = failure.reason === 'j1_share_too_low';
@@ -54,9 +56,10 @@ export function failureMarkup(failure) {
     '°</td><td>' + degrees(joint.lower).toFixed(1) + ' … ' +
     degrees(joint.upper).toFixed(1) + '°</td></tr>').join('');
   return `
-    <section class="flow-failure" id="flow-failure" aria-label="Path failure details">
-      <h3>${title}</h3>
+    <section class="flow-failure" id="${kind === 'bread' ? 'bread-flow-failure' : 'flow-failure'}" aria-label="Path failure details">
+      <h3>${kind === 'bread' ? 'Bread Nova · ' : ''}${title}</h3>
       <p><b>${escape(failure.phase)} · ${failure.time.toFixed(2)} s</b></p>
+      ${kind === 'bread' ? '<p class="flow-hint">Time measured from the start of the bread-loading step.</p>' : ''}
       ${segment ? '<p>Sample ' + segment.sample + ' / ' + segment.samples +
         ' in the ' + segment.startTime.toFixed(2) + '–' + segment.endTime.toFixed(2) +
         ' s segment (' + (segment.fraction * 100).toFixed(1) + '% of segment time).</p>' : ''}
@@ -68,14 +71,14 @@ export function failureMarkup(failure) {
       <p>${independent}</p>
       <p><b>Joint-limit evidence:</b> ${nearbyLimits} Proximity alone does not establish the cause.</p>
       <div class="flow-failure-point">
-        <b>Requested suction contact point</b>
+        <b>Requested ${kind === 'bread' ? 'tong grasp' : kind === 'coffee'?'coffee tool':'suction contact'} point</b>
         <span>X, Y, Z = ${cm(failure.target.position)} cm</span>
         <small>X/Y use the layout coordinates; Z is height above the floor.</small>
       </div>
       <p>${previous ? 'Last valid sample: ' + previous.time.toFixed(2) +
         ' s. The teal path ends there; the red × marks the rejected target.'
         : 'The initial approach failed; there is no valid preceding path sample.'}</p>
-      <button class="flow-wide" data-flow-action="failure">Locate failure${previous ? ' · show last valid pose' : ''}</button>
+      <button class="flow-wide" ${kind === 'coffee'?'data-coffee-action="failure"':'data-flow-action="'+(kind === 'bread' ? 'bread-failure' : 'failure')+'"'}>Locate failure${previous ? ' · show last valid pose' : ''}</button>
       <details>
         <summary>Pose and joint details</summary>
         <p>Target relative to the robot base (local X, Y, Z): ${cm(failure.robotRelativePosition)} cm.</p>
@@ -83,7 +86,7 @@ export function failureMarkup(failure) {
         <p>Best attempted tool position: ${cm(failure.tcp)} cm. This failed attempt is not animated.</p>
         <table><caption>Best attempt angles and URDF limits</caption><thead><tr><th>Joint</th><th>Angle</th><th>Range</th></tr></thead><tbody>${rows}</tbody></table>
       </details>
-      <p class="flow-hint">Adjust the lift, arm/fixture positions or placement rotation and recheck. Collision testing is not implemented, so this stop is not a collision diagnosis.</p>
+      <p class="flow-hint">Adjust the lift, arm/fixture positions or placement rotation and recheck. This stop concerns IK or the motion policy; world collision checking is controlled separately in Collisions.</p>
     </section>
   `;
 }

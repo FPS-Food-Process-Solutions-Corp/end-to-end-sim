@@ -1,3 +1,8 @@
+import {FLOOR_TEA_KEY, floorTeaTemplate} from './floor-tea-machine.js';
+import {buildFloorZone} from './floor-zone.js';
+import {zoneSettings} from './zone-parameters.js';
+import {cupRestTemplate} from './coffee-player.js';
+import {poseTongGrip} from './bread-render.js';
 import {buildBarrier, disposeBarrier} from './barrier-model.js';
 import {barrierSettings} from './barrier-parameters.js';
 import {placementTemplate, poseSuctionRobot} from './suction-render.js';
@@ -26,7 +31,7 @@ export class Scene3D {
     this.ray=new THREE.Raycaster();this.mouse=new THREE.Vector2();this.loader=new GLTFLoader();
     this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas.parentElement);
     canvas.addEventListener('pointerdown',e=>this.down(e),true);window.addEventListener('pointermove',e=>this.move(e));window.addEventListener('pointerup',e=>this.up(e));
-    store.on(()=>{if(this.ready)this.sync();});this.overview();this.animate();
+    store.on(type=>{if(this.ready && !['camera','workflow'].includes(type))this.sync();});this.overview();this.animate();
   }
   async load(){
     const [gltf,snapshot]=await Promise.all([this.loader.loadAsync('./output/coffee_bar.glb'),fetch('./output/built_config.json').then(r=>r.json())]);
@@ -39,7 +44,7 @@ export class Scene3D {
       this.templates.set(id,{model,spec});
     });
     await Promise.all(Object.keys(this.store.scene.robot_inventory).map(async key=>{
-      const file=await this.loader.loadAsync('./robot-library/'+key+'.glb');const model=file.scene;
+      const file=await this.loader.loadAsync('./robot-library/'+(key==='nova5'?'nova5_bread':key==='nova2'?'nova2_coffee':key)+'.glb');const model=file.scene;
       const inv=this.store.scene.robot_inventory[key];this.templates.set('robot:'+key,{model,spec:{width:inv.base_width_cm/100,depth:inv.base_depth_cm/100,height:1,kind:'robot'}});
     }));
     const [cartAsset, cartSpec] = await Promise.all([
@@ -48,6 +53,7 @@ export class Scene3D {
     ]);
     this.templates.set('nova5_cart', {model: cartAsset.scene, spec: cartSpec});
     this.templates.set('placement_zone', placementTemplate());
+    this.templates.set(FLOOR_TEA_KEY, floorTeaTemplate());
     // Keep previously copied ME6 stations usable when reopening older layouts.
     const legacyME6 = await this.loader.loadAsync('./me6-bag-station/layout-assets/me6_robot.glb');
     this.templates.set('me6_bag_robot', {
@@ -57,8 +63,9 @@ export class Scene3D {
     this.ready=true;this.sync();this.overview();this.status('Models ready');
   }
   template(object) {
+    if (object.kind === 'zone') return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
     if (object.kind === 'customer_barrier') return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
-    if (object.kind === 'placement_zone') return this.templates.get('placement_zone');
+    if (object.kind === 'placement_zone') return object.role === 'cup_rest' ? (this.restTemplate ||= cupRestTemplate()) : this.templates.get('placement_zone');
     const key = object.layout_component
       ? object.asset_key || object.id
       : object.kind === 'robot'
@@ -73,7 +80,8 @@ export class Scene3D {
     container.add(mesh);this.physical.add(container);const topImprints=[];mesh.traverse(n=>{if(n.userData.equipment_top_label&&n.geometry){n.geometry.computeBoundingBox();topImprints.push(n);}});const record={node:container,template,mesh,topImprints};this.instances.set(o.id,record);return record;
   }
   sync(){
-    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);if(r.isProceduralShelf)disposeShelf(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);this.instances.delete(id);}
+    if(this.breadPrePickGuide){this.clear(this.breadPrePickGuide);this.breadPrePickGuide.removeFromParent();this.breadPrePickGuide=null;}
+    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);if(r.isProceduralShelf)disposeShelf(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);if(r.isProceduralZone)this.clear(r.mesh);this.instances.delete(id);}
     for(const o of this.store.scene.objects){
       const r=this.instances.get(o.id)||this.makeInstance(o),node=r.node,base=r.template.spec;
       node.name=o.label;node.userData.editorId=o.id;node.userData.layout_id=o.id;node.userData.scene_parameters=JSON.stringify(o);
@@ -83,6 +91,14 @@ export class Scene3D {
         if(r.barrierSignature!==signature) {
           node.remove(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);
           r.mesh=buildBarrier(o);node.add(r.mesh);r.barrierSignature=signature;r.isProceduralBarrier=true;
+        }
+        node.scale.set(1,1,1);
+      }
+      else if(o.kind==='zone') {
+        const signature=JSON.stringify([o.width,o.depth,zoneSettings(o)]);
+        if(r.zoneSignature!==signature) {
+          node.remove(r.mesh);if(r.isProceduralZone)this.clear(r.mesh);
+          r.mesh=buildFloorZone(o);node.add(r.mesh);r.zoneSignature=signature;r.isProceduralZone=true;
         }
         node.scale.set(1,1,1);
       }
@@ -107,11 +123,17 @@ export class Scene3D {
         imprint.position.y=((o.height||base.height)+.0006)/node.scale.y;
         imprint.userData.long_axis=alongDepth?'depth':'width';
       }
-      if (this.store.key(o) === 'nova5_suction') {
+      if (['nova5_suction','nova5','nova2','nova5_coffee'].includes(this.store.key(o))) {
         const angles = Array.from({length: 6}, (_, index) =>
           (o.joints_deg?.['joint' + (index + 1)] || 0) * Math.PI / 180);
         poseSuctionRobot(r, angles);
+        if (this.store.key(o) === 'nova5') poseTongGrip(r,(o.joints_deg?.gripper_r_joint1||0)*Math.PI/180);
       }
+      if (o.kind === 'counter') r.mesh.traverse(part => {
+        if (/^(Ordering terminal|Order terminal screen|Terminal stand)/.test(part.name)) {
+          part.visible = o.ordering_terminal !== false;
+        }
+      });
       node.visible=this.store.visible(o.id);
     }
     this.physical.updateMatrixWorld(true);this.updateRoom();this.updateGuides();this.updateOutline();this.resize();

@@ -1,3 +1,4 @@
+import {BREAD_DEFAULTS, resolveBreadShelf, makeBreadRequest} from './bread-geometry.js';
 import {Quaternion, Euler, Vector3} from '../vendor/three.module.js';
 import {rotate, corners} from './store.js';
 import {MOTION_DEFAULTS} from './bag-motion.js';
@@ -6,7 +7,7 @@ import {placementAssessment, placementError} from './placement-validation.js';
 export const FLOW_DEFAULTS = {
   ...MOTION_DEFAULTS,
   robot_id: 'nova5_suction',
-  bread_shelf_id: 'shelf_2',
+  ...BREAD_DEFAULTS,
   magazine_id: 'bag_magazine',
   fixture_id: 'bag_opener',
   placement_zone_id: 'placement_zone',
@@ -53,8 +54,8 @@ function overlaps(a, b) {
   });
 }
 
-export function makeWorkflowRequest(store) {
-  const settings = {...FLOW_DEFAULTS, ...store.scene.bag_workflow};
+export function makeWorkflowRequest(store, overrides = {}) {
+  const settings = {...FLOW_DEFAULTS, ...store.scene.bag_workflow, ...overrides};
   if (!Number.isFinite(settings.max_bag_tilt_deg) || settings.max_bag_tilt_deg <= 0 ||
       settings.max_bag_tilt_deg > 45) throw new Error('Bag tilt limit must be above 0° and no more than 45°.');
   if (!Number.isFinite(settings.min_j1_share) || settings.min_j1_share < 0 || settings.min_j1_share > 1)
@@ -130,10 +131,14 @@ export function makeWorkflowRequest(store) {
     }
   }
 
-  const breadShelf = store.object(settings.bread_shelf_id);
+  if (!['magic','nova'].includes(settings.bread_mode)) throw new Error('Atom-W bread pickup is not implemented yet. Choose magic or Nova-5.');
+  const breadShelf = resolveBreadShelf(store, settings);
   const bread = breadShelf ? store.shelfSettings(breadShelf) : store.scene.shelves;
   const breadSize = [bread.bread_length_1, bread.bread_length_2, bread.bread_height];
-  if (breadSize[0] > bag.width || breadSize[1] > openDepth) {
+  const breadTask = makeBreadRequest(store, settings, opened, bag, openDepth);
+  const breadFits = breadTask ? breadTask.fits : breadSize[0] <= bag.width && breadSize[1] <= openDepth;
+  if (breadTask && !breadFits) errors.push('The vertically held bun does not fit the bag: allow 4 mm total clearance for bun width and thickness, and sufficient bag height. Adjust the rack bread size or bag dimensions.');
+  if (!breadTask && !breadFits) {
     warnings.push('Bread placeholder is ' + (breadSize[0] * 100).toFixed(1) + ' × ' +
       (breadSize[1] * 100).toFixed(1) + ' cm; the opening is ' +
       (bag.width * 100).toFixed(1) + ' × ' + (openDepth * 100).toFixed(1) +
@@ -172,8 +177,8 @@ export function makeWorkflowRequest(store) {
   return {
     settings, robot, mountingHeight: store.z(robot),
     targets: [pickup, fixed, opened, placement], zoneSamples, knots,
-    bag, breadSize, errors, warnings, zone, fixture, placementBounds,
+    bag, breadSize, breadTask, errors, warnings, zone, fixture, placementBounds,
     duration: 24,
-    breadFits: breadSize[0] <= bag.width && breadSize[1] <= openDepth,
+    breadFits,
   };
 }
