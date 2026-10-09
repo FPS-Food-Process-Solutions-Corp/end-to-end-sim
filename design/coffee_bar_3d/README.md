@@ -12,6 +12,30 @@ If the local server is stopped, run this from the repository root:
 & .\design\coffee_bar_3d\open_viewer.ps1
 ```
 
+## Linux and configurable host / port
+
+From the repository root, Python 3 can serve the viewer directly; no Python packages, ROS or Blender are needed to run the editor. Its models and browser libraries are bundled in the repository.
+
+```sh
+python3 design/coffee_bar_3d/serve_viewer.py
+```
+
+The default is `127.0.0.1:8766`. To use another port locally:
+
+```sh
+python3 design/coffee_bar_3d/serve_viewer.py --host 127.0.0.1 --port 8080
+```
+
+To accept connections from other computers on your network:
+
+```sh
+python3 design/coffee_bar_3d/serve_viewer.py --host 0.0.0.0 --port 8080
+```
+
+Open `http://<server-ip>:8080/viewer.html` on the other computer. The terminal stays running until Ctrl+C. `--port 0` chooses an available port and prints its URL. IPv6 addresses such as `--host ::1` are also supported. The Windows convenience launcher continues to use the default host and port. Electron serves its bundled files internally and does not use this HTTP port.
+
+Browser saves belong to the exact origin (host and port). Use **Save project** and **Open project** to transfer a layout when changing the URL or computer.
+
 ## Editing
 
 - **Layers** are grouped by area, with coffee equipment in a nested group. Select a group to move, resize or rotate its contents. Shift-click selects multiple items. The eye and lock controls affect both views.
