@@ -198,6 +198,14 @@ def root(o, col):
     return r
 
 
+def make_ventilation_shaft(o):
+    r = root(o, COL['Furniture'])
+    w, d, h = o['width'], o['depth'], o['height']
+    box('Ventilation shaft enclosure / reserved volume', (0, 0, h/2), (w, d, h), WALL, r)
+    r['height_status'] = o.get('height_status', 'provisional')
+    r['geometry_note'] = o.get('geometry_note', 'Building shaft envelope; internal construction unknown')
+
+
 def make_table(o):
     r = root(o, COL['Furniture'])
     w, d, h, t = o['width'], o['depth'], o['height'], o.get('top_thickness', .035)
@@ -276,8 +284,8 @@ def make_machine(o):
         if style == 'tea':
             for x in [-w*.32, w*.32]:
                 cyl('Tea selector', (x, -d/2-.018, h*.62), .018, .012, WHITE, r)
-    text_obj('Equipment label', o['label'].upper(), (0, -d/2-.016, h*.95), min(.023, w/14), DARK, r, (math.pi/2, 0, 0))
-    title = o.get('top_label') or {'ice':'ICE', 'tea':'TEA', 'coffee':'COFFEE', 'fridge':'MILK', 'lid_press':'LID PRESS'}.get(style, o['label'].upper())
+    text_obj('Equipment label', o.get('display_label', o['label'].upper()), (0, -d/2-.016, h*.95), min(.023, w/14), DARK, r, (math.pi/2, 0, 0))
+    title = o.get('display_label') or o.get('top_label') or {'ice':'ICE', 'tea':'TEA', 'coffee':'COFFEE', 'fridge':'MILK', 'lid_press':'LID PRESS'}.get(style, o['label'].upper())
     make_top_label(o, r, title)
 
 
@@ -312,7 +320,7 @@ def make_dispenser(o):
         r['bottom_clearance_m'] = gap
         r['dispenser_body_height_m'] = h-gap
         r['support_side_local'] = '+Y / rear; front remains open'
-    make_top_label(o, r, o.get('top_label') or ('LIDS' if is_lid else 'CUPS'), PAPER, round_cap=True)
+    make_top_label(o, r, o.get('display_label') or o.get('top_label') or ('LIDS' if is_lid else 'CUPS'), PAPER, round_cap=True)
 
 
 
@@ -364,7 +372,7 @@ def make_shelf(o):
                     bun['length_1_m']=length_1
                     bun['length_2_m']=length_2
                     bun['height_m']=bread_h
-    text_obj('Shelf label', o['label'].upper(), (0, -d/2-.007, h-.07), .05, TEAL, r, (math.pi/2, 0, 0))
+    text_obj('Shelf label', o.get('display_label', o['label'].upper()), (0, -d/2-.007, h-.07), .05, TEAL, r, (math.pi/2, 0, 0))
 
 
 def make_box_station(o):
@@ -774,7 +782,7 @@ RANGE_ORANGE=material('Nova-5 range guide',(.58,.20,.045,1),0,.7)
 
 make_architecture()
 make_source_annotations()
-makers={'table':make_table,'counter':make_table,'cart':make_table,'machine':make_machine,'dispenser':make_dispenser,'shelf':make_shelf,'box_station':make_box_station,'support':make_support,'robot':make_robot,'window':make_window,'customer_barrier':lambda o: make_customer_barrier(o,globals()),'human':make_human,'range':make_range,'zone':make_zone,'placement_zone':make_zone,'charger':make_charger}
+makers={'vent':make_ventilation_shaft,'table':make_table,'counter':make_table,'cart':make_table,'machine':make_machine,'dispenser':make_dispenser,'shelf':make_shelf,'box_station':make_box_station,'support':make_support,'robot':make_robot,'window':make_window,'customer_barrier':lambda o: make_customer_barrier(o,globals()),'human':make_human,'range':make_range,'zone':make_zone,'placement_zone':make_zone,'charger':make_charger}
 for o in C['objects']:
     if o.get('enabled',True) and o.get('visible',True):
         if o.get('layout_component'):

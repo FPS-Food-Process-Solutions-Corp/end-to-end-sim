@@ -11,7 +11,7 @@ export function zoneProperties(object, store, field, locked) {
       store.options.units, locked, 'min="' + .005 * factor + '" max="' + factor + '"') + '</div>' +
     '<label class="checkline"><input id="zone-show-text" type="checkbox" ' + (settings.show_text ? 'checked ' : '') + (locked ? 'disabled' : '') + '> Show floor text</label>' +
     '<label class="checkline"><input id="zone-show-outline" type="checkbox" ' + (settings.show_outline ? 'checked ' : '') + (locked ? 'disabled' : '') + '> Show zone outline</label>' +
-    '<p class="hint">Width and depth above resize the zone; Text size controls the lettering. Long text shrinks to fit. Hide the whole zone with Visible in both views or the layer eye.</p></section>';
+    '<p class="hint">Width and depth above resize the zone; Text size controls the lettering. Long text wraps at the chosen size; narrow strips use their long direction. Hide the whole zone with Visible in both views or the layer eye.</p></section>';
 }
 
 export function changeZone(event, object, store) {

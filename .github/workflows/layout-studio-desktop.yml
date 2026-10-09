@@ -1,0 +1,89 @@
+name: Layout Studio desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['layout-studio-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: layout-studio-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-latest
+            platform: win
+            arch: x64
+          - name: macOS Apple Silicon
+            runner: macos-15
+            platform: mac
+            arch: arm64
+          - name: macOS Intel
+            runner: macos-15-intel
+            platform: mac
+            arch: x64
+    defaults:
+      run:
+        working-directory: design/coffee_bar_3d/desktop
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: design/coffee_bar_3d/desktop/package-lock.json
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Test asset boundary and build configuration
+        run: npm test
+      - name: Smoke-test studio, workers, exports and saved state
+        run: npm run test:desktop
+      - name: Package application
+        run: npx electron-builder --config electron-builder.cjs --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          WIN_CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+      - name: Smoke-test packaged executable
+        run: npm run test:packaged
+      - name: Hash build artifacts
+        run: node scripts/checksums.cjs
+      - name: Upload installers and archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: layout-studio-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            design/coffee_bar_3d/desktop/dist/*.exe
+            design/coffee_bar_3d/desktop/dist/*.dmg
+            design/coffee_bar_3d/desktop/dist/*.zip
+            design/coffee_bar_3d/desktop/dist/SHA256SUMS.txt
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-tests-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: ignore
+          path: design/coffee_bar_3d/desktop/test-results/

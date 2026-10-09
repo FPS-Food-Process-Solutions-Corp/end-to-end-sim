@@ -1,3 +1,5 @@
+import {FlowVideo} from './flow-video.js';
+import {beginValidation, recordValidation} from './handoff-validation.js';
 import {attachCollisions} from './collision-scene.js';
 import {packingCollisionMarkup,pairCollisionMarkup} from './collision-ui.js';
 import {collisionText} from './collision-core.js';
@@ -30,6 +32,7 @@ export class BagWorkflow {
     this.guideGroup.name = 'Bag workflow IK targets';
     view.scene.add(this.guideGroup);
     this.player = new FlowPlayer(store, view, (time, state) => this.updatePlayback(time, state));
+    this.video = new FlowVideo(this,'bag');
     panel.addEventListener('click', event => this.click(event));
     panel.addEventListener('change', event => this.change(event));
     panel.addEventListener('input', event => {
@@ -49,6 +52,7 @@ export class BagWorkflow {
   setActive(active) {
     this.active = active;
     if (!active) {
+      this.video.stop('Workflow changed');
       this.guideGroup.visible = false;
       this.store.workflowOverlay = null;
       this.store.placementOverlay = null;
@@ -56,6 +60,7 @@ export class BagWorkflow {
       return;
     }
     this.drawGuides();
+    this.video.mount();
   }
 
   settings() {
@@ -89,12 +94,14 @@ export class BagWorkflow {
   }
 
   check() {
+    this.video.stop('Route rechecked');
     clearTimeout(this.timer);
     if (!this.view.ready || this.suspended) return;
     this.worker?.terminate();
     this.player.stop();
     this.result = null;
     const id = ++this.runId;
+    const validationContext = beginValidation(this.store);
     try {
       this.request = makeWorkflowRequest(this.store);
     } catch (error) {
@@ -129,6 +136,7 @@ export class BagWorkflow {
         this.message = event.data.error;
       } else {
         this.result = event.data.result;
+        recordValidation(this.store, validationContext, 'bag', this.request, this.result);
         this.player.configure(this.request, this.result);
         const endpointsOK = this.result.endpoints.every(target => target.ok);
         this.message = this.request.errors.length ? 'Adjust the highlighted layout issues'
@@ -241,13 +249,14 @@ export class BagWorkflow {
       </details>
       <details class="flow-settings"><summary>Choose components</summary>
         ${selector('robot_id', 'Suction robot', object => this.store.key(object) === 'nova5_suction')}
-        ${selector('magazine_id', 'Bag magazine', object => object.layout_component === 'magazine')}
+        ${selector('magazine_id', 'Bag stack holder', object => object.layout_component === 'magazine')}
         ${selector('fixture_id', 'Fixed suction', object => object.layout_component === 'fixed_suction')}
         ${selector('placement_zone_id', 'Placement rectangle', object => object.kind === 'placement_zone')}
       </details>
       <p class="flow-hint">IK checks position, tool orientation and all six URDF joint limits. Preview paths are solved at 12 Hz, with additional checks on held-bag tilt between samples; optional world collision checks cover arm and tool motion. Held bread and bags are included; vacuum strength is not checked. Nova bread pickup follows the tong URDF; geometric contact counts as a grasp. Cameras, grip forces, bag deformation, self collision and robot-to-robot contacts are not simulated.</p>
       <button class="flow-wide" data-flow-action="report" ${this.result ? '' : 'disabled'}>Export IK report</button>
     `;
+    this.video.mount();
   }
 
   click(event) {

@@ -1,8 +1,9 @@
+import {translateText} from './i18n.js';
 import {sceneAssetCatalog, addSceneAsset} from './asset-library.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g,
   c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-const icons = {table: '▱', counter: '▱', cart: '▱', shelf: '▤', machine: '▣',
+const icons = {vent:'▧', table: '▱', counter: '▱', cart: '▱', shelf: '▤', machine: '▣',
   dispenser: '○', placement_zone: '▧', customer_barrier: '▯', human: '♙', charger: '▥', zone: '▧'};
 const groups = ['Furniture', 'Robots', 'Coffee equipment', 'Bag fixtures', 'Customer area', 'Other'];
 
@@ -15,6 +16,7 @@ export class ComponentLibrary {
     this.category.innerHTML = '<option value="">All categories</option>' +
       groups.map(group => '<option>' + group + '</option>').join('');
     this.search.addEventListener('input', () => this.render());
+    window.addEventListener('layout-language-change', () => this.render());
     this.category.addEventListener('change', () => this.render());
     this.host.addEventListener('dragstart', event => {
       const card = event.target.closest('[data-robot],[data-asset]');
@@ -63,7 +65,7 @@ export class ComponentLibrary {
     const query = this.search.value.trim().toLowerCase();
     const matches = assets.filter(asset =>
       (!this.category.value || asset.category === this.category.value) &&
-      (asset.name + ' ' + asset.category + ' ' + asset.key).toLowerCase().includes(query));
+      (asset.name + ' ' + asset.category + ' ' + asset.key + ' ' + translateText(asset.name) + ' ' + translateText(asset.category)).toLowerCase().includes(query));
     document.getElementById('library-count').textContent = assets.length;
     document.getElementById('library-results').textContent = matches.length + ' assets';
     this.host.innerHTML = groups.map(group => {

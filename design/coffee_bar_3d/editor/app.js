@@ -1,3 +1,10 @@
+import {studioMode, installStudioMode} from './studio-mode.js';
+import {StandardPreview} from './standard-preview.js';
+import {installLanguageSelector} from './i18n.js';
+import {ventProperties} from './vent-layout.js';
+import {fixtureBag, stackSettings} from './bag-fixture-parameters.js';
+import {labelProperties, changeLabelAppearance} from './label-ui.js';
+import {HandoffExport} from './handoff-ui.js';
 import {installResizeSettings} from './resize-settings.js';
 import {resizeDimension} from './resize-geometry.js';
 import {resizeControls, changeResizeControl} from './resize-ui.js';
@@ -21,13 +28,15 @@ const STORAGE='coffee-layout-studio-v2';let toastTimer,saveTimer;
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4200);}
 function download(value,name,type){const blob=value instanceof Blob?value:new Blob([value],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 const seed=await fetch('./scene_config.json').then(r=>{if(!r.ok)throw new Error('Cannot load scene configuration');return r.json();});
-const store=new SceneStore(seed);let restored=false;
+const store=new SceneStore(seed);let restored=false,standard,modeUI;
+store.presentationMode=studioMode()==='standard';
+const languageUI=installLanguageSelector({projectObject:id=>store.item(id)});
 try{const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');if(saved){store.importScene(saved);store.undoStack=[];store.selected=saved.editor_selection?.filter(id=>store.item(id))||['nova5'];restored=true;}}catch(e){console.warn('Saved layout could not be restored',e);}
 const plan=new PlanView($('plan'),store),three=new Scene3D($('scene'),store,message=>{$('model-status').textContent=message;});
 installResizeSettings(store);
 installFullscreenView($('studio-view'), $('fullscreen-view'));
 const collapsed=new Set(['area_left','area_right','area_upper','area_people']);
-const icons={customer_barrier:'▯',robot:'◇',shelf:'▤',table:'▱',counter:'▱',cart:'▱',machine:'▣',dispenser:'○',human:'♙',charger:'▥',window:'▯'};
+const icons={vent:'▧',customer_barrier:'▯',robot:'◇',shelf:'▤',table:'▱',counter:'▱',cart:'▱',machine:'▣',dispenser:'○',human:'♙',charger:'▥',window:'▯'};
 function renderLayers(){
   const render=(parent,level)=>store.children(parent).map(item=>{
     const group=store.isGroup(item.id),selected=store.selected.includes(item.id),hidden=!store.visible(item.id),locked=store.locked(item.id),closed=collapsed.has(item.id);
@@ -37,15 +46,24 @@ function renderLayers(){
 }
 $('layers').addEventListener('click',e=>{const row=e.target.closest('[data-layer]');if(!row)return;const id=row.dataset.layer,action=e.target.closest('[data-action]')?.dataset.action;if(action==='visibility')store.toggleVisibility(id);else if(action==='lock')store.toggleLock(id);else if(action==='collapse'){collapsed.has(id)?collapsed.delete(id):collapsed.add(id);renderLayers();}else store.select(id,e.shiftKey);});
 $('collapse-all').onclick=()=>{if(collapsed.size)collapsed.clear();else store.scene.groups.forEach(g=>collapsed.add(g.id));renderLayers();};
-function field(key,label,value,suffix=store.options.units,disabled=false,limits=''){return `<label class="field">${label}<span class="input-wrap"><input data-field="${key}" aria-label="${label}" type="number" step="${suffix==='°'||['shelf_columns','shelf_tiers'].includes(key)?1:.1}" ${limits||(key==='shelf_columns'?'min="1" max="24"':'')} value="${Number(value.toFixed(3))}" ${disabled?'disabled':''}><span class="suffix">${suffix}</span></span></label>`;}
+function field(key,label,value,suffix=store.options.units,disabled=false,limits=''){return `<label class="field">${label}<span class="input-wrap"><input data-field="${key}" aria-label="${label}" type="number" step="${suffix==='°'||['shelf_columns','shelf_tiers','stack_bag_count'].includes(key)?1:key==='stack_bag_thickness'?.01:.1}" ${limits||(key==='shelf_columns'?'min="1" max="24"':'')} value="${Number(value.toFixed(3))}" ${disabled?'disabled':''}><span class="suffix">${suffix}</span></span></label>`;}
 function properties(){
   const ids=store.selected,items=store.resolve(),one=ids.length===1?store.item(ids[0]):null,o=one&&store.object(one.id),bb=o||bounds(items),f=store.options.units==='px'?200:100,locked=ids.some(id=>store.locked(id));
   $('selection-count').textContent=ids.length?ids.length+' selected':'';
-  if(!items.length){$('properties').innerHTML=`<div class="empty-selection">Select an item in the plan, 3D scene, or layer list.<br><br>The selected robot's reach appears as circles in 2D and translucent sphere surfaces in 3D, alongside distances.</div><div class="property-section"><h3>Room size</h3><div class="field-grid">${field('room_width','Width',store.scene.room.width*f)}${field('room_depth','Depth',store.scene.room.depth*f)}</div><p class="hint">Changing the room boundary keeps equipment positions fixed.</p></div>`;return;}
-  let html=`<section class="property-section"><input id="item-name" class="selection-name" aria-label="Layer name" value="${esc(one?.label||items.length+' selected items')}" ${one?'':'disabled'}><div class="type-label">${o?esc(o.kind):'Area / group'}${o?.kind==='robot'?' · actual URDF model':''}</div></section><section class="property-section"><h3>Resize settings</h3>${resizeControls(store)}</section><section class="property-section"><h3>Transform <span style="float:right;color:#a1b2b8;font-weight:400">${store.options.units}</span></h3><div class="field-grid">${field('x','Centre X',bb.x*f,store.options.units,locked)}${field('y','Centre Y',(store.scene.room.depth-bb.y)*f,store.options.units,locked)}${field('width','Width',bb.width*f,store.options.units,locked)}${field('depth','Depth',bb.depth*f,store.options.units,locked||o?.kind==='robot')}${field('rotation',o?'Rotation':'Rotate by',o?cleanAngle(-(o.yaw_deg||0)):0,'°',locked)}${o&&o.height?field('height','Height',o.height*f,store.options.units,locked):''}</div><p class="hint">Centre measured from the top-left of the plan.${o?.kind==='robot'?' Resizing a robot scales its complete model and reach uniformly.':''}</p>${one?`<label class="checkline"><input id="item-visible" type="checkbox" ${one.visible!==false?'checked':''}> Visible in both views</label><label class="checkline"><input id="item-locked" type="checkbox" ${one.locked?'checked':''}> Lock transforms</label>`:''}</section>`;
+  if(!items.length){$('properties').innerHTML=`<div class="empty-selection">Select an item in the plan, 3D scene, or layer list.<span class="advanced-only"><br><br>The selected robot's reach appears as circles in 2D and translucent sphere surfaces in 3D, alongside distances.</span></div><div class="property-section" data-standard-property><h3>Room size</h3><div class="field-grid">${field('room_width','Width',store.scene.room.width*f)}${field('room_depth','Depth',store.scene.room.depth*f)}</div><p class="hint">Changing the room boundary keeps equipment positions fixed.</p></div>`;return;}
+  let html=`<section class="property-section" data-standard-property><label class="field object-name-field">Label<input id="item-name" class="selection-name" aria-label="Label" type="text" maxlength="240" value="${esc(one?.label||items.length+' selected items')}" ${one?'':'disabled'}></label><div class="type-label">${o?esc(o.kind):'Area / group'}${o?.kind==='robot'?' · actual URDF model':''}</div></section>`;
+  if(o&&['robot','machine','dispenser','charger','human','placement_zone','customer_barrier','vent'].includes(o.kind)){
+    html+=`<section class="property-section" data-standard-property><h3>Support</h3><select id="support" aria-label="Support" ${locked?'disabled':''}><option value="">Floor</option>${store.scene.objects.filter(t=>['table','counter','cart','support'].includes(t.kind)&&t.id!==o.id).map(t=>`<option value="${esc(t.id)}" ${o.support===t.id?'selected':''}>${esc(t.label)}</option>`).join('')}</select><div class="field-grid room-field">${field('z','Offset above support',(o.z||0)*f,store.options.units,locked)}<div class="field">Mount elevation<div style="padding-top:12px;color:#557b82">${store.format(store.z(o))}</div></div></div><p class="hint">Moving or rotating a support carries its equipment with it. Hiding it hides its equipment.</p></section>`;
+  }
+  if (o?.support && store.object(o.support)) {
+    const support = store.object(o.support);
+    const local = rotate(o.x - support.x, o.y - support.y, -(support.yaw_deg || 0));
+    html += `<section class="property-section"><h3>Position on support</h3><div class="field-grid">${field('support_x','Local X',local[0]*f,store.options.units,locked)}${field('support_y','Local Y',local[1]*f,store.options.units,locked)}</div><p class="hint">Offsets from the table centre. Local +Y points toward the back of the table.</p></section>`;
+  }
+  html+=`${labelProperties(o,field)}<section class="property-section"><h3>Resize settings</h3>${resizeControls(store)}</section><section class="property-section" data-standard-property><h3>Transform <span style="float:right;color:#a1b2b8;font-weight:400">${store.options.units}</span></h3><div class="field-grid">${field('x','Centre X',bb.x*f,store.options.units,locked)}${field('y','Centre Y',(store.scene.room.depth-bb.y)*f,store.options.units,locked)}${field('width','Width',bb.width*f,store.options.units,locked)}${field('depth','Depth',bb.depth*f,store.options.units,locked||o?.kind==='robot')}${field('rotation',o?'Rotation':'Rotate by',o?cleanAngle(-(o.yaw_deg||0)):0,'°',locked)}${o&&o.height?field('height','Height',o.height*f,store.options.units,locked):''}</div><p class="hint">Centre measured from the top-left of the plan.${o?.kind==='robot'?' Resizing a robot scales its complete model and reach uniformly.':''}</p>${one?`<label class="checkline"><input id="item-visible" type="checkbox" ${one.visible!==false?'checked':''}> Visible in both views</label><label class="checkline"><input id="item-locked" type="checkbox" ${one.locked?'checked':''}> Lock transforms</label>`:''}</section>`;
   if(o?.kind==='customer_barrier') html+=barrierProperties(o,store,field,locked);
   if(o?.kind==='zone') html+=zoneProperties(o,store,field,locked);
-  if(o) html+=floorTeaProperties(o,store);
+  if(o) html+=floorTeaProperties(o,store)+ventProperties(o);
   if(o?.kind==='shelf'){
     const l=store.shelfLayout(o),s=l.settings;
     html+=`<section class="property-section"><h3>Shelf &amp; bread</h3>
@@ -72,16 +90,17 @@ function properties(){
       <button id="apply-shelf-settings" style="width:100%;margin-top:13px;font-size:10px" ${locked?'disabled':''}>Apply to all shelves</button></section>`;
   }
   if(['bag_opener','me6_bag_opener'].includes(o?.machine_type)){
-    const p=o.bag_parameters,base=store.seed.objects.find(v=>v.id==='bag_opener'),scaleX=o.width/base.width,scaleY=o.depth/base.depth,scaleZ=o.height/base.height;
-    html+=`<section class="property-section"><h3>Bag-opening concept</h3><div class="distance-row"><span>Bag width × depth</span><b>${store.format(p.bag_width*scaleX)} × ${store.format(p.bag_depth*scaleY)}</b></div><div class="distance-row"><span>Bag height</span><b>${store.format(p.bag_height*scaleZ)}</b></div><div class="distance-row"><span>Mouth above floor</span><b>${store.format(store.z(o)+(p.bag_floor+p.bag_height)*scaleZ)}</b></div><p class="hint">The suction Nova-5 holds the front face while four fixed rear cups hold the opposing face. The tray supports the open bag. Select either Nova-5 or the magazine separately, or move the counter to move the whole station. Width/depth/height scale this fixture and bag.</p><a href="./me6-bag-station/output/overview.png" target="_blank">Close-up render ↗</a><br><a href="./me6-bag-station/" target="_blank">ME6 pickup &amp; opening animation ↗</a></section>`;
+    const bag=fixtureBag(o);
+    html+=`<section class="property-section"><h3>Bag-opening fixture</h3><div class="distance-row"><span>Bag width × depth</span><b>${store.format(bag.width)} × ${store.format(bag.depth)}</b></div><div class="distance-row"><span>Bag height</span><b>${store.format(bag.height)}</b></div><div class="distance-row"><span>Mouth above floor</span><b>${store.format(store.z(o)+bag.floor+bag.height)}</b></div><label class="checkline"><input id="show-opening-bag" type="checkbox" ${o.bag_parameters?.show_bag!==false?'checked':''} ${locked?'disabled':''}> Show open bag</label><p class="hint">An 8 × 8 × 10 cm four-cup gripper is bolted to the backplate. The Nova-5 grips the opposite face and pulls back to open the bag; the tray supports its bottom. Fixture dimensions scale the bag and support, while the fixed suction tool retains its physical size.</p></section>`;
   }
-  if(o&&['robot','machine','dispenser','charger','human','placement_zone','customer_barrier'].includes(o.kind)){
-    html+=`<section class="property-section"><h3>Mount / support</h3><select id="support" aria-label="Support" ${locked?'disabled':''}><option value="">Floor</option>${store.scene.objects.filter(t=>['table','counter','cart','support'].includes(t.kind)&&t.id!==o.id).map(t=>`<option value="${esc(t.id)}" ${o.support===t.id?'selected':''}>${esc(t.label)}</option>`).join('')}</select><div class="field-grid room-field">${field('z','Offset above support',(o.z||0)*f,store.options.units,locked)}<div class="field">Mount elevation<div style="padding-top:12px;color:#557b82">${store.format(store.z(o))}</div></div><p class="hint">Moving or rotating a support carries its equipment with it. Hiding it hides its equipment.</p></section>`;
-  }
-  if (o?.support && store.object(o.support)) {
-    const support = store.object(o.support);
-    const local = rotate(o.x - support.x, o.y - support.y, -(support.yaw_deg || 0));
-    html += `<section class="property-section"><h3>Position on support</h3><div class="field-grid">${field('support_x','Local X',local[0]*f,store.options.units,locked)}${field('support_y','Local Y',local[1]*f,store.options.units,locked)}</div><p class="hint">Offsets from the table centre. Local +Y points toward the back of the table.</p></section>`;
+  if(o?.layout_component==='magazine'){
+    const p=stackSettings(o);
+    html+=`<section class="property-section"><h3>Flat bag stack</h3><div class="field-grid">
+      ${field('stack_bag_width','Flat bag width',p.bag_width*f,store.options.units,locked,'min="0.1"')}
+      ${field('stack_bag_height','Flat bag length',p.bag_height*f,store.options.units,locked,'min="0.1"')}
+      ${field('stack_bag_thickness','Thickness per folded bag',p.bag_thickness*f,store.options.units,locked,`min="${.0002*f}"`)}
+      ${field('stack_bag_count','Bags in stack',p.bag_count,'',locked,`min="0" max="${p.capacity}"`)}
+      </div><div class="distance-row"><span>Top above support</span><b>${store.format((o.z||0)+p.top)}</b></div><div class="distance-row"><span>Stack capacity at this thickness</span><b>${p.capacity}</b></div><p class="hint">Passive open-top holder with a front cutout. Bags lie flat, with their mouths toward local +Y. The robot picks the top face, lifts clear, then turns the empty bag upright. Bag length is its unfolded height. Count sets the current pickup height; each preview illustrates one pickup and does not consume saved inventory. Measure folded thickness rather than deriving it from GSM.</p></section>`;
   }
   if(o?.kind==='robot'){
     const reach=store.reach(o);
@@ -89,9 +108,24 @@ function properties(){
   }
   $('properties').innerHTML=html;
 }
+$('properties').addEventListener('keydown',e=>{
+  if(e.target.id==='item-name'&&e.key==='Enter'){e.preventDefault();e.target.blur();}
+});
 $('properties').addEventListener('change',e=>{
   const element=e.target,ids=[...store.selected],one=ids.length===1?store.item(ids[0]):null,o=one&&store.object(one.id),f=store.options.units==='px'?200:100,key=element.dataset.field;
-  if (changeResizeControl(e,store) || changeBarrier(e,o,store) || changeZone(e,o,store)) return;
+  if (changeResizeControl(e,store) || changeBarrier(e,o,store) || changeZone(e,o,store) || changeLabelAppearance(e,o,store)) return;
+  if(element.id==='show-opening-bag'&&o?.layout_component==='fixed_suction'&&!store.locked(o.id)){
+    store.transact('Changed open bag visibility',()=>{o.bag_parameters={...o.bag_parameters,show_bag:element.checked};});return;
+  }
+  if(key?.startsWith('stack_')&&o?.layout_component==='magazine'){
+    if(store.locked(o.id))return;
+    const value=Number(element.value);if(!Number.isFinite(value)){properties();return;}
+    const setting=key.slice(6);
+    store.transact('Changed bag stack',()=>{
+      o.bag_stack={...stackSettings(o),[setting]:setting==='bag_count'?Math.round(value):value/f};
+      const p=stackSettings(o);o.bag_stack={bag_width:p.bag_width,bag_height:p.bag_height,bag_thickness:p.bag_thickness,bag_count:p.bag_count};
+    });return;
+  }
   if (o?.support && ['support_x','support_y'].includes(key)) {
     const support = store.object(o.support);
     const value = Number(element.value) / f;
@@ -117,7 +151,10 @@ $('properties').addEventListener('change',e=>{
     if(o) store.patch(o.id,{[key]:key==='y'?store.scene.room.depth-value:key==='height'?Math.max(.01,value):value});
     else {const bb=store.selectionBounds();if(key==='x'||key==='y')store.move(ids,key==='x'?value-bb.x:0,key==='y'?store.scene.room.depth-value-bb.y:0);}
   });return;}
-  if(element.id==='item-name'&&one)store.transact('Renamed layer',()=>one.label=element.value.trim()||one.label);
+  if(element.id==='item-name'&&one)store.transact('Changed label',()=>{
+    one.label=element.value.trim()||one.label;
+    if(['machine','shelf','dispenser','vent'].includes(o?.kind))o.display_label=one.label;
+  });
   if(element.id==='item-visible'&&one)store.toggleVisibility(one.id);
   if(element.id==='item-locked'&&one)store.toggleLock(one.id);
   if(element.id==='support'&&o)store.transact('Changed support',()=>{o.support=element.value||null;o.z=0;});
@@ -142,15 +179,28 @@ document.querySelectorAll('[data-panel]').forEach(button => button.onclick = () 
   $('layers-panel').hidden = button.dataset.panel !== 'layers';
   $('library-panel').hidden = button.dataset.panel !== 'library';
   $('workflow-panels').hidden = button.dataset.panel !== 'flow';
-  order.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'order');
-  flow.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'bag');
-  coffee.setActive(button.dataset.panel === 'flow' && activeWorkflow === 'coffee');
+  syncActiveFlows();
 });
+function syncActiveFlows(){
+  const active=document.querySelector('[data-panel="flow"]').classList.contains('active');
+  if(studioMode()==='standard'){
+    flow.setActive(false);coffee.setActive(false);standard?.setActive(active);
+    flow.suspended=coffee.suspended=true;
+  }else{
+    if(standard){standard.active=false;clearTimeout(standard.timer);}
+    order.setActive(active&&activeWorkflow==='order');
+    flow.suspended=coffee.suspended=active&&activeWorkflow==='order';
+    flow.setActive(active&&activeWorkflow==='bag');coffee.setActive(active&&activeWorkflow==='coffee');
+  }
+}
 function applyOptions(){
+  $('plan-names').value=store.options.planNames||'always';
+  plan.svg.dataset.planNames=store.options.planNames||'always';
   for(const [id,key] of [['show-distances','showAllDistances'],['show-reach','showAllReach'],['snap','snap'],['labels','showLabels']])$(id).checked=store.options[key];
   $('units').value=store.options.units;$('distance-mode').value=store.options.distanceMode;$('viewports').dataset.view=store.options.view;document.querySelectorAll('[data-view]').forEach(b=>{if(b.tagName==='BUTTON')b.classList.toggle('active',b.dataset.view===store.options.view);});
 }
 for(const [id,key] of [['show-distances','showAllDistances'],['show-reach','showAllReach'],['snap','snap'],['labels','showLabels']])$(id).onchange=e=>store.setOption(key,e.target.checked);
+$('plan-names').onchange=e=>store.setOption('planNames',e.target.value);
 $('units').onchange=e=>store.setOption('units',e.target.value);$('distance-mode').onchange=e=>store.setOption('distanceMode',e.target.value);
 document.querySelectorAll('button[data-view]').forEach(b=>b.onclick=()=>{store.setOption('view',b.dataset.view);requestAnimationFrame(()=>three.overview());});
 $('undo').onclick=()=>store.undo();$('redo').onclick=()=>store.redo();$('duplicate').onclick=()=>store.duplicate();$('delete').onclick=()=>store.removeSelected();
@@ -170,26 +220,28 @@ window.addEventListener('keydown',e=>{
   else if(e.key.startsWith('Arrow')){const step=e.shiftKey?.1:.01,dx=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0,dy=e.key==='ArrowUp'?step:e.key==='ArrowDown'?-step:0;e.preventDefault();store.transact('Nudged selection',()=>store.move(store.selected,dx,dy));}
 });
 async function exportFile(type){
-  try{$('export-menu').open=false;toast('Preparing '+type.toUpperCase()+'…');
+  const exportName=studioMode()==='standard'?({json:'Project',png:'Image'}[type]||type.toUpperCase()):type.toUpperCase();
+  try{$('export-menu').open=false;toast('Preparing '+exportName+'…');
+    if(type==='handoff'){handoff.open();return;}
     if(type==='svg')download(await plan.exportSVG($('include-library').checked),'coffee-bar-edited.svg','image/svg+xml');
     if(type==='json')download(JSON.stringify(store.exportScene(),null,2),'coffee-bar-edited.json','application/json');
     if(type==='glb'){if(!three.ready)throw new Error('Please wait for the robot models to load.');download(await three.glb(),'coffee-bar-edited.glb','model/gltf-binary');}
     if(type==='png'){if(!three.ready)throw new Error('Please wait for the models to load.');const a=document.createElement('a');a.href=three.png();a.download='coffee-bar-edited.png';a.click();}
-    toast(type.toUpperCase()+' exported');
+    toast(exportName+' exported');
   }catch(e){toast('Export failed: '+e.message);console.error(e);}
 }
 document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportFile(b.dataset.export));
 $('import-button').onclick=()=>$('import-file').click();
 async function importText(text,name='scene.json'){
   let value;if(name.toLowerCase().endsWith('.svg')){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror'))throw new Error('The SVG is not valid XML.');const meta=doc.querySelector('metadata#coffee-scene-data');if(!meta)throw new Error('Import an SVG exported by Layout studio, or its scene JSON.');value=JSON.parse(meta.textContent);}else value=JSON.parse(text);
-  for(const o of value.objects||[])if(o.kind==='robot'?!store.seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&o.asset_key!==FLOOR_TEA_KEY&&!['placement_zone','customer_barrier'].includes(o.kind))throw new Error('No matching 3D model for '+(o.label||o.id));
-  store.importScene(value);plan.fit();library();toast('Editable scene imported');
+  for(const o of value.objects||[])if(o.kind==='robot'?!store.seed.robot_inventory[o.model_key||o.id]:!seed.objects.some(t=>t.id===(o.asset_key||o.id))&&o.asset_key!=='nova5_cart'&&o.asset_key!==FLOOR_TEA_KEY&&!['placement_zone','customer_barrier','vent'].includes(o.kind))throw new Error('No matching 3D model for '+(o.label||o.id));
+  store.importScene(value);plan.fit();library();toast(studioMode()==='standard'?'Project opened':'Editable scene imported');
 }
 $('import-file').onchange=async e=>{try{const file=e.target.files[0];if(file)await importText(await file.text(),file.name);}catch(error){toast('Import failed: '+error.message);}finally{e.target.value='';}};
 store.on(type=>{
   applyOptions();if(type!=='preview'){renderLayers();properties();}
   $('undo').disabled=!store.undoStack.length;$('redo').disabled=!store.redoStack.length;$('delete').disabled=!store.selected.length;$('duplicate').disabled=!store.selected.length;
-  const count=store.resolve().length;$('selection-status').textContent=count===1?store.resolve()[0].label:count?count+' items selected':'Select a robot for reach and distances';
+  const count=store.resolve().length;$('selection-status').dataset.projectLabel=String(count===1);$('selection-status').textContent=count===1?store.resolve()[0].label:count?count+' items selected':(studioMode()==='standard'?'Select an object to edit it':'Select a robot for reach and distances');
   if(!['preview','selection','workflow'].includes(type)){clearTimeout(saveTimer);$('save-status').textContent='Saving locally…';saveTimer=setTimeout(()=>{try{const state=store.exportScene();state.editor_selection=store.selected;localStorage.setItem(STORAGE,JSON.stringify(state));$('save-status').textContent='Saved locally · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch(e){$('save-status').textContent='Use Export to save';toast('Local storage unavailable. Export JSON to save your changes.');}},250);}
 });
 renderLayers();properties();library();applyOptions();store.emit('selection');$('save-status').textContent=restored?'Restored your local edits':'Source layout · edits save locally';
@@ -210,10 +262,14 @@ document.querySelectorAll('[data-workflow]').forEach(button=>button.onclick=()=>
   $('order-flow-panel').hidden=activeWorkflow!=='order';
   order.setActive(activeWorkflow==='order');
   flow.player.stop();coffee.player.stop();
-  flow.setActive(activeWorkflow==='bag');coffee.setActive(activeWorkflow==='coffee');
+  syncActiveFlows();
 });
 const collisions=new CollisionControls(store,three,toast,()=>order.active?{...flow.settings(),...order.breadSettings()}:flow.settings());
 const snapshots=new SceneSnapshots(store,three,{toast,getWorkflow:()=>activeWorkflow,setWorkflow:value=>document.querySelector('[data-workflow="'+value+'"]').click()});
 $('snapshots-button').onclick=()=>snapshots.open();
-window.coffeeEditor={collisions,snapshots,order,coffee,flow,store,plan,three,importText,exportFile,getState:()=>store.exportScene(),ready:false};
-try{await three.load();window.coffeeEditor.ready=true;collisions.checkPoses();flow.start();if(new URLSearchParams(location.search).has('workflow')){document.querySelector('[data-panel="flow"]').click();if(new URLSearchParams(location.search).get('workflow')==='order'){document.querySelector('[data-workflow="order"]').click();if(store.scene.order_camera)order.restoreCamera();else order.frame();}else if(new URLSearchParams(location.search).get('workflow')==='coffee'){document.querySelector('[data-workflow="coffee"]').click();coffee.frame();}else flow.frame();}if(restored)toast('Your saved layout has been restored');}catch(e){$('model-status').textContent='Model loading failed';toast(e.message);console.error(e);}
+const handoff=new HandoffExport(store,three,download,[flow.player,coffee.player]);
+standard=new StandardPreview({store,view:three,order,panel:$('standard-flow-panel'),toast,exportFile,getMode:studioMode,setMode:value=>modeUI.setMode(value)});
+modeUI=installStudioMode({store,plan,view:three,order,bag:flow,coffee,collisions,properties,onChange:syncActiveFlows});
+$('export-video').onclick=()=>{$('export-menu').open=false;document.querySelector('[data-panel="flow"]').click();$('standard-flow-panel').querySelector('.standard-camera').scrollIntoView({block:'nearest'});};
+window.coffeeEditor={modeUI,standard,languageUI,handoff,collisions,snapshots,order,coffee,flow,store,plan,three,importText,exportFile,getState:()=>store.exportScene(),ready:false};
+try{await three.load();window.coffeeEditor.ready=true;collisions.checkPoses();if(studioMode()==='advanced')flow.start();standard.loaded();if(new URLSearchParams(location.search).has('workflow')){document.querySelector('[data-panel="flow"]').click();if(studioMode()==='standard'){three.overview();}else if(new URLSearchParams(location.search).get('workflow')==='order'){document.querySelector('[data-workflow="order"]').click();if(store.scene.order_camera)order.restoreCamera();else order.frame();}else if(new URLSearchParams(location.search).get('workflow')==='coffee'){document.querySelector('[data-workflow="coffee"]').click();coffee.frame();}else flow.frame();}if(restored)toast('Your saved layout has been restored');}catch(e){$('model-status').textContent='Model loading failed';toast(e.message);console.error(e);}

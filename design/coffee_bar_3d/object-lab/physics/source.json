@@ -1,0 +1,10 @@
+{
+  "package": "@dimforge/rapier3d-compat",
+  "version": "0.19.3",
+  "license": "Apache-2.0",
+  "tarball": "https://registry.npmjs.org/@dimforge/rapier3d-compat/-/rapier3d-compat-0.19.3.tgz",
+  "integrity": "sha512-mMVdSj1PRTT108s9Swbu2GQOmHbn8kbJANRV5xfczL3s0T4vkgZAuoMRgvBzQcHanpKusbC0ZJj6z3mC3aj3vg==",
+  "module_sha256": "bce2c762b440101ebf8cbff038a71fe1884488becd0a53b9a7c0a7e3daf13a2b",
+  "browser_module": "rapier.js (unchanged rapier.mjs contents; .js serves with the correct MIME type on Windows)",
+  "license_url": "https://raw.githubusercontent.com/dimforge/rapier.js/0fd32c1cbbc7018af36f09b190c16ce72fbb9301/LICENSE"
+}

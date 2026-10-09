@@ -1,3 +1,8 @@
+import {VENT_KEY} from './vent-layout.js';
+import {isBagFixture} from './bag-fixture-parameters.js';
+import {buildBagFixture} from './bag-fixture-model.js';
+import {ventilationShaftTemplate} from './vent-model.js';
+import {syncObjectLabel, disposeObjectLabel} from './object-labels.js';
 import {FLOOR_TEA_KEY, floorTeaTemplate} from './floor-tea-machine.js';
 import {buildFloorZone} from './floor-zone.js';
 import {zoneSettings} from './zone-parameters.js';
@@ -54,6 +59,7 @@ export class Scene3D {
     this.templates.set('nova5_cart', {model: cartAsset.scene, spec: cartSpec});
     this.templates.set('placement_zone', placementTemplate());
     this.templates.set(FLOOR_TEA_KEY, floorTeaTemplate());
+    this.templates.set(VENT_KEY, ventilationShaftTemplate());
     // Keep previously copied ME6 stations usable when reopening older layouts.
     const legacyME6 = await this.loader.loadAsync('./me6-bag-station/layout-assets/me6_robot.glb');
     this.templates.set('me6_bag_robot', {
@@ -63,6 +69,7 @@ export class Scene3D {
     this.ready=true;this.sync();this.overview();this.status('Models ready');
   }
   template(object) {
+    if (isBagFixture(object)) return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
     if (object.kind === 'zone') return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
     if (object.kind === 'customer_barrier') return {model:new THREE.Group(),spec:{width:1,depth:1,height:1}};
     if (object.kind === 'placement_zone') return object.role === 'cup_rest' ? (this.restTemplate ||= cupRestTemplate()) : this.templates.get('placement_zone');
@@ -81,12 +88,20 @@ export class Scene3D {
   }
   sync(){
     if(this.breadPrePickGuide){this.clear(this.breadPrePickGuide);this.breadPrePickGuide.removeFromParent();this.breadPrePickGuide=null;}
-    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);if(r.isProceduralShelf)disposeShelf(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);if(r.isProceduralZone)this.clear(r.mesh);this.instances.delete(id);}
+    const ids=new Set(this.store.scene.objects.map(o=>o.id));for(const [id,r] of this.instances)if(!ids.has(id)){this.physical.remove(r.node);disposeObjectLabel(r);if(r.isProceduralShelf)disposeShelf(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);if(r.isProceduralZone||r.isProceduralBagFixture)this.clear(r.mesh);this.instances.delete(id);}
     for(const o of this.store.scene.objects){
       const r=this.instances.get(o.id)||this.makeInstance(o),node=r.node,base=r.template.spec;
       node.name=o.label;node.userData.editorId=o.id;node.userData.layout_id=o.id;node.userData.scene_parameters=JSON.stringify(o);
       node.position.set(o.x,this.store.z(o),-o.y);node.quaternion.setFromAxisAngle(UP,(o.yaw_deg||0)*Math.PI/180);
-      if(o.kind==='customer_barrier') {
+      if(isBagFixture(o)) {
+        const signature=JSON.stringify([o.width,o.depth,o.height,o.bag_stack,o.bag_parameters]);
+        if(r.bagFixtureSignature!==signature) {
+          node.remove(r.mesh);if(r.isProceduralBagFixture)this.clear(r.mesh);
+          r.mesh=buildBagFixture(o);node.add(r.mesh);r.bagFixtureSignature=signature;r.isProceduralBagFixture=true;
+        }
+        node.scale.set(1,1,1);
+      }
+      else if(o.kind==='customer_barrier') {
         const signature=JSON.stringify([o.width,o.depth,o.height,barrierSettings(o)]);
         if(r.barrierSignature!==signature) {
           node.remove(r.mesh);if(r.isProceduralBarrier)disposeBarrier(r.mesh);
@@ -134,6 +149,7 @@ export class Scene3D {
           part.visible = o.ordering_terminal !== false;
         }
       });
+      syncObjectLabel(r,o);
       node.visible=this.store.visible(o.id);
     }
     this.physical.updateMatrixWorld(true);this.updateRoom();this.updateGuides();this.updateOutline();this.resize();
@@ -170,6 +186,7 @@ export class Scene3D {
   }
   updateGuides(){
     this.clear(this.guides);this.distanceLabels=[];
+    if(this.store.presentationMode)return;
     for(const robot of this.store.relevantRobots(this.store.options.showAllReach)){
       if(robot.show_reach===false)continue;const r=this.store.reach(robot),height=Math.max(.018,this.store.z(robot)+.018);
       const center=new THREE.Vector3(r.center[0],height,-r.center[1]);

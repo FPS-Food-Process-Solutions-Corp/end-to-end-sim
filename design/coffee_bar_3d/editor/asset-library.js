@@ -6,7 +6,7 @@ const categories = {
   table: 'Furniture', counter: 'Furniture', cart: 'Furniture', shelf: 'Furniture',
   machine: 'Coffee equipment', dispenser: 'Coffee equipment',
   placement_zone: 'Bag fixtures', customer_barrier: 'Customer area',
-  human: 'Customer area', charger: 'Other', zone: 'Other',
+  human: 'Customer area', charger: 'Other', zone: 'Other', vent: 'Other',
 };
 
 export function sceneAssetCatalog(store) {

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Object size lab · Donuts & bags</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./drop-queue.css">
+  <script type="importmap">{"imports":{"three":"../vendor/three.module.js"}}</script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">◈</span><div><h1>Object size lab</h1><p>DONUTS, BAGS & EVERYTHING IN BETWEEN</p></div></div>
+    <div class="header-actions"><span id="save-state" role="status">Starting workspace…</span><button id="import">Import</button><input id="import-file" type="file" accept=".json" hidden><details id="export-menu"><summary>Export ↗</summary><div class="export-options"><button data-export="json">Workspace · JSON</button><button data-export="png">Current view · PNG</button><button data-export="glb">Visible objects · GLB</button></div></details></div>
+  </header>
+  <div class="workspace">
+    <aside class="library">
+      <div class="panel-heading"><h2>Objects</h2><span id="object-count"></span></div>
+      <p class="panel-description">All objects share the same scale.</p>
+      <div id="object-list" aria-label="Objects in workspace"></div>
+      <button class="add-button" id="add-object">+ Add an object</button>
+      <div class="library-note"><strong>Bag size reference</strong><p>Sizes from your supplied charts. No. 13–16 are from the 70 g thickened, non-greaseproof range.</p><p>Length × depth × height, in cm. Bags are shown fully open; paper properties are not simulated.</p></div>
+      <div class="history"><button id="undo" disabled>Undo</button><button id="redo" disabled>Redo</button><button id="reset">Reset</button></div>
+      <a class="back-link" href="../viewer.html">← Coffee bar layout</a>
+    </aside>
+    <main id="stage-panel">
+      <div class="view-toolbar">
+        <div class="segments" aria-label="Workspace mode"><button data-mode="compare" aria-pressed="true">Compare sizes</button><button data-mode="fit" aria-pressed="false">Donut in bag</button><button data-mode="drop" aria-pressed="false">Drop test</button></div>
+        <div class="view-options"><label><input id="xray" type="checkbox"> See through bags</label><label><input id="dimensions" type="checkbox" checked> Dimensions</label><label>Units <select id="units"><option value="cm">cm</option><option value="mm">mm</option></select></label></div>
+      </div>
+      <div id="fit-controls" hidden>
+        <label>Bag <select id="fit-bag"></select></label><label><span id="pastry-select-label">Donut</span> <select id="fit-donut"></select></label><label id="fit-orientation-label">Orientation <select id="fit-orientation"><option value="flat">Flat</option><option value="upright">Upright</option></select></label>
+        <label id="allowance-label">Allowance / wall <span class="input-unit"><input id="allowance" type="number" min="0" max="5" step=".1" value=".2"><span id="allowance-unit">cm</span></span></label>
+      </div>
+      <div id="drop-controls" hidden>
+        <div class="queue-add"><label>Quantity <input id="drop-quantity" aria-label="Quantity to add" type="number" min="1" max="20" step="1" value="1"></label><button id="queue-add">+ Add to queue</button><span>Copies the selected pastry's size and the release settings below.</span></div>
+        <div class="drop-fields">
+          <label>Bottom above rim <span class="input-unit"><input aria-label="Release height" data-drop="height" data-length="true" type="number" min=".1" max="100" step="1"><span class="drop-length-unit">cm</span></span></label>
+          <label>Offset X <span class="input-unit"><input aria-label="Release X offset" data-drop="x" data-length="true" type="number" min="-100" max="100" step=".5"><span class="drop-length-unit">cm</span></span></label>
+          <label>Offset Z <span class="input-unit"><input aria-label="Release Z offset" data-drop="z" data-length="true" type="number" min="-100" max="100" step=".5"><span class="drop-length-unit">cm</span></span></label>
+          <label>Tilt <span class="input-unit"><input aria-label="Release tilt" data-drop="tilt" type="number" min="-180" max="180" step="5"><span>°</span></span></label>
+          <label>Heading <span class="input-unit"><input aria-label="Release heading" data-drop="yaw" type="number" min="-180" max="180" step="5"><span>°</span></span></label>
+          <label>Playback <select aria-label="Drop playback speed" data-drop="speed"><option value="1">1×</option><option value="0.5">0.5×</option><option value="0.25">0.25×</option></select></label>
+        </div>
+        <div class="drop-sequence"><label>Auto release <select aria-label="Auto release" data-drop="cadence"><option value="settled">After settling</option><option value="timed">Timed interval</option></select></label><label id="interval-label">Every <input aria-label="Release interval" data-drop="interval" type="number" min=".2" max="10" step=".1"> s</label><span>0° = flat · 90° = upright · ghost = next release</span></div>
+        <div class="drop-actions"><button id="drop-play" class="primary">Run queue</button><button id="drop-next">Drop next</button><button id="drop-reset">Reset test</button><details id="drop-material"><summary>Contact settings</summary><div><label>Friction <input aria-label="Contact friction" data-drop="friction" type="number" min="0" max="1.5" step=".05"></label><label>Bounce <input aria-label="Contact bounce" data-drop="bounce" type="number" min="0" max=".8" step=".05"></label></div></details></div>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="canvas" aria-label="Interactive 3D comparison of donut and paper bag sizes"></canvas>
+        <div id="labels" aria-hidden="true"></div>
+        <div class="stage-caption"><span class="live-dot"></span><span id="view-caption">ONE SCALE · OPEN BAGS</span></div>
+        <div id="fit-status" role="status" hidden></div>
+        <div id="drop-status" role="status" hidden></div>
+        <div class="camera-tools"><button data-camera="iso" aria-pressed="true">3D</button><button data-camera="front" aria-pressed="false">Front</button><button data-camera="top" aria-pressed="false">Top</button><button data-camera="side" aria-pressed="false">Side</button><span></span><button id="fit-view">Fit all</button><button id="focus">Focus</button><button id="move" aria-pressed="false">Move</button><button id="fullscreen">Fullscreen</button></div>
+        <div id="empty-state" hidden>No visible objects. Use the checkboxes in the object list to show them.</div>
+        <div id="error" role="alert" hidden></div>
+      </div>
+      <footer class="stage-footer"><span id="interaction-hint">Drag to orbit · right-drag to pan · scroll to zoom · click to select</span><span id="grid-caption">Grid: 10 cm</span></footer>
+    </main>
+    <aside class="inspector">
+      <div class="panel-heading"><h2>Dimensions & position</h2></div>
+      <section id="drop-queue-panel" hidden aria-label="Pastry drop queue"><div class="panel-heading"><h2>Drop queue</h2><span id="queue-count"></span></div><div id="queue-list"></div><button id="queue-clear">Clear queue</button><p class="queue-help">Open an entry to change its size, quantity or release. Changes to already dropped entries reset the test; adding more preserves the pile.</p><details id="drop-results"><summary>Landing results</summary><div id="drop-results-list">Run a test to see each pastry's final position.</div></details></section>
+      <div id="properties"></div>
+      <div class="inspector-note"><strong>About the models</strong><p>Donut outer diameter and height are exact. The hole and surface styling are illustrative.</p><p>Bag sizes are nominal dimensions from the chart. Folding, paper thickness and deformation are not simulated.</p></div>
+    </aside>
+  </div>
+  <dialog id="add-dialog">
+    <form id="add-form"><div class="dialog-heading"><h2>Add an object</h2><button type="button" id="close-add" aria-label="Close">×</button></div>
+      <label>Shape<select id="new-kind"><option value="box">Box / size reference</option><option value="bag">Open paper bag</option><option value="donut">Donut</option></select></label>
+      <label>Name<input id="new-name" required maxlength="80" value="Reference box"></label>
+      <p>Initial size: 10 × 10 × 10 cm. You can edit each dimension after adding.</p>
+      <button type="submit" class="primary">Add to workspace</button>
+    </form>
+  </dialog>
+  <div id="toast" role="status"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

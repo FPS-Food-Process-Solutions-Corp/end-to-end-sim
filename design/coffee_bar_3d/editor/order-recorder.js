@@ -1,9 +1,10 @@
 import * as THREE from '../vendor/three.module.js';
 import {withWebMDuration} from './webm-duration.js';
 
-export function supportedVideoType() {
+export function supportedVideoType(preferMP4 = false) {
   if (!globalThis.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return null;
-  return ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+  const webm = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  return (preferMP4 ? ['video/mp4', ...webm] : [...webm, 'video/mp4'])
     .find(type => MediaRecorder.isTypeSupported(type)) || null;
 }
 
@@ -19,9 +20,10 @@ export class OrderRecorder {
 
   get active() { return ['recording', 'stopping'].includes(this.state); }
 
-  start(height = 720) {
+  start(height = 720, {filename='bread-and-coffee-order',completeReason='Complete order'} = {}) {
     if (!this.mimeType) throw new Error('Video recording is unavailable in this browser.');
-    if (this.active) throw new Error('A recording is already running.');
+    if (this.active || this.view.activeRecorder?.active) throw new Error('A recording is already running.');
+    this.filename=filename;this.completeReason=completeReason;
     this.releaseVideo();
     const width = height === 1080 ? 1920 : 1280;
     this.canvas = document.createElement('canvas');
@@ -62,6 +64,7 @@ export class OrderRecorder {
       this.error = null;
       this.reason = '';
       this.state = 'recording';
+      this.view.activeRecorder=this;
       this.startedAt = performance.now();
       this.recorder.start(250);
       this.onChange();
@@ -94,6 +97,7 @@ export class OrderRecorder {
     this.renderer?.forceContextLoss();
     this.renderer = null;
     this.canvas = null;
+    if(this.view.activeRecorder===this)this.view.activeRecorder=null;
   }
 
   releaseVideo() {
@@ -104,11 +108,11 @@ export class OrderRecorder {
 
   save() {
     if (!this.url) return;
-    const partial = this.reason !== 'Complete order' ? '-partial' : '';
+    const partial = this.reason !== this.completeReason ? '-partial' : '';
     const extension = this.mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
     const link = document.createElement('a');
     link.href = this.url;
-    link.download = 'bread-and-coffee-order' + partial + '.' + extension;
+    link.download = (this.filename||'bread-and-coffee-order') + partial + '.' + extension;
     link.click();
   }
 }

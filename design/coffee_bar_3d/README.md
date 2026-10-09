@@ -1,5 +1,9 @@
 # Coffee bar Layout studio
 
+For design requirements, see [Coffee bar layout guidelines](LAYOUT_GUIDELINES.md). For current editor features and controls, see the [editor guide](EDITOR_GUIDE.md).
+
+For standalone Windows and macOS applications, see [Desktop builds and CI](desktop/README.md). The Electron package runs offline with bundled models and preserves editor exports, recording, autosave and snapshots.
+
 Open **http://127.0.0.1:8766/viewer.html**. The 2D SVG plan and 3D scene share one editable model. Select objects in either view or the layer list. Changes appear in both views immediately and are saved in this browser's local storage.
 
 If the local server is stopped, run this from the repository root:

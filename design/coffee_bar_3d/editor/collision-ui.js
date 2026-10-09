@@ -231,6 +231,7 @@ export class CollisionControls {
   renderShapes() {
     if(!this.view.ready)return;
     this.view.clear(this.group);
+    if(this.store.presentationMode)return;
     if(collisionSettings(this.store).show) {
       for(const box of captureWorld(this.view))if(box.objectId!=='floor')this.addBox(box,0x42bbc4);
       for(const o of this.store.relevantRobots(true)) {

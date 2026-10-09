@@ -1,3 +1,5 @@
+import {FlowVideo} from './flow-video.js';
+import {beginValidation, recordValidation} from './handoff-validation.js';
 import {loadCoffeeDefinition} from './coffee-robots.js';
 import {attachCollisions} from './collision-scene.js';
 import {collisionText} from './collision-core.js';
@@ -13,6 +15,7 @@ export class CoffeeWorkflow {
     Object.assign(this,{store,plan,view,panel,toast,active:false,request:null,result:null,runId:0});
     this.message='Choose a drink, then place a demo order.';
     this.player=new CoffeePlayer(store,view,(time,state)=>this.updateTime(time,state));
+    this.video=new FlowVideo(this,'coffee');
     this.guides=new THREE.Group();this.guides.name='Beverage service points';view.scene.add(this.guides);
     panel.addEventListener('click',e=>this.click(e));
     panel.addEventListener('change',e=>this.change(e));
@@ -28,9 +31,10 @@ export class CoffeeWorkflow {
   }
   async setActive(active) {
     this.active=active;this.guides.visible=active;
-    if(!active){this.player.stop();return;}
+    if(!active){this.video.stop('Workflow changed');this.player.stop();return;}
     if(!this.result)await this.check();
     else this.drawGuides();
+    this.video.mount();
   }
   invalidate(){
     clearTimeout(this.timer);this.runId++;this.worker?.terminate();this.worker=null;
@@ -38,9 +42,11 @@ export class CoffeeWorkflow {
     this.drawGuides();this.render();
   }
   async check(play=false) {
+    this.video.stop('Route rechecked');
     if(!this.view.ready || this.suspended)return;
     clearTimeout(this.timer);this.worker?.terminate();this.player.stop();this.result=null;this.diagnostic=null;
     const id=++this.runId;
+    const validationContext=beginValidation(this.store);
     this.message='Preparing beverage service poses…';this.render();
     try {
       const definition = await loadCoffeeDefinition(this.store);
@@ -58,7 +64,7 @@ export class CoffeeWorkflow {
         }
         if(e.data.error)this.message=e.data.error;
         else{
-          this.result=e.data.result;this.player.configure(this.request,this.result,this.definition);
+          this.result=e.data.result;recordValidation(this.store,validationContext,'coffee',this.request,this.result);this.player.configure(this.request,this.result,this.definition);
           this.diagnostic=coffeeDiagnostic(this.request,this.result,this.definition);
           this.message=this.result.pathOK?'Demo order ready · '+this.result.duration.toFixed(1)+' s illustration':
             (collisionText(this.result.failure)||'Stopped at '+this.result.failure.phase+' ('+this.result.failure.time.toFixed(2)+' s): '+(this.result.failure.reason==='joint_step_exceeded'?'joint continuity check failed':'IK did not converge for the required tool pose'))+'. See the reason and preview the accepted motion below.';
@@ -70,7 +76,7 @@ export class CoffeeWorkflow {
       this.worker.postMessage({id,definition:this.definition,request:this.request});
     }catch(error){if(id===this.runId){this.request=null;this.message=error.message;this.drawGuides();this.render();}}
   }
-  render(){this.panel.innerHTML=coffeeMarkup(this.store,this.request,this.result,this.message,this.diagnostic);}
+  render(){this.panel.innerHTML=coffeeMarkup(this.store,this.request,this.result,this.message,this.diagnostic);this.video.mount();}
   change(e){
     const key=e.target.dataset.coffeeSetting;if(!key)return;
     const value=e.target.type==='number'?Number(e.target.value)/Number(e.target.dataset.factor||1):e.target.value;

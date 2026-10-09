@@ -1,3 +1,5 @@
+import {wrapLabel, objectLabelSettings} from './label-layout.js';
+import {stackSettings, fixedContact, fixtureBag} from './bag-fixture-parameters.js';
 import {resizeAnchored, resizeMode} from './resize-geometry.js';
 import {zoneSettings, zoneLabelLayout} from './zone-parameters.js';
 import {addSceneAsset} from './asset-library.js';
@@ -5,8 +7,8 @@ import {barrierPlan} from './barrier-plan.js';
 import {bounds,rotate,rad,clone} from './store.js';
 const NS='http://www.w3.org/2000/svg';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
-const palette={placement_zone:['#d8f3e9','#279c83'],table:['#edf1f2','#81949e'],counter:['#e5efec','#658b83'],cart:['#f3eee6','#9a886e'],shelf:['#edf2e8','#799668'],robot:['#edf7f5','#2b8b82'],machine:['#fff','#728e9d'],dispenser:['#fff','#728e9d'],charger:['#edf1f3','#7b919c'],human:['#eee6de','#ab9078'],zone:['none','#adbbc3']};
-const abbreviations={bag_opener:'Open bag',bag_magazine:'Bag magazine',coffee_machine:'Coffee',tea_machine:'Tea',ice_machine:'Ice',milk_fridge:'Milk',lid_machine:'Lid press',cup_dispenser:'Cups',lid_dispenser:'Lids',coffee_station:'COFFEE / PICKUP',left_counter:'LEFT WORK COUNTER',right_counter:'RIGHT COUNTER',upper_counter:'COUNTER',middle_counter:'COUNTER'};
+const palette={vent:['#e2e7e3','#647771'],placement_zone:['#d8f3e9','#279c83'],table:['#edf1f2','#81949e'],counter:['#e5efec','#658b83'],cart:['#f3eee6','#9a886e'],shelf:['#edf2e8','#799668'],robot:['#edf7f5','#2b8b82'],machine:['#fff','#728e9d'],dispenser:['#fff','#728e9d'],charger:['#edf1f3','#7b919c'],human:['#eee6de','#ab9078'],zone:['none','#adbbc3']};
+const abbreviations={bag_opener:'Open bag',bag_magazine:'Bag stack',coffee_machine:'Coffee',tea_machine:'Tea',ice_machine:'Ice',milk_fridge:'Milk',lid_machine:'Lid press',cup_dispenser:'Cups',lid_dispenser:'Lids',coffee_station:'COFFEE / PICKUP',left_counter:'LEFT WORK COUNTER',right_counter:'RIGHT COUNTER',upper_counter:'COUNTER',middle_counter:'COUNTER'};
 
 export class PlanView {
   constructor(svg,store){
@@ -142,7 +144,7 @@ export class PlanView {
   }
   defs(){return `<defs><pattern id="planGrid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e8edef" stroke-width="1"/></pattern><marker id="dimArrow" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 0 0 L 7 3.5 L 0 7" fill="none" stroke="#327b82" stroke-width="1.2"/></marker></defs>`;}
   geometry(o){
-    if(o.kind==='customer_barrier')return barrierPlan(o,this.store.options.showLabels);
+    if(o.kind==='customer_barrier')return barrierPlan(o,true);
     const w=o.width*200,d=o.depth*200,[fill,stroke]=palette[o.kind]||palette.table;
     let out='';const rect=(extra='')=>`<rect x="${-w/2}" y="${-d/2}" width="${w}" height="${d}" rx="${o.kind==='robot'?5:1}" fill="${fill}" stroke="${stroke}" stroke-width="1.8" ${extra}/>`;
     if(o.kind==='zone')out=rect('stroke-dasharray="7 5"'+(zoneSettings(o).show_outline?'':' stroke-opacity="0"'));
@@ -151,16 +153,22 @@ export class PlanView {
     else out=rect(['zone','placement_zone'].includes(o.kind)?'stroke-dasharray="7 5"':'');
     if(o.kind==='placement_zone')out+=`<path d="M -7 0 H 7 M 0 -7 V 7" stroke="#279c83" stroke-width="2"/>`;
     if(o.kind==='cart')for(const x of [-w/2+6,w/2-12])for(const y of [-d/2+7,d/2-17])out+=`<rect x="${x}" y="${y}" width="6" height="10" rx="2" fill="#9a886e"/>`;
-    if(o.kind==='machine'){out+=`<line x1="${-w/2+5}" y1="${d/2-3}" x2="${w/2-5}" y2="${d/2-3}" stroke="#3b7484" stroke-width="4"/><path d="M -5 ${d/2+5} L 0 ${d/2+12} L 5 ${d/2+5}" fill="none" stroke="#3b7484" stroke-width="2"/>`;}
-    if (o.machine_type === 'bag_magazine') {
-      for (let index = 0; index < 14; index++) {
-        const y = -d / 2 + 7 + index * (d - 14) / 13;
-        out += `<line x1="${-w * .32}" y1="${y}" x2="${w * .32}" y2="${y}" stroke="#aa8150" stroke-width="1.3"/>`;
+    if(o.kind==='vent'){
+      out+=`<rect x="${-w/2+4}" y="${-d/2+4}" width="${Math.max(1,w-8)}" height="${Math.max(1,d-8)}" fill="none" stroke="#82958e" stroke-width="1"/>`;
+      for(let x=-w/2-d;x<w/2;x+=16){
+        const x0=Math.max(-w/2+4,x),x1=Math.min(w/2-4,x+d-8);
+        if(x1>x0)out+=`<path d="M ${x0} ${d/2-4-(x0-x)} L ${x1} ${d/2-4-(x1-x)}" stroke="#bcc9c2" stroke-width="1"/>`;
       }
     }
+    if(o.kind==='machine'){out+=`<line x1="${-w/2+5}" y1="${d/2-3}" x2="${w/2-5}" y2="${d/2-3}" stroke="#3b7484" stroke-width="4"/><path d="M -5 ${d/2+5} L 0 ${d/2+12} L 5 ${d/2+5}" fill="none" stroke="#3b7484" stroke-width="2"/>`;}
+    if (o.machine_type === 'bag_magazine') {
+      const p=stackSettings(o),bw=p.bag_width*200,bh=p.bag_height*200;
+      out+=`<path d="M ${-w/2+2} ${d/2-2} V ${-d/2+2} H ${w/2-2} V ${d/2-2}" fill="none" stroke="#303c40" stroke-width="4"/>`;
+      if(p.bag_count)out+=`<rect data-bag-stack="true" x="${-bw/2}" y="${-bh/2}" width="${bw}" height="${bh}" fill="#ead2a8" stroke="#b49461"/><path d="M -5 0 H 5 M 0 -5 V 5" stroke="#258c8c" stroke-width="1.5"/>`;
+    }
     if(['bag_opener','me6_bag_opener'].includes(o.machine_type)){
-      const p=o.bag_parameters,bw=p.bag_width*200,bd=p.bag_depth*200;
-      out+=`<rect x="${-bw/2}" y="${-bd/2}" width="${bw}" height="${bd}" fill="#d9b678" stroke="#9b7548" stroke-width="1"/><rect x="${-bw/2+2}" y="${-bd/2+2}" width="${bw-4}" height="${bd-4}" fill="#f5e8cc" stroke="none"/><path d="M ${-bw/2-3} ${-bd/2-5} H ${bw/2+3}" stroke="#739199" stroke-width="3"/>`;
+      const p=fixtureBag(o),bw=p.width*200,bd=p.depth*200,front=-fixedContact(o)[1]*200;
+      out+=`<rect x="${-bw/2}" y="${front}" width="${bw}" height="${bd}" fill="#d9b678" stroke="#9b7548" stroke-width="1"/><rect x="${-bw/2+2}" y="${front+2}" width="${bw-4}" height="${bd-4}" fill="#f5e8cc" stroke="none"/><path d="M -16 ${front-20} H 16" stroke="#739199" stroke-width="3"/><rect data-fixed-gripper="true" x="-8" y="${front-20}" width="16" height="20" fill="#397d83" stroke="#46606a"/>`;
     }
     if(o.kind==='shelf'&&this.store.shelfSettings(o).tiers>0){
       const l=this.store.shelfLayout(o),s=l.settings,tw=l.trayWidth*200,td=l.trayDepth*200;
@@ -181,22 +189,30 @@ export class PlanView {
   }
   objectMarkup(o){
     const [x,y]=this.toPlan([o.x,o.y]),a=-(o.yaw_deg||0),visible=this.store.visible(o.id),sel=this.store.resolve().some(v=>v.id===o.id);
-    const title=(o.kind==='robot'?this.store.scene.robot_inventory[this.store.key(o)]?.name:null)||abbreviations[o.id]||o.label?.split(' / ')[0]||o.id;
+    const title=o.display_label??((o.kind==='robot'?this.store.scene.robot_inventory[this.store.key(o)]?.name:null)||abbreviations[o.id]||o.label?.split(' / ')[0]||o.id);
     let text='';
-    if(this.store.options.showLabels&&o.kind==='zone') {
-      const {settings,fontSize}=zoneLabelLayout(o);
-      if(settings.show_text)text=`<text data-zone-text="true" x="0" y="0" dominant-baseline="central" text-anchor="middle" font-family="Segoe UI,sans-serif" font-weight="500" font-size="${fontSize*200}" fill="#498d88" pointer-events="none">${esc(settings.text)}</text>`;
+    if(o.kind==='zone') {
+      const {settings,fontSize,lines,lineHeight,rotation}=zoneLabelLayout(o);
+      const rows=lines.map((line,i)=>`<tspan x="0" y="${(i-(lines.length-1)/2)*lineHeight*200}">${esc(line)}${i<lines.length-1?' ':''}</tspan>`).join('');
+      if(settings.show_text)text=`<text data-zone-text="true" x="0" y="0" transform="rotate(${rotation})" dominant-baseline="central" text-anchor="middle" font-family="Segoe UI,sans-serif" font-weight="500" font-size="${fontSize*200}" fill="#498d88" pointer-events="none">${rows}</text>`;
     }
-    else if(this.store.options.showLabels&&o.kind!=='customer_barrier'){
-      const short=title.length>24?title.slice(0,23)+'…':title;
-      let rotateLabel=0,ty=5,size=o.kind==='robot'?18:Math.min(19,Math.max(12,o.width*200/(short.length*.55)));
+    else if(o.kind!=='customer_barrier'){
+      let rotateLabel=0,ty=0;
+      const external=['dispenser','placement_zone'].includes(o.kind)||(o.kind==='robot'&&this.store.key(o)!=='atom_w');
       if(o.kind==='robot'&&this.store.key(o)!=='atom_w')ty=-o.depth*100-11;
       if(o.kind==='cart'||o.id==='coffee_station')ty=o.depth*100-20;
-      if(o.kind==='dispenser')ty=-o.depth*100-7;
-      if(o.depth>o.width*2.5)rotateLabel=90;
+      if(['dispenser','placement_zone'].includes(o.kind))ty=-o.depth*100-7;
+      if(o.depth>o.width)rotateLabel=90;
       if(o.kind==='robot'||o.kind==='cart'||o.kind==='charger')rotateLabel=-a;
       else if(Math.abs(((a+rotateLabel+180)%360+360)%360-180)>90)rotateLabel+=180;
-      text=`<text x="0" y="${ty}" text-anchor="middle" font-family="Inter,Segoe UI,sans-serif" font-size="${size}" fill="#496873" transform="rotate(${rotateLabel} 0 ${ty})" pointer-events="none">${esc(short)}</text>`;
+      const labelSettings=objectLabelSettings(o);
+      rotateLabel+=labelSettings.rotation;
+      const alongDepth=Math.abs(rotateLabel%180)===90;
+      const span=external?Math.max(100,o.width*180):(alongDepth?o.depth:o.width)*180;
+      const layout=wrapLabel(title,span,o.kind==='robot'?18:16);
+      if(external||o.kind==='cart'||o.id==='coffee_station')ty-=layout.height/2-layout.lineHeight/2;
+      const rows=layout.lines.map((line,i)=>`<tspan x="0" y="${ty+(i-(layout.lines.length-1)/2)*layout.lineHeight}">${esc(line)}${i<layout.lines.length-1?' ':''}</tspan>`).join('');
+      text=`<text data-label-text="${esc(title)}" x="0" y="${ty}" dominant-baseline="central" text-anchor="middle" font-family="Segoe UI,sans-serif" font-weight="500" font-size="${layout.fontSize}" fill="#496873" transform="rotate(${rotateLabel} 0 ${ty})" pointer-events="none">${rows}</text>`;
     }
     return `<g id="object_${esc(o.id)}" data-object-id="${esc(o.id)}" data-name="${esc(o.label)}" transform="translate(${x} ${y}) rotate(${a})" ${!visible?'display="none"':''} class="${sel?'selected-object':''}"><title>${esc(o.label)}</title>${this.geometry(o)}${text}</g>`;
   }
@@ -224,6 +240,7 @@ export class PlanView {
     return `<g id="area_${esc(id)}" data-group-id="${esc(id)}" data-name="${esc(group.label)}"><title>${esc(group.label)}</title>${children}</g>`;
   }
   annotationMarkup(){
+    if(this.store.presentationMode)return '';
     let out='<g data-name="Reach guides" pointer-events="none">';
     for(const o of this.store.relevantRobots(this.store.options.showAllReach)){
       if(o.show_reach===false)continue;const r=this.store.reach(o),p=this.toPlan(r.center);

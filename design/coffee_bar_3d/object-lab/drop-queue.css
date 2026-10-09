@@ -1,0 +1,34 @@
+.queue-add, .drop-sequence {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.queue-add {margin-bottom:12px}
+.queue-add label, .drop-sequence label {display:flex;align-items:center;gap:6px;font-size:11px}
+.queue-add input, .drop-sequence input {width:60px;padding:6px}
+.queue-add>span, .drop-sequence>span {font-size:10px;color:var(--muted)}
+.drop-sequence {margin-top:12px}
+.drop-sequence select {padding:6px;font-size:11px}
+#drop-queue-panel {margin:20px 0 25px;border-bottom:1px solid var(--border);padding-bottom:20px}
+#queue-count {font-size:11px;color:var(--muted)}
+#queue-list {max-height:360px;overflow:auto;margin:12px 0;scrollbar-width:thin}
+.queue-entry {margin:6px 0;background:#f8faf6;border:1px solid var(--border);border-radius:7px}
+.queue-entry summary {background:transparent;color:var(--accent);border:0;padding:10px;min-width:0}
+.queue-entry summary:hover {background:#edf3eb}
+.queue-entry summary strong {font-size:12px;display:block;font-weight:500;overflow-wrap:anywhere}
+.queue-entry summary small {display:block;font-size:10px;color:var(--muted);margin-top:4px}
+.queue-entry summary::before {content:'▸';float:right}
+.queue-entry[open] summary::before {content:'▾'}
+.queue-edit {padding:0 10px 10px}
+.queue-edit label {display:grid;grid-template-columns:1fr 85px;gap:6px;align-items:center;margin:8px 0;font-size:11px}
+.queue-edit input {padding:6px 26px 6px 6px}
+.queue-edit p {font-size:10px;color:var(--muted);margin:14px 0 6px}
+.queue-buttons {display:flex;gap:5px;margin-top:12px}
+.queue-buttons button {font-size:11px;padding:5px 10px}
+.queue-buttons button:last-child {margin-left:auto}
+.queue-help {font-size:11px;line-height:1.6;color:var(--muted);margin:12px 0}
+#queue-clear {font-size:11px;padding:6px 10px}
+#drop-results summary {background:transparent;color:var(--accent);border-color:var(--border);font-size:11px}
+#drop-results-list {font-size:11px;line-height:1.6;color:#597363;margin-top:10px;max-height:300px;overflow:auto;scrollbar-width:thin}
+.landing-result {border-bottom:1px solid var(--border);padding:10px 0}
+.landing-result strong,.landing-result span,.landing-result small {display:block}
+.landing-result small {color:var(--muted);font-size:10px}
+.drop-warning {color:#a15d35;font-size:11px;margin:6px 0}
+@media(max-width:900px){#drop-queue-panel{grid-column:1/-1}#queue-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-items:start}.queue-entry{margin:0}.queue-help{grid-column:1/-1}}
+@media(max-width:600px){.queue-add>span{width:100%}.drop-sequence>span{width:100%}#queue-list{grid-template-columns:1fr}#drop-controls .drop-fields{gap:8px}#drop-controls .input-unit{width:90px}}

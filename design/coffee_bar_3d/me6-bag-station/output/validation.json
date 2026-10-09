@@ -1,0 +1,70 @@
+{
+  "animation": {
+    "clips": [
+      {
+        "name": "ME6 - pick, transfer and open",
+        "duration": 24,
+        "tracks": 8
+      }
+    ],
+    "checks": [
+      {
+        "time": 0,
+        "error_mm": 0.0004966112712225644
+      },
+      {
+        "time": 4.5,
+        "error_mm": 0.0004884784875635167
+      },
+      {
+        "time": 8,
+        "error_mm": 0.000497938148726073
+      },
+      {
+        "time": 12,
+        "error_mm": 0.0005676202183450423
+      },
+      {
+        "time": 15.5,
+        "error_mm": 0.0005342289874942808
+      },
+      {
+        "time": 20,
+        "error_mm": 0.0005913883095706352
+      },
+      {
+        "time": 23.9,
+        "error_mm": 0.0005913883095706352
+      }
+    ]
+  },
+  "video": {
+    "duration": 24,
+    "width": 960,
+    "height": 780
+  },
+  "downloads": [
+    {
+      "url": "output/me6-bag-station.blend",
+      "status": 200
+    },
+    {
+      "url": "output/me6-between-racks.blend",
+      "status": 200
+    },
+    {
+      "url": "output/me6-station-animated.glb",
+      "status": 200
+    },
+    {
+      "url": "output/me6-overhead.mp4",
+      "status": 200
+    },
+    {
+      "url": "parameters.json",
+      "status": 200
+    }
+  ],
+  "mobileOverflow": false,
+  "errors": []
+}

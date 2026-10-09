@@ -1,0 +1,31 @@
+{
+  "name": "layout-studio",
+  "productName": "Layout Studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline robotic cafe layout editor, motion planner and recorder",
+  "author": "FPS Food Process Solutions Corp",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare:studio": "node scripts/prepare-studio.cjs",
+    "start": "npm run prepare:studio && electron .",
+    "test": "node --test test/*.test.cjs",
+    "test:desktop": "npm run prepare:studio && node test/smoke.cjs",
+    "test:packaged": "node test/smoke.cjs --packaged",
+    "pack": "electron-builder --config electron-builder.cjs --dir --publish never",
+    "dist:win": "electron-builder --config electron-builder.cjs --win --x64 --publish never && node scripts/checksums.cjs",
+    "dist:mac": "electron-builder --config electron-builder.cjs --mac --x64 --arm64 --publish never && node scripts/checksums.cjs",
+    "dist:mac:unsigned": "node scripts/package-mac-cross.cjs",
+    "dist:mac:wsl": "node scripts/package-mac-wsl.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "playwright": "1.64.0"
+  }
+}

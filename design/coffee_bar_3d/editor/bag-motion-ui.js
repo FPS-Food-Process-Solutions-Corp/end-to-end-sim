@@ -13,7 +13,7 @@ export function motionControls(settings) {
       ${field('max_bag_tilt_deg', 'Maximum held-bag tilt', settings.max_bag_tilt_deg, '°', .01, 45)}
       ${field('min_j1_share', 'Minimum J1 share during sweeps', settings.min_j1_share * 100, '%', 0, 100)}
       ${field('extra_lift_search', 'Additional lift to search', settings.extra_lift_search * 100, 'cm', 0, 100)}
-      <p class="flow-hint">Withdraw/lift → J1 sweep → upright alignment. Search both sweep directions, extra heights and two starting postures. Shoulder/elbow and wrist adjustments remain available for lifting and alignment.</p>
+      <p class="flow-hint">Pick the top bag → lift clear → turn the empty bag upright → J1 sweep. The deliberate empty-bag turn is exempt from the upright tilt limit; the limit applies after that turn and throughout loaded carrying. Search both sweep directions, extra heights and two starting postures.</p>
     </details>
   `;
 }
@@ -32,7 +32,7 @@ export function motionSummary(result) {
       <b>${result.pathOK ? 'Selected route' : 'Furthest tested route'} · ${result.route.duration.toFixed(1)} s</b>
       <p>${escape(result.route.label)}<br>Extra lift: ${(result.route.extraLift * 100).toFixed(1)} cm</p>
       <p>${search.passed || 0} / ${search.attempts.length} route/posture candidates passed.</p>
-      ${motion.maxBagTiltDegrees !== undefined ? '<p>Peak bag tilt: <b>' +
+      ${motion.maxBagTiltDegrees !== undefined ? '<p>Peak tilt during upright carrying: <b>' +
         motion.maxBagTiltDegrees.toFixed(2) + '°</b><br>Conservative tilt bound: ' +
         motion.maxTiltBoundDegrees.toFixed(2) + '° / ' + motion.tiltLimitDegrees + '° allowed.</p>' : ''}
       ${rows ? '<table><caption>J1 share during transfer sweeps</caption><tbody>' + rows + '</tbody></table>' : ''}

@@ -1,10 +1,11 @@
 import * as THREE from '../vendor/three.module.js';
-import {zoneLabelLayout, ZONE_FONT} from './zone-parameters.js';
+import {zoneLabelLayout} from './zone-parameters.js';
+import {labelCanvas} from './label-layout.js';
 
 export function buildFloorZone(object) {
   const group = new THREE.Group();
   group.name = 'Editable floor marking';
-  const {settings, measured, width, height} = zoneLabelLayout(object);
+  const layout = zoneLabelLayout(object), {settings, rotation} = layout;
   const w = object.width, d = object.depth, ink = '#498d88';
 
   // Preserve the editable footprint for framing even when both markings are off.
@@ -43,22 +44,16 @@ export function buildFloorZone(object) {
   }
 
   if (settings.show_text && settings.text.trim()) {
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.min(4096, Math.max(32, Math.ceil(measured + 20)));
-    canvas.height = 140;
-    const context = canvas.getContext('2d');
-    context.font = ZONE_FONT;
-    context.fillStyle = ink;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(settings.text, canvas.width / 2, 70, canvas.width - 20);
+    const {canvas,width,height} = labelCanvas(layout,ink);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const text = new THREE.Mesh(new THREE.PlaneGeometry(width, height),
       new THREE.MeshBasicMaterial({map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide}));
     text.name = 'Floor zone text';
     text.userData.zone_text = settings.text;
-    text.rotation.x = -Math.PI / 2;
+    text.userData.lines = layout.lines;
+    text.userData.text_height_m = layout.fontSize;
+    text.rotation.set(-Math.PI/2,0,-rotation*Math.PI/180);
     text.position.y = .007;
     group.add(text);
   }

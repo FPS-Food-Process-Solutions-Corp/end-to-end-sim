@@ -1,4 +1,4 @@
-const {chromium}=require('C:/Users/andyl/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium}=require('./desktop/node_modules/playwright');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const out=path.join(__dirname,'output'),near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,a+' != '+b);
 (async()=>{
@@ -7,10 +7,12 @@ const out=path.join(__dirname,'output'),near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6
   const context=await browser.newContext({viewport:{width:1700,height:1100},acceptDownloads:true});
   const page=await context.newPage(),errors=[],passed=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8766/viewer.html?workflow=order');
+  await page.goto('http://127.0.0.1:8766/viewer.html?mode=advanced&workflow=order');
   await page.waitForFunction(()=>window.coffeeEditor?.ready);
   assert.ok(await page.locator('[data-workflow="order"]').evaluate(n=>n.classList.contains('active')));
   assert.equal(await page.locator('[data-order-bread="bread_mode"]').inputValue(),'nova');
+  // Use the maintained demo, including a reachable top-pick bag magazine.
+  await page.evaluate(async()=>coffeeEditor.store.importScene(await fetch('./layouts/standard-demo.json').then(r=>r.json())));
   // Use bread narrow enough for the real tongs to grip from the sides.
   await page.evaluate(()=>{for(const shelf of coffeeEditor.store.scene.objects.filter(o=>o.kind==='shelf'))shelf.shelf_overrides={...coffeeEditor.store.shelfSettings(shelf),bread_length_1:.06};coffeeEditor.three.sync();});
   await page.locator('[data-order-action="place"]').click();

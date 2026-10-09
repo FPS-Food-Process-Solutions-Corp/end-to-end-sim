@@ -1,0 +1,39 @@
+{
+  "nova5": {
+    "plan_origin": [
+      1.85,
+      2.65
+    ],
+    "to_bag_center_cm": 112.94356998076518,
+    "placement_radius_cm": 70.0,
+    "effective_radius_cm": 119
+  },
+  "atom_w": {
+    "plan_origin": [
+      1.625,
+      4.65
+    ],
+    "to_bag_center_cm": 125.00000000000004,
+    "placement_radius_cm": 65.01844658310146,
+    "effective_radius_cm": 85.26730096389201
+  },
+  "fit": {
+    "rack_gap_cm": 105.00000000000007,
+    "counter_size_cm": [
+      35,
+      100
+    ],
+    "fixture_size_cm": [
+      36,
+      27
+    ],
+    "bag_cm": [
+      15,
+      9,
+      28
+    ],
+    "mouth_floor_height_cm": 122.40000000000002,
+    "opening_stroke_cm": 7.8,
+    "counter_depth_spare_cm": 7.9999999999999964
+  }
+}

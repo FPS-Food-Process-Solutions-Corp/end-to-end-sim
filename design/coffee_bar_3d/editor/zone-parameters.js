@@ -1,5 +1,4 @@
-let measurementContext;
-export const ZONE_FONT = '500 100px "Segoe UI", sans-serif';
+import {wrapLabel} from './label-layout.js';
 
 export function zoneSettings(object) {
   const saved = object.zone_marking || {};
@@ -12,14 +11,10 @@ export function zoneSettings(object) {
   };
 }
 
-// Use the same font measurement and uniform fit in SVG and on the 3D floor.
+// Respect the requested text size and use the long direction of a narrow strip.
 export function zoneLabelLayout(object) {
   const settings = zoneSettings(object);
-  measurementContext ||= document.createElement('canvas').getContext('2d');
-  measurementContext.font = ZONE_FONT;
-  const measured = measurementContext.measureText(settings.text).width;
-  const width = (measured + 20) / 100 * settings.text_height;
-  const height = 1.4 * settings.text_height;
-  const fit = Math.min(1, object.width * .9 / width, object.depth * .9 / height);
-  return {settings, measured, width: width * fit, height: height * fit, fontSize: settings.text_height * fit};
+  const rotation = object.depth > object.width * 2.5 ? 90 : 0;
+  const width = (rotation ? object.depth : object.width) * .9;
+  return {...wrapLabel(settings.text,width,settings.text_height),settings,rotation};
 }

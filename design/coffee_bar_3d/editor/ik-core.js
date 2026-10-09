@@ -244,7 +244,10 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
         },
       };
       const held = a.bagState === 'carried' && a.robotVacuum;
-      const mobility = settings.prefer_j1 && held ? [1, .25, .25, .5, .5, .5] : null;
+      const reorienting = !!(a.allowBagReorientation || b.allowBagReorientation) &&
+        !a.loaded && !b.loaded && !a.fixedVacuum && !b.fixedVacuum;
+      const uprightHeld = held && !reorienting;
+      const mobility = settings.prefer_j1 && uprightHeld ? [1, .25, .25, .5, .5, .5] : null;
       const result = arm.solve(target, seed, 100, mobility);
       if (!result.ok ||
           Math.max(...result.q.map((value, joint) => Math.abs(value - seed[joint]))) > MAX_JOINT_STEP) {
@@ -259,20 +262,21 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
         fixedVacuum: fraction < 1 ? a.fixedVacuum : b.fixedVacuum,
         loaded: fraction < 1 ? a.loaded : b.loaded,
         transfer: b.transfer,
+        allowBagReorientation: reorienting,
       };
       const blocked = arm.collision.failure(arm, previous, frame);
       if (blocked) {
         const free=(b.clearance||b.transfer||b.alignmentFor)&&!a.fixedVacuum&&!b.fixedVacuum&&a.bagState===b.bagState;
         const detour=free?tryDetour(arm,frames[segmentStart],b,{
-          budget:arm.searchBudget,tiltLimit:held?settings.max_bag_tilt_deg:null,
-          minimumJ1Share:held&&settings.prefer_j1?settings.min_j1_share:0,
+          budget:arm.searchBudget,tiltLimit:uprightHeld?settings.max_bag_tilt_deg:null,
+          minimumJ1Share:uprightHeld&&settings.prefer_j1?settings.min_j1_share:0,
         }):{ok:false,status:'protected_motion',method:'RRT-Connect',phase:b.phase,nodes:0};
         const report={...detour,frames:undefined,path:undefined};searches.push(report);
         if(detour.ok) {
           frames.splice(segmentStart+1);frames.push(...detour.frames);seed=frames.at(-1).q;
           const transferred=frames.slice(segmentStart);
           if(b.transfer)transfers.push({id:b.transfer,phase:b.phase,route:'searched detour',...jointTravel(transferred)});
-          if(held)for(let i=1;i<transferred.length;i++) {
+          if(uprightHeld)for(let i=1;i<transferred.length;i++) {
             const tilt=inspectHeldInterval(arm,transferred[i-1],transferred[i],settings.max_bag_tilt_deg);
             maxBagTiltDegrees=Math.max(maxBagTiltDegrees,tilt.peakDegrees);
             maxTiltBoundDegrees=Math.max(maxTiltBoundDegrees,tilt.upperBoundDegrees);
@@ -281,7 +285,7 @@ function solvePath(arm, request, endpoints, route, preferred, settings, progress
         } else {failure=blocked;failure.search=report;failure.segment=context.segment;}
         break;
       }
-      if (held || (frame.bagState === 'carried' && frame.robotVacuum)) {
+      if (!reorienting && (held || (frame.bagState === 'carried' && frame.robotVacuum))) {
         const tilt = inspectHeldInterval(arm, held ? previous : frame, frame, settings.max_bag_tilt_deg);
         maxBagTiltDegrees = Math.max(maxBagTiltDegrees, tilt.peakDegrees);
         maxTiltBoundDegrees = Math.max(maxTiltBoundDegrees, tilt.upperBoundDegrees);

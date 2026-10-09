@@ -1,3 +1,7 @@
-output/
+# Runtime geometry is required by clean-checkout desktop builds. Other generated
+# renders, videos, Blender sources and test output remain local.
+output/*
+!output/coffee_bar.glb
+!output/built_config.json
 assets/
 __pycache__/

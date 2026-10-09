@@ -1,3 +1,4 @@
+import {beginValidation, recordValidation} from './handoff-validation.js';
 import {loadCoffeeDefinition} from './coffee-robots.js';
 import * as THREE from '../vendor/three.module.js';
 import {handleBreadPoseAction} from './bread-ui.js';
@@ -17,6 +18,7 @@ export class OrderWorkflow {
     Object.assign(this,{store,view,bag,coffee,panel,toast});
     this.active=false;this.busy=false;this.ready=false;this.playing=false;
     this.time=0;this.duration=0;this.runId=0;this.jobs=new Set();this.routes={};this.states={};
+    this.routeKinds=['bag','coffee'];
     this.message='Choose the order, then check and play both routes.';
     this.recorder=new OrderRecorder(view,()=>{
       if(!this.recorder.active && this.cameraControls!==undefined){
@@ -119,19 +121,22 @@ export class OrderWorkflow {
     this.render();
   }
 
-  render(){this.panel.innerHTML=orderMarkup(this);this.updateProgress();}
+  render(){this.panel.innerHTML=orderMarkup(this);this.updateProgress();this.onChange?.();}
 
-  async validate(play=true) {
+  async validate(play=true, kinds=['bag','coffee']) {
     if(!this.view.ready||this.recorder.active)return;
     this.cancelChecks();this.reset();this.cancelSoloChecks();
     const id=this.runId;
+    this.routeKinds=['bag','coffee'].filter(kind=>kinds.includes(kind));
+    if(!this.routeKinds.length)return;
+    const validationContext=beginValidation(this.store);
     this.ready=false;this.failed=false;this.busy=true;this.routes={};
     this.message='Checking the bread, bag and beverage paths…';this.render();
     try {
-      const definition = await loadCoffeeDefinition(this.store);
+      const definition = this.routeKinds.includes('coffee') ? await loadCoffeeDefinition(this.store) : undefined;
       if(id!==this.runId)return;
       this.definition = definition;
-      for(const kind of ['bag','coffee']){
+      for(const kind of this.routeKinds){
         try {
           const request=kind==='bag'?makeWorkflowRequest(this.store,this.breadSettings()):
             makeCoffeeRequest(this.store,this.definition);
@@ -143,13 +148,14 @@ export class OrderWorkflow {
         }catch(error){this.routes[kind]={error:true,message:error.message};}
       }
       this.render();
-      await Promise.all(['bag','coffee'].map(async kind=>{
+      await Promise.all(this.routeKinds.map(async kind=>{
         const route=this.routes[kind];
         if(route.error)return;
         const data=await this.runWorker(kind,{id,request:route.request,...(kind==='coffee'?{definition:this.definition}:{})});
         if(id!==this.runId||data.cancelled)return;
         if(data.error){route.error=true;route.message=data.error;return;}
         route.result=data.result;
+        recordValidation(this.store,validationContext,'combined_order_'+kind,route.request,route.result);
         route.ok=data.result.pathOK&&(kind!=='bag'||!route.request.breadTask||data.result.bread?.pathOK);
         route.error=!route.ok;
         const failure=data.result.bread?.failure||data.result.failure;
@@ -159,7 +165,7 @@ export class OrderWorkflow {
             (collisionText(failure)||(failure.positionError*1000).toFixed(1)+' mm position error'):'Route did not pass. Check this flow for details.');
       }));
       if(id!==this.runId)return;
-      this.ready=['bag','coffee'].every(kind=>this.routes[kind]?.ok);
+      this.ready=this.routeKinds.every(kind=>this.routes[kind]?.ok);
       this.failed=!this.ready;
       this.message=this.ready?'Both routes passed · ready to start together.':'Order blocked. Both routes must pass before either starts.';
       if(this.ready)this.configurePlayers();
@@ -198,16 +204,19 @@ export class OrderWorkflow {
   }
 
   configurePlayers() {
-    for(const [kind,flow] of [['bag',this.bag],['coffee',this.coffee]])
-      flow.player.configure(this.routes[kind].request,this.routes[kind].result,this.definition);
-    this.duration=Math.max(this.bag.player.request.duration,this.coffee.player.request.duration);
+    for(const [kind,flow] of [['bag',this.bag],['coffee',this.coffee]]) {
+      if(this.routeKinds.includes(kind))flow.player.configure(this.routes[kind].request,this.routes[kind].result,this.definition);
+      else flow.player.stop();
+    }
+    this.duration=Math.max(...this.routeKinds.map(kind=>(kind==='bag'?this.bag:this.coffee).player.request.duration));
     this.time=0;
   }
 
   seek(time) {
     if(!this.ready)return;
     this.time=Math.max(0,Math.min(this.duration,time));
-    for(const flow of [this.bag,this.coffee]){
+    for(const kind of this.routeKinds){
+      const flow=kind==='bag'?this.bag:this.coffee;
       flow.player.playing=false;
       flow.player.seek(Math.min(this.time,flow.player.request.duration));
     }
@@ -288,7 +297,7 @@ export class OrderWorkflow {
     try {
       this.seek(0);
       this.cameraControls=this.view.controls.enabled;this.view.controls.enabled=false;
-      this.recorder.start(this.videoHeight);
+      this.recorder.start(this.videoHeight,{filename:this.routeKinds.length===2?'bread-and-coffee-order':this.routeKinds[0]==='bag'?'bread-order':'drink-order'});
       this.playing=true;this.updateProgress();
     }catch(error){
       this.view.controls.enabled=this.cameraControls??true;this.cameraControls=undefined;
